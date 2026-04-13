@@ -5,6 +5,7 @@ struct GPUMonitor {
     func sample() -> GPUUsage {
         var deviceUtil: Double = 0
         var renderUtil: Double = 0
+        var engines: [String: Double] = [:]
 
         let matchingDict = IOServiceMatching("IOAccelerator")
         var iterator: io_iterator_t = 0
@@ -23,22 +24,30 @@ struct GPUMonitor {
                let dict = props?.takeRetainedValue() as? [String: Any],
                let perf = dict["PerformanceStatistics"] as? [String: Any] {
 
-                if let val = perf["Device Utilization %"] as? Double {
-                    deviceUtil = max(deviceUtil, val)
-                } else if let val = perf["Device Utilization %"] as? Int {
-                    deviceUtil = max(deviceUtil, Double(val))
-                }
+                for (key, val) in perf where key.hasSuffix("Utilization %") {
+                    let utilization: Double
+                    if let d = val as? Double {
+                        utilization = d
+                    } else if let i = val as? Int {
+                        utilization = Double(i)
+                    } else {
+                        continue
+                    }
 
-                if let val = perf["Renderer Utilization %"] as? Double {
-                    renderUtil = max(renderUtil, val)
-                } else if let val = perf["Renderer Utilization %"] as? Int {
-                    renderUtil = max(renderUtil, Double(val))
+                    let label = key.replacingOccurrences(of: " Utilization %", with: "")
+                    engines[label] = max(engines[label] ?? 0, utilization)
+
+                    if key == "Device Utilization %" {
+                        deviceUtil = max(deviceUtil, utilization)
+                    } else if key == "Renderer Utilization %" {
+                        renderUtil = max(renderUtil, utilization)
+                    }
                 }
             }
 
             service = IOIteratorNext(iterator)
         }
 
-        return GPUUsage(deviceUtilization: deviceUtil, renderUtilization: renderUtil)
+        return GPUUsage(deviceUtilization: deviceUtil, renderUtilization: renderUtil, engines: engines)
     }
 }

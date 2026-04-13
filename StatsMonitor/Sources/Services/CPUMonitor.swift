@@ -33,6 +33,7 @@ struct CPUMonitor {
         var totalSystem: UInt64 = 0
         var totalIdle: UInt64 = 0
         var totalNice: UInt64 = 0
+        var perCore: [Double] = []
 
         for i in 0..<n {
             let curr = ticks[i]
@@ -47,6 +48,10 @@ struct CPUMonitor {
             totalSystem += system
             totalIdle   += idle
             totalNice   += nice
+
+            let coreTotal = user + system + idle + nice
+            let coreUsed = coreTotal > 0 ? Double(user + system + nice) / Double(coreTotal) * 100 : 0
+            perCore.append(coreUsed)
         }
 
         previousTicks = ticks
@@ -55,9 +60,10 @@ struct CPUMonitor {
         guard total > 0 else { return .zero }
 
         return CPUUsage(
-            user:   Double(totalUser + totalNice) / Double(total) * 100,
-            system: Double(totalSystem) / Double(total) * 100,
-            idle:   Double(totalIdle) / Double(total) * 100
+            user:    Double(totalUser + totalNice) / Double(total) * 100,
+            system:  Double(totalSystem) / Double(total) * 100,
+            idle:    Double(totalIdle) / Double(total) * 100,
+            perCore: perCore
         )
     }
 }

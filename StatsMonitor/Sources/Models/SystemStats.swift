@@ -6,16 +6,19 @@ struct SystemStats: Sendable {
     var memory: MemoryUsage = .zero
     var disk: DiskUsage = .zero
     var network: NetworkUsage = .zero
+    var topCPUProcesses: [ProcInfo] = []
+    var topMemoryProcesses: [ProcInfo] = []
 }
 
 struct CPUUsage: Sendable {
     var user: Double
     var system: Double
     var idle: Double
+    var perCore: [Double]
 
     var used: Double { user + system }
 
-    static let zero = CPUUsage(user: 0, system: 0, idle: 100)
+    static let zero = CPUUsage(user: 0, system: 0, idle: 100, perCore: [])
 }
 
 struct MemoryUsage: Sendable {
@@ -54,8 +57,15 @@ struct NetworkUsage: Sendable {
 struct GPUUsage: Sendable {
     var deviceUtilization: Double
     var renderUtilization: Double
+    var engines: [String: Double]
 
     var used: Double { deviceUtilization }
 
-    static let zero = GPUUsage(deviceUtilization: 0, renderUtilization: 0)
+    static let zero = GPUUsage(deviceUtilization: 0, renderUtilization: 0, engines: [:])
+}
+
+struct ProcInfo: Sendable {
+    var name: String
+    var cpuPercent: Double
+    var memoryBytes: UInt64
 }

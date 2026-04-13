@@ -10,80 +10,63 @@ final class StatsViewModel {
         monitor.start()
     }
 
-    var cpuPercent: String {
-        String(format: "%.1f%%", monitor.stats.cpu.used)
-    }
+    // MARK: - CPU
 
-    var cpuUserPercent: String {
-        String(format: "%.1f%%", monitor.stats.cpu.user)
-    }
+    var cpuPercent: String { String(format: "%.1f%%", monitor.stats.cpu.used) }
+    var cpuUserPercent: String { String(format: "%.1f%%", monitor.stats.cpu.user) }
+    var cpuSystemPercent: String { String(format: "%.1f%%", monitor.stats.cpu.system) }
+    var cpuPerCore: [Double] { monitor.stats.cpu.perCore }
+    var cpuHistory: [Double] { monitor.cpuHistory }
 
-    var cpuSystemPercent: String {
-        String(format: "%.1f%%", monitor.stats.cpu.system)
-    }
+    // MARK: - GPU
 
-    var gpuPercent: String {
-        String(format: "%.1f%%", monitor.stats.gpu.used)
-    }
+    var gpuPercent: String { String(format: "%.1f%%", monitor.stats.gpu.used) }
+    var gpuRenderPercent: String { String(format: "%.1f%%", monitor.stats.gpu.renderUtilization) }
+    var gpuEngines: [String: Double] { monitor.stats.gpu.engines }
+    var gpuHistory: [Double] { monitor.gpuHistory }
 
-    var gpuRenderPercent: String {
-        String(format: "%.1f%%", monitor.stats.gpu.renderUtilization)
-    }
+    // MARK: - Memory
 
-    var memoryUsed: String {
-        formatBytes(monitor.stats.memory.used)
-    }
-
-    var memoryTotal: String {
-        formatBytes(monitor.stats.memory.total)
-    }
-
-    var memoryPercent: String {
-        String(format: "%.1f%%", monitor.stats.memory.usedFraction * 100)
-    }
-
+    var memoryUsed: String { formatBytes(monitor.stats.memory.used) }
+    var memoryTotal: String { formatBytes(monitor.stats.memory.total) }
+    var memoryPercent: String { String(format: "%.1f%%", monitor.stats.memory.usedFraction * 100) }
+    var memoryActive: String { formatBytes(monitor.stats.memory.active) }
+    var memoryWired: String { formatBytes(monitor.stats.memory.wired) }
+    var memoryCompressed: String { formatBytes(monitor.stats.memory.compressed) }
+    var memoryHistory: [Double] { monitor.memoryHistory }
     var memoryLabelText: String {
         "\(formatBytesCompact(monitor.stats.memory.used))/\(formatBytesCompact(monitor.stats.memory.total))"
     }
 
-    var memoryActive: String {
-        formatBytes(monitor.stats.memory.active)
-    }
+    // MARK: - Disk
 
-    var memoryWired: String {
-        formatBytes(monitor.stats.memory.wired)
-    }
+    var diskUsed: String { formatBytes(monitor.stats.disk.used) }
+    var diskFree: String { formatBytes(monitor.stats.disk.total - monitor.stats.disk.used) }
+    var diskTotal: String { formatBytes(monitor.stats.disk.total) }
+    var diskPercent: String { String(format: "%.1f%%", monitor.stats.disk.usedFraction * 100) }
+    var diskHistory: [Double] { monitor.diskHistory }
 
-    var memoryCompressed: String {
-        formatBytes(monitor.stats.memory.compressed)
-    }
+    // MARK: - Network
 
-    var diskUsed: String {
-        formatBytes(monitor.stats.disk.used)
-    }
+    var networkIn: String { formatThroughput(monitor.stats.network.bytesInPerSec) }
+    var networkOut: String { formatThroughput(monitor.stats.network.bytesOutPerSec) }
+    var networkInHistory: [Double] { monitor.networkInHistory }
+    var networkOutHistory: [Double] { monitor.networkOutHistory }
 
-    var diskFree: String {
-        formatBytes(monitor.stats.disk.total - monitor.stats.disk.used)
-    }
+    // MARK: - Processes
 
-    var diskTotal: String {
-        formatBytes(monitor.stats.disk.total)
-    }
+    var topCPUProcesses: [ProcInfo] { monitor.stats.topCPUProcesses }
+    var topMemoryProcesses: [ProcInfo] { monitor.stats.topMemoryProcesses }
 
-    var diskPercent: String {
-        String(format: "%.1f%%", monitor.stats.disk.usedFraction * 100)
-    }
+    func formatProcessCPU(_ percent: Double) -> String { String(format: "%.1f%%", percent) }
+    func formatProcessMemory(_ bytes: UInt64) -> String { formatBytes(bytes) }
 
-    var networkIn: String {
-        formatThroughput(monitor.stats.network.bytesInPerSec)
-    }
-
-    var networkOut: String {
-        formatThroughput(monitor.stats.network.bytesOutPerSec)
-    }
+    // MARK: - Lifecycle
 
     func start() { monitor.start() }
     func stop()  { monitor.stop() }
+
+    // MARK: - Formatters
 
     private func formatBytesCompact(_ bytes: UInt64) -> String {
         let gb = Double(bytes) / 1_073_741_824
