@@ -30,13 +30,8 @@ struct MemoryMenuBarLabel: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "memorychip")
-            VStack(spacing: 0) {
-                let parts = viewModel.memoryLabelText.components(separatedBy: "/")
-                Text(parts.first ?? "").monospacedDigit()
-                Text(parts.last ?? "").monospacedDigit()
-            }
-            .font(.system(size: 9, weight: .medium))
-            .fixedSize()
+            Text(viewModel.memoryPercent)
+                .monospacedDigit()
         }
     }
 }
@@ -59,12 +54,8 @@ struct NetworkMenuBarLabel: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "network")
-            VStack(spacing: 0) {
-                Text("↓\(viewModel.networkIn)").monospacedDigit()
-                Text("↑\(viewModel.networkOut)").monospacedDigit()
-            }
-            .font(.system(size: 9, weight: .medium))
-            .fixedSize()
+            Text("↓\(viewModel.networkIn)")
+                .monospacedDigit()
         }
     }
 }
