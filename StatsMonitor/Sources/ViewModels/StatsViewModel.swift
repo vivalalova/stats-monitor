@@ -22,6 +22,14 @@ final class StatsViewModel {
         String(format: "%.1f%%", monitor.stats.cpu.system)
     }
 
+    var gpuPercent: String {
+        String(format: "%.1f%%", monitor.stats.gpu.used)
+    }
+
+    var gpuRenderPercent: String {
+        String(format: "%.1f%%", monitor.stats.gpu.renderUtilization)
+    }
+
     var memoryUsed: String {
         formatBytes(monitor.stats.memory.used)
     }
@@ -34,8 +42,28 @@ final class StatsViewModel {
         String(format: "%.1f%%", monitor.stats.memory.usedFraction * 100)
     }
 
+    var memoryLabelText: String {
+        "\(formatBytesCompact(monitor.stats.memory.used))/\(formatBytesCompact(monitor.stats.memory.total))"
+    }
+
+    var memoryActive: String {
+        formatBytes(monitor.stats.memory.active)
+    }
+
+    var memoryWired: String {
+        formatBytes(monitor.stats.memory.wired)
+    }
+
+    var memoryCompressed: String {
+        formatBytes(monitor.stats.memory.compressed)
+    }
+
     var diskUsed: String {
         formatBytes(monitor.stats.disk.used)
+    }
+
+    var diskFree: String {
+        formatBytes(monitor.stats.disk.total - monitor.stats.disk.used)
     }
 
     var diskTotal: String {
@@ -56,6 +84,13 @@ final class StatsViewModel {
 
     func start() { monitor.start() }
     func stop()  { monitor.stop() }
+
+    private func formatBytesCompact(_ bytes: UInt64) -> String {
+        let gb = Double(bytes) / 1_073_741_824
+        if gb >= 1 { return String(format: "%.1fG", gb) }
+        let mb = Double(bytes) / 1_048_576
+        return String(format: "%.0fM", mb)
+    }
 
     private func formatBytes(_ bytes: UInt64) -> String {
         let gb = Double(bytes) / 1_073_741_824

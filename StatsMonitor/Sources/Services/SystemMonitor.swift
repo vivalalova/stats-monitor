@@ -6,9 +6,10 @@ import Observation
 final class SystemMonitor {
     private(set) var stats = SystemStats()
 
-    private var cpuMonitor    = CPUMonitor()
-    private var memoryMonitor = MemoryMonitor()
-    private var diskMonitor   = DiskMonitor()
+    private var cpuMonitor     = CPUMonitor()
+    private var gpuMonitor     = GPUMonitor()
+    private var memoryMonitor  = MemoryMonitor()
+    private var diskMonitor    = DiskMonitor()
     private var networkMonitor = NetworkMonitor()
 
     private var timer: Timer?
@@ -32,6 +33,7 @@ final class SystemMonitor {
     private func poll() {
         stats = SystemStats(
             cpu:     cpuMonitor.sample(),
+            gpu:     gpuMonitor.sample(),
             memory:  memoryMonitor.sample(),
             disk:    diskMonitor.sample(),
             network: networkMonitor.sample()

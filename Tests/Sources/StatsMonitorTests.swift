@@ -11,7 +11,7 @@ struct StatsMonitorTests {
 
     @Test("Memory fraction is zero when total is zero")
     func memoryFractionZeroWhenNoTotal() {
-        let mem = MemoryUsage(used: 0, total: 0)
+        let mem = MemoryUsage(active: 0, wired: 0, compressed: 0, total: 0)
         #expect(mem.usedFraction == 0)
     }
 
@@ -21,10 +21,28 @@ struct StatsMonitorTests {
         #expect(disk.usedFraction == 0)
     }
 
+    @Test("GPU used equals deviceUtilization")
+    func gpuUsedEqualsDeviceUtilization() {
+        let gpu = GPUUsage(deviceUtilization: 42, renderUtilization: 30)
+        #expect(gpu.used == 42)
+    }
+
+    @Test("GPU zero has no utilization")
+    func gpuZeroHasNoUtilization() {
+        #expect(GPUUsage.zero.used == 0)
+        #expect(GPUUsage.zero.renderUtilization == 0)
+    }
+
     @Test("Memory fraction stays within 0...1")
     func memoryFractionBounded() {
-        let mem = MemoryUsage(used: 4_000_000_000, total: 8_000_000_000)
+        let mem = MemoryUsage(active: 2_000_000_000, wired: 1_000_000_000, compressed: 1_000_000_000, total: 8_000_000_000)
         #expect(mem.usedFraction >= 0)
         #expect(mem.usedFraction <= 1)
+    }
+
+    @Test("Memory used sums active, wired, compressed")
+    func memoryUsedSumsComponents() {
+        let mem = MemoryUsage(active: 1_000, wired: 2_000, compressed: 500, total: 8_000_000_000)
+        #expect(mem.used == 3_500)
     }
 }

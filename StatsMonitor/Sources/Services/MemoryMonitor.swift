@@ -15,7 +15,7 @@ struct MemoryMonitor {
         }
 
         guard kr == KERN_SUCCESS else {
-            return MemoryUsage(used: 0, total: total)
+            return MemoryUsage(active: 0, wired: 0, compressed: 0, total: total)
         }
 
         let pageSize = UInt64(sysconf(_SC_PAGESIZE))
@@ -23,7 +23,11 @@ struct MemoryMonitor {
         let wired      = UInt64(stats.wire_count) * pageSize
         let compressed = UInt64(stats.compressor_page_count) * pageSize
 
-        let used = active + wired + compressed
-        return MemoryUsage(used: min(used, total), total: total)
+        return MemoryUsage(
+            active:     min(active, total),
+            wired:      min(wired, total),
+            compressed: min(compressed, total - min(active + wired, total)),
+            total:      total
+        )
     }
 }
