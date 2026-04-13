@@ -16,7 +16,7 @@ struct CPUDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             detailToolbar()
             if viewModel.cpuHistory.count >= 2 {
-                LineChartView(history: viewModel.cpuHistory, color: .blue)
+                LineChartView(lines: [(viewModel.cpuHistory, .blue)])
             }
 
             statRow("Used",   value: viewModel.cpuPercent)
@@ -64,7 +64,7 @@ struct GPUDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             detailToolbar()
             if viewModel.gpuHistory.count >= 2 {
-                LineChartView(history: viewModel.gpuHistory, color: .purple)
+                LineChartView(lines: [(viewModel.gpuHistory, .purple)])
             }
 
             statRow("Device",   value: viewModel.gpuPercent)
@@ -102,7 +102,7 @@ struct MemoryDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             detailToolbar()
             if viewModel.memoryHistory.count >= 2 {
-                LineChartView(history: viewModel.memoryHistory, color: .orange)
+                LineChartView(lines: [(viewModel.memoryHistory, .orange)])
             }
 
             statRow("Used",       value: "\(viewModel.memoryUsed) / \(viewModel.memoryTotal)")
@@ -146,19 +146,10 @@ struct DiskDetailView: View {
                 1_048_576
             )
 
-            if viewModel.diskReadHistory.count >= 2 {
-                Text("Read")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                LineChartView(history: viewModel.diskReadHistory, maxValue: maxIO, color: .yellow)
-            }
-
-            if viewModel.diskWriteHistory.count >= 2 {
-                Text("Write")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                LineChartView(history: viewModel.diskWriteHistory, maxValue: maxIO, color: .orange)
-            }
+            LineChartView(
+                lines: [(viewModel.diskReadHistory, .yellow), (viewModel.diskWriteHistory, .orange)],
+                maxValue: maxIO
+            )
 
             statRow("↓ Read",  value: viewModel.diskRead)
             statRow("↑ Write", value: viewModel.diskWrite)
@@ -202,19 +193,10 @@ struct NetworkDetailView: View {
                 1_048_576
             )
 
-            if viewModel.networkInHistory.count >= 2 {
-                Text("Download")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                LineChartView(history: viewModel.networkInHistory, maxValue: maxVal, color: .green)
-            }
-
-            if viewModel.networkOutHistory.count >= 2 {
-                Text("Upload")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                LineChartView(history: viewModel.networkOutHistory, maxValue: maxVal, color: .red)
-            }
+            LineChartView(
+                lines: [(viewModel.networkInHistory, .green), (viewModel.networkOutHistory, .red)],
+                maxValue: maxVal
+            )
 
             statRow("↓ In",  value: viewModel.networkIn)
             statRow("↑ Out", value: viewModel.networkOut)
