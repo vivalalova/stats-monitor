@@ -14,7 +14,7 @@ struct CPUDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            detailToolbar()
+            detailToolbar("CPU")
             if viewModel.cpuHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.cpuHistory, .blue)])
             }
@@ -62,7 +62,7 @@ struct GPUDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            detailToolbar()
+            detailToolbar("GPU")
             if viewModel.gpuHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.gpuHistory, .purple)])
             }
@@ -100,7 +100,7 @@ struct MemoryDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            detailToolbar()
+            detailToolbar("Memory")
             if viewModel.memoryHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.memoryHistory, .orange)])
             }
@@ -140,7 +140,7 @@ struct DiskDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            detailToolbar()
+            detailToolbar("Disk")
             let maxIO = max(
                 (viewModel.diskReadHistory + viewModel.diskWriteHistory).max() ?? 1,
                 1_048_576
@@ -187,7 +187,7 @@ struct NetworkDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            detailToolbar()
+            detailToolbar("Network")
             let maxVal = max(
                 (viewModel.networkInHistory + viewModel.networkOutHistory).max() ?? 1,
                 1_048_576
@@ -354,8 +354,11 @@ private struct EngineGridView: View {
 // MARK: - Shared helpers
 
 @MainActor
-private func detailToolbar() -> some View {
+private func detailToolbar(_ title: String) -> some View {
     HStack(spacing: 8) {
+        Text(title)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.primary)
         Spacer()
         Button { openSettings() } label: {
             Image(systemName: "gearshape")
