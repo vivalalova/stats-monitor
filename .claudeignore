@@ -1,0 +1,15 @@
+# Build / Dependencies
+Derived/
+*.xcodeproj
+*.xcworkspace
+build/
+DerivedData/
+.build/
+.swiftpm/
+
+# IDE / OS
+xcuserdata/
+.DS_Store
+
+# Git
+.git/

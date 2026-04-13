@@ -1,0 +1,19 @@
+# Tuist
+Derived/
+*.xcodeproj
+*.xcworkspace
+
+# Xcode
+build/
+DerivedData/
+xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# OS
+.DS_Store
+
+# Claude rules (symlinked)
+.claude/rules/shared/
