@@ -8,12 +8,14 @@ final class SystemMonitor {
 
     private static let historyCapacity = 120
 
-    private(set) var cpuHistory:        [Double] = [Double](repeating: 0, count: 120)
-    private(set) var gpuHistory:        [Double] = [Double](repeating: 0, count: 120)
-    private(set) var memoryHistory:     [Double] = [Double](repeating: 0, count: 120)
-    private(set) var diskHistory:       [Double] = [Double](repeating: 0, count: 120)
-    private(set) var networkInHistory:  [Double] = [Double](repeating: 0, count: 120)
-    private(set) var networkOutHistory: [Double] = [Double](repeating: 0, count: 120)
+    private(set) var cpuHistory:         [Double] = [Double](repeating: 0, count: 120)
+    private(set) var gpuHistory:         [Double] = [Double](repeating: 0, count: 120)
+    private(set) var memoryHistory:      [Double] = [Double](repeating: 0, count: 120)
+    private(set) var diskHistory:        [Double] = [Double](repeating: 0, count: 120)
+    private(set) var diskReadHistory:    [Double] = [Double](repeating: 0, count: 120)
+    private(set) var diskWriteHistory:   [Double] = [Double](repeating: 0, count: 120)
+    private(set) var networkInHistory:   [Double] = [Double](repeating: 0, count: 120)
+    private(set) var networkOutHistory:  [Double] = [Double](repeating: 0, count: 120)
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()
@@ -68,6 +70,8 @@ final class SystemMonitor {
         append(gpu.used,                  to: &gpuHistory)
         append(memory.usedFraction * 100, to: &memoryHistory)
         append(disk.usedFraction * 100,   to: &diskHistory)
+        append(disk.readBPS,              to: &diskReadHistory)
+        append(disk.writeBPS,             to: &diskWriteHistory)
         append(network.bytesInPerSec,     to: &networkInHistory)
         append(network.bytesOutPerSec,    to: &networkOutHistory)
 

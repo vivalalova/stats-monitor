@@ -47,7 +47,11 @@ final class StatsViewModel {
     var diskFree: String { formatBytes(monitor.stats.disk.total - monitor.stats.disk.used) }
     var diskTotal: String { formatBytes(monitor.stats.disk.total) }
     var diskPercent: String { String(format: "%.1f%%", monitor.stats.disk.usedFraction * 100) }
-    var diskHistory: [Double] { monitor.diskHistory }
+    var diskRead: String  { formatThroughput(monitor.stats.disk.readBPS) }
+    var diskWrite: String { formatThroughput(monitor.stats.disk.writeBPS) }
+    var diskHistory: [Double]      { monitor.diskHistory }
+    var diskReadHistory: [Double]  { monitor.diskReadHistory }
+    var diskWriteHistory: [Double] { monitor.diskWriteHistory }
 
     // MARK: - Network
 

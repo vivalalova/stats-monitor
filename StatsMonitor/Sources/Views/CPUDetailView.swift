@@ -141,10 +141,28 @@ struct DiskDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             detailToolbar()
-            if viewModel.diskHistory.count >= 2 {
-                LineChartView(history: viewModel.diskHistory, color: .yellow)
+            let maxIO = max(
+                (viewModel.diskReadHistory + viewModel.diskWriteHistory).max() ?? 1,
+                1_048_576
+            )
+
+            if viewModel.diskReadHistory.count >= 2 {
+                Text("Read")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LineChartView(history: viewModel.diskReadHistory, maxValue: maxIO, color: .yellow)
             }
 
+            if viewModel.diskWriteHistory.count >= 2 {
+                Text("Write")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LineChartView(history: viewModel.diskWriteHistory, maxValue: maxIO, color: .orange)
+            }
+
+            statRow("↓ Read",  value: viewModel.diskRead)
+            statRow("↑ Write", value: viewModel.diskWrite)
+            Divider()
             statRow("Used",  value: viewModel.diskUsed)
             statRow("Free",  value: viewModel.diskFree)
             statRow("Total", value: viewModel.diskTotal)
@@ -157,7 +175,7 @@ struct DiskDetailView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 ForEach(Array(viewModel.topDiskProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(proc.name, value: viewModel.formatProcessDisk(proc.diskTotalBPS))
+                    statRow(proc.name, value: "↓\(viewModel.formatProcessDisk(proc.diskReadBPS)) ↑\(viewModel.formatProcessDisk(proc.diskWriteBPS))")
                 }
             }
         }

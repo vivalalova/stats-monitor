@@ -63,6 +63,8 @@ struct MemoryUsage: Sendable {
 struct DiskUsage: Sendable {
     var used: UInt64
     var total: UInt64
+    var readBPS: Double = 0
+    var writeBPS: Double = 0
 
     var usedFraction: Double {
         total > 0 ? Double(used) / Double(total) : 0

@@ -42,7 +42,7 @@ struct ProcessMonitor {
                 let elapsed = now.timeIntervalSince(prev.date)
                 if elapsed > 0 {
                     // pti_total_user/system are in nanoseconds
-                    let deltaNS = Double(currentTicks &- prev.ticks)
+                    let deltaNS = currentTicks >= prev.ticks ? Double(currentTicks - prev.ticks) : 0
                     cpuPercent = (deltaNS / 1_000_000_000.0) / elapsed * 100.0
                 }
             }
@@ -63,8 +63,9 @@ struct ProcessMonitor {
                 if let prev = previousDiskSamples[pid] {
                     let elapsed = now.timeIntervalSince(prev.date)
                     if elapsed > 0 {
-                        diskReadBPS  = Double(curRead  &- prev.read)  / elapsed
-                        diskWriteBPS = Double(curWrite &- prev.write) / elapsed
+                        // Safe subtraction: treat counter reset as 0 delta
+                        diskReadBPS  = curRead  >= prev.read  ? Double(curRead  - prev.read)  / elapsed : 0
+                        diskWriteBPS = curWrite >= prev.write ? Double(curWrite - prev.write) / elapsed : 0
                     }
                 }
                 previousDiskSamples[pid] = (curRead, curWrite, now)

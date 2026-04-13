@@ -72,8 +72,9 @@ struct NetworkProcessMonitor {
             if let prev = previous[key] {
                 let elapsed = now.timeIntervalSince(prev.date)
                 if elapsed > 0 {
-                    netInBPS  = Double(cur.in  &- prev.bytesIn)  / elapsed
-                    netOutBPS = Double(cur.out &- prev.bytesOut) / elapsed
+                    // Safe subtraction: treat counter reset (process restart) as 0 delta
+                    netInBPS  = cur.in  >= prev.bytesIn  ? Double(cur.in  - prev.bytesIn)  / elapsed : 0
+                    netOutBPS = cur.out >= prev.bytesOut ? Double(cur.out - prev.bytesOut) / elapsed : 0
                 }
             }
 
