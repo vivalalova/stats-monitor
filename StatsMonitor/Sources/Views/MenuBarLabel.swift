@@ -31,11 +31,12 @@ struct MemoryMenuBarLabel: View {
         HStack(spacing: 4) {
             Image(systemName: "memorychip")
             VStack(spacing: 0) {
-                ForEach(viewModel.memoryLabelText.components(separatedBy: "/"), id: \.self) { part in
-                    Text(part).monospacedDigit()
-                }
+                let parts = viewModel.memoryLabelText.components(separatedBy: "/")
+                Text(parts.first ?? "").monospacedDigit()
+                Text(parts.last ?? "").monospacedDigit()
             }
             .font(.system(size: 9, weight: .medium))
+            .fixedSize()
         }
     }
 }
@@ -63,6 +64,7 @@ struct NetworkMenuBarLabel: View {
                 Text("↑\(viewModel.networkOut)").monospacedDigit()
             }
             .font(.system(size: 9, weight: .medium))
+            .fixedSize()
         }
     }
 }
