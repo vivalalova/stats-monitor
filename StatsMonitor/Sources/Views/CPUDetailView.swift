@@ -150,6 +150,16 @@ struct DiskDetailView: View {
             statRow("Total", value: viewModel.diskTotal)
             ProgressView(value: viewModel.monitor.stats.disk.usedFraction)
                 .tint(progressColor(viewModel.monitor.stats.disk.usedFraction))
+
+            if !viewModel.topDiskProcesses.isEmpty {
+                Divider()
+                Text("Top Processes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ForEach(Array(viewModel.topDiskProcesses.enumerated()), id: \.offset) { _, proc in
+                    statRow(proc.name, value: viewModel.formatProcessDisk(proc.diskTotalBPS))
+                }
+            }
         }
         .padding(16)
         .frame(width: 280)

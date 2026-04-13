@@ -46,7 +46,7 @@ final class SystemMonitor {
         let memory  = memoryMonitor.sample()
         let disk    = diskMonitor.sample()
         let network = networkMonitor.sample()
-        let (cpuProcs, memProcs) = processMonitor.sample()
+        let (cpuProcs, memProcs, diskProcs) = processMonitor.sample()
 
         stats = SystemStats(
             cpu:                cpu,
@@ -55,7 +55,8 @@ final class SystemMonitor {
             disk:               disk,
             network:            network,
             topCPUProcesses:    cpuProcs,
-            topMemoryProcesses: memProcs
+            topMemoryProcesses: memProcs,
+            topDiskProcesses:   diskProcs
         )
 
         append(cpu.used,                  to: &cpuHistory)

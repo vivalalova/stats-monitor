@@ -60,9 +60,11 @@ final class StatsViewModel {
 
     var topCPUProcesses: [ProcInfo] { monitor.stats.topCPUProcesses }
     var topMemoryProcesses: [ProcInfo] { monitor.stats.topMemoryProcesses }
+    var topDiskProcesses: [ProcInfo] { monitor.stats.topDiskProcesses }
 
     func formatProcessCPU(_ percent: Double) -> String { String(format: "%.1f%%", percent) }
     func formatProcessMemory(_ bytes: UInt64) -> String { formatBytes(bytes) }
+    func formatProcessDisk(_ bps: Double) -> String { formatThroughput(bps) }
 
     // MARK: - Lifecycle
 
