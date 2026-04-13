@@ -6,6 +6,7 @@ struct GPUMonitor {
         var deviceUtil: Double = 0
         var renderUtil: Double = 0
         var engines: [String: Double] = [:]
+        var vramUsed: UInt64 = 0
 
         let matchingDict = IOServiceMatching("IOAccelerator")
         var iterator: io_iterator_t = 0
@@ -43,11 +44,16 @@ struct GPUMonitor {
                         renderUtil = max(renderUtil, utilization)
                     }
                 }
+
+                if let n = perf["In Use System Memory"] as? NSNumber {
+                    vramUsed = max(vramUsed, n.uint64Value)
+                }
             }
 
             service = IOIteratorNext(iterator)
         }
 
-        return GPUUsage(deviceUtilization: deviceUtil, renderUtilization: renderUtil, engines: engines)
+        return GPUUsage(deviceUtilization: deviceUtil, renderUtilization: renderUtil,
+                        engines: engines, vramUsed: vramUsed)
     }
 }

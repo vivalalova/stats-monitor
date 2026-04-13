@@ -80,10 +80,11 @@ struct GPUUsage: Sendable {
     var deviceUtilization: Double
     var renderUtilization: Double
     var engines: [String: Double]
+    var vramUsed: UInt64      // "In Use System Memory", bytes; 0 if unavailable
 
     var used: Double { deviceUtilization }
 
-    static let zero = GPUUsage(deviceUtilization: 0, renderUtilization: 0, engines: [:])
+    static let zero = GPUUsage(deviceUtilization: 0, renderUtilization: 0, engines: [:], vramUsed: 0)
 }
 
 struct ProcInfo: Sendable {

@@ -14,6 +14,7 @@ struct CPUDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            detailToolbar()
             if viewModel.cpuHistory.count >= 2 {
                 LineChartView(history: viewModel.cpuHistory, color: .blue)
             }
@@ -61,40 +62,26 @@ struct GPUDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            detailToolbar()
             if viewModel.gpuHistory.count >= 2 {
                 LineChartView(history: viewModel.gpuHistory, color: .purple)
             }
 
             statRow("Device",   value: viewModel.gpuPercent)
             statRow("Renderer", value: viewModel.gpuRenderPercent)
+            if viewModel.gpuVramUsed > 0 {
+                statRow("GPU Mem", value: viewModel.gpuVramUsedStr)
+            }
             ProgressView(value: viewModel.monitor.stats.gpu.used / 100)
                 .tint(progressColor(viewModel.monitor.stats.gpu.used / 100))
 
-            let sortedEngines = viewModel.gpuEngines
-                .sorted { $0.key < $1.key }
-                .filter { $0.key != "Device" && $0.key != "Renderer" }
-
-            if !sortedEngines.isEmpty {
+            if !viewModel.gpuEngines.isEmpty {
                 Divider()
                 Text("Engines")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                ForEach(sortedEngines, id: \.key) { key, val in
-                    HStack(spacing: 8) {
-                        Text(key)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        ProgressView(value: val / 100)
-                            .frame(width: 80)
-                            .tint(progressColor(val / 100))
-                        Text(String(format: "%.0f%%", val))
-                            .monospacedDigit()
-                            .frame(width: 36, alignment: .trailing)
-                    }
-                    .font(.system(size: 12))
-                }
+                EngineGridView(engines: viewModel.gpuEngines)
             }
-
         }
         .padding(16)
         .frame(width: 280)
@@ -113,6 +100,7 @@ struct MemoryDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            detailToolbar()
             if viewModel.memoryHistory.count >= 2 {
                 LineChartView(history: viewModel.memoryHistory, color: .orange)
             }
@@ -152,6 +140,7 @@ struct DiskDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            detailToolbar()
             if viewModel.diskHistory.count >= 2 {
                 LineChartView(history: viewModel.diskHistory, color: .yellow)
             }
@@ -179,6 +168,7 @@ struct NetworkDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            detailToolbar()
             let maxVal = max(
                 (viewModel.networkInHistory + viewModel.networkOutHistory).max() ?? 1,
                 1_048_576
@@ -292,7 +282,74 @@ private struct CoreGridView: View {
     }
 }
 
+// MARK: - GPU engine grid
+
+private struct EngineGridView: View {
+    var engines: [String: Double]
+
+    private let contentWidth: CGFloat = 248
+    private let spacing: CGFloat      = 4
+    private let barHeight: CGFloat    = 48
+
+    private var sorted: [(key: String, value: Double)] {
+        engines.sorted { $0.key < $1.key }
+    }
+
+    private var effectiveColumns: Int { min(sorted.count, 8) }
+
+    private var barWidth: CGFloat {
+        (contentWidth - spacing * CGFloat(effectiveColumns - 1)) / CGFloat(effectiveColumns)
+    }
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: spacing) {
+            ForEach(sorted, id: \.key) { item in
+                VStack(spacing: 1) {
+                    ZStack(alignment: .bottom) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.primary.opacity(0.08))
+                            .frame(width: barWidth, height: barHeight)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.purple)
+                            .frame(width: barWidth, height: max(2, barHeight * item.value / 100))
+                    }
+                    Text(abbreviate(item.key))
+                        .foregroundStyle(.secondary)
+                    Text("\(Int(item.value))%")
+                }
+                .font(.system(size: 7))
+                .monospacedDigit()
+            }
+        }
+    }
+
+    /// Single-word → first 4 chars. Multi-word → uppercased initials.
+    private func abbreviate(_ name: String) -> String {
+        let words = name.split(separator: " ")
+        if words.count == 1 { return String(words[0].prefix(4)) }
+        return words.map { String($0.prefix(1).uppercased()) }.joined()
+    }
+}
+
 // MARK: - Shared helpers
+
+@MainActor
+private func detailToolbar() -> some View {
+    HStack(spacing: 8) {
+        Spacer()
+        Button { openSettings() } label: {
+            Image(systemName: "gearshape")
+        }
+        .help("Settings")
+        Button { NSApplication.shared.terminate(nil) } label: {
+            Image(systemName: "power")
+        }
+        .help("Quit StatsMonitor")
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(.secondary)
+    .font(.system(size: 14))
+}
 
 private func statRow(_ label: String, value: String) -> some View {
     HStack {

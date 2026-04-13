@@ -6,14 +6,14 @@ import Observation
 final class SystemMonitor {
     private(set) var stats = SystemStats()
 
-    private(set) var cpuHistory:        [Double] = []
-    private(set) var gpuHistory:        [Double] = []
-    private(set) var memoryHistory:     [Double] = []
-    private(set) var diskHistory:       [Double] = []
-    private(set) var networkInHistory:  [Double] = []
-    private(set) var networkOutHistory: [Double] = []
+    private static let historyCapacity = 120
 
-    private static let historyCapacity = 60
+    private(set) var cpuHistory:        [Double] = [Double](repeating: 0, count: 120)
+    private(set) var gpuHistory:        [Double] = [Double](repeating: 0, count: 120)
+    private(set) var memoryHistory:     [Double] = [Double](repeating: 0, count: 120)
+    private(set) var diskHistory:       [Double] = [Double](repeating: 0, count: 120)
+    private(set) var networkInHistory:  [Double] = [Double](repeating: 0, count: 120)
+    private(set) var networkOutHistory: [Double] = [Double](repeating: 0, count: 120)
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()

@@ -25,6 +25,8 @@ final class StatsViewModel {
     var gpuRenderPercent: String { String(format: "%.1f%%", monitor.stats.gpu.renderUtilization) }
     var gpuEngines: [String: Double] { monitor.stats.gpu.engines }
     var gpuHistory: [Double] { monitor.gpuHistory }
+    var gpuVramUsed: UInt64 { monitor.stats.gpu.vramUsed }
+    var gpuVramUsedStr: String { formatBytes(monitor.stats.gpu.vramUsed) }
 
     // MARK: - Memory
 
