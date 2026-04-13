@@ -4,11 +4,10 @@ struct MenuBarLabel: View {
     var viewModel: StatsViewModel
 
     var body: some View {
-        Label {
+        HStack(spacing: 4) {
+            Image(systemName: "cpu")
             Text(viewModel.cpuPercent)
                 .monospacedDigit()
-        } icon: {
-            Image(systemName: "cpu")
         }
     }
 }

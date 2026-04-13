@@ -6,6 +6,10 @@ import Observation
 final class StatsViewModel {
     let monitor = SystemMonitor()
 
+    init() {
+        monitor.start()
+    }
+
     var cpuPercent: String {
         String(format: "%.1f%%", monitor.stats.cpu.used)
     }
