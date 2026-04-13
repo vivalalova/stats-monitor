@@ -200,6 +200,16 @@ struct NetworkDetailView: View {
 
             statRow("↓ In",  value: viewModel.networkIn)
             statRow("↑ Out", value: viewModel.networkOut)
+
+            if !viewModel.topNetworkProcesses.isEmpty {
+                Divider()
+                Text("Top Processes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ForEach(Array(viewModel.topNetworkProcesses.enumerated()), id: \.offset) { _, proc in
+                    statRow(proc.name, value: "↓\(viewModel.formatProcessNetwork(proc.networkInBPS)) ↑\(viewModel.formatProcessNetwork(proc.networkOutBPS))")
+                }
+            }
         }
         .padding(16)
         .frame(width: 280)

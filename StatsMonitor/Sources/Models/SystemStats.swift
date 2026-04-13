@@ -9,6 +9,7 @@ struct SystemStats: Sendable {
     var topCPUProcesses: [ProcInfo] = []
     var topMemoryProcesses: [ProcInfo] = []
     var topDiskProcesses: [ProcInfo] = []
+    var topNetworkProcesses: [ProcInfo] = []
 }
 
 struct CPUCoreFrequency: Sendable {
@@ -94,6 +95,9 @@ struct ProcInfo: Sendable {
     var memoryBytes: UInt64
     var diskReadBPS: Double = 0
     var diskWriteBPS: Double = 0
+    var networkInBPS: Double = 0
+    var networkOutBPS: Double = 0
 
     var diskTotalBPS: Double { diskReadBPS + diskWriteBPS }
+    var networkTotalBPS: Double { networkInBPS + networkOutBPS }
 }

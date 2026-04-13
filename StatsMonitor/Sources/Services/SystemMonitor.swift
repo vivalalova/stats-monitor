@@ -22,6 +22,9 @@ final class SystemMonitor {
     private var networkMonitor  = NetworkMonitor()
     private var processMonitor  = ProcessMonitor()
 
+    // Persisted previous snapshots for nettop delta calculation
+    private var networkProcPrev: [String: NetworkProcessMonitor.Snapshot] = [:]
+
     private var timer: Timer?
 
     static let pollInterval: TimeInterval = 2
@@ -48,15 +51,17 @@ final class SystemMonitor {
         let network = networkMonitor.sample()
         let (cpuProcs, memProcs, diskProcs) = processMonitor.sample()
 
+        // Preserve network process list until the async nettop result arrives
         stats = SystemStats(
-            cpu:                cpu,
-            gpu:                gpu,
-            memory:             memory,
-            disk:               disk,
-            network:            network,
-            topCPUProcesses:    cpuProcs,
-            topMemoryProcesses: memProcs,
-            topDiskProcesses:   diskProcs
+            cpu:                 cpu,
+            gpu:                 gpu,
+            memory:              memory,
+            disk:                disk,
+            network:             network,
+            topCPUProcesses:     cpuProcs,
+            topMemoryProcesses:  memProcs,
+            topDiskProcesses:    diskProcs,
+            topNetworkProcesses: stats.topNetworkProcesses
         )
 
         append(cpu.used,                  to: &cpuHistory)
@@ -65,6 +70,20 @@ final class SystemMonitor {
         append(disk.usedFraction * 100,   to: &diskHistory)
         append(network.bytesInPerSec,     to: &networkInHistory)
         append(network.bytesOutPerSec,    to: &networkOutHistory)
+
+        pollNetworkProcesses()
+    }
+
+    private func pollNetworkProcesses() {
+        let prev = networkProcPrev
+        Task { [weak self] in
+            guard let self else { return }
+            let (procs, updated) = await Task.detached(priority: .utility) {
+                NetworkProcessMonitor.run(previous: prev)
+            }.value
+            self.networkProcPrev = updated
+            self.stats.topNetworkProcesses = procs
+        }
     }
 
     private func append(_ value: Double, to buffer: inout [Double]) {
