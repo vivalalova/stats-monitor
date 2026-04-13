@@ -34,6 +34,7 @@ struct LineChartView: View {
             context.stroke(linePath, with: .color(color), lineWidth: 1.5)
         }
         .frame(height: height)
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 4))
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 }

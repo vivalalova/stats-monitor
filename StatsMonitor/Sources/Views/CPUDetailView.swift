@@ -43,9 +43,6 @@ struct CPUDetailView: View {
                     statRow(proc.name, value: viewModel.formatProcessCPU(proc.cpuPercent))
                 }
             }
-
-            Divider()
-            quitButton()
         }
         .padding(16)
         .frame(width: 280)
@@ -98,8 +95,6 @@ struct GPUDetailView: View {
                 }
             }
 
-            Divider()
-            quitButton()
         }
         .padding(16)
         .frame(width: 280)
@@ -139,8 +134,6 @@ struct MemoryDetailView: View {
                 }
             }
 
-            Divider()
-            quitButton()
         }
         .padding(16)
         .frame(width: 280)
@@ -168,9 +161,6 @@ struct DiskDetailView: View {
             statRow("Total", value: viewModel.diskTotal)
             ProgressView(value: viewModel.monitor.stats.disk.usedFraction)
                 .tint(progressColor(viewModel.monitor.stats.disk.usedFraction))
-
-            Divider()
-            quitButton()
         }
         .padding(16)
         .frame(width: 280)
@@ -210,9 +200,6 @@ struct NetworkDetailView: View {
 
             statRow("↓ In",  value: viewModel.networkIn)
             statRow("↑ Out", value: viewModel.networkOut)
-
-            Divider()
-            quitButton()
         }
         .padding(16)
         .frame(width: 280)
@@ -248,6 +235,21 @@ private struct CoreGridView: View {
         }
     }
 
+    /// P-cores (blue) come first in the frequencies array with higher maxHz;
+    /// E-cores (green) follow with lower maxHz.
+    /// Returns nil when cluster distinction is unavailable.
+    private var pCoreCount: Int? {
+        guard !frequencies.isEmpty else { return nil }
+        let distinctMax = Set(frequencies.map(\.maxHz).filter { $0 > 0 })
+        guard distinctMax.count >= 2, let highMax = distinctMax.max() else { return nil }
+        return frequencies.prefix(while: { $0.maxHz == highMax }).count
+    }
+
+    private func barColor(for index: Int) -> Color {
+        guard let pCount = pCoreCount else { return progressColor(cores[index] / 100) }
+        return index < pCount ? .blue : .green
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
@@ -260,7 +262,7 @@ private struct CoreGridView: View {
                                     .fill(Color.primary.opacity(0.08))
                                     .frame(width: barWidth, height: barHeight)
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(progressColor(item.value / 100))
+                                    .fill(barColor(for: item.index))
                                     .frame(width: barWidth, height: max(2, barHeight * item.value / 100))
                             }
                             Text("C\(item.index)")
@@ -312,12 +314,3 @@ private func progressColor(_ fraction: Double) -> Color {
     }
 }
 
-@MainActor
-private func quitButton() -> some View {
-    Button("Quit StatsMonitor") {
-        NSApplication.shared.terminate(nil)
-    }
-    .buttonStyle(.plain)
-    .foregroundStyle(.secondary)
-    .frame(maxWidth: .infinity, alignment: .center)
-}
