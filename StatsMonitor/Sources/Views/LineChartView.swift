@@ -6,7 +6,7 @@ struct LineChartView: View {
     var history: [Double]
     var maxValue: Double = 100
     var color: Color = .blue
-    var height: CGFloat = 40
+    var height: CGFloat = 100
 
     var body: some View {
         Canvas { context, size in
