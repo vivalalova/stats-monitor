@@ -79,45 +79,76 @@ struct CPUMonitor {
         return cachedMaxHz.map { CPUCoreFrequency(currentHz: currentHz, maxHz: $0) }
     }
 
-    /// Build per-core max-frequency array from sysctl perflevel data (Apple Silicon)
-    /// or hw.cpufrequency_max (Intel).
+    /// Per-core max frequency: reads chip brand string and maps to known clock speeds.
+    /// Falls back to hw.cpufrequency_max (Intel) if brand string not recognized.
     private func queryMaxFrequencies(coreCount: Int) -> [UInt64] {
+        // Try to build from perflevel cluster data (works on some macOS + chip combos)
+        var result = queryPerfLevelFrequencies()
+        if !result.isEmpty { return result }
+
+        // Apple Silicon lookup by chip brand string
+        result = brandStringFrequencies()
+        if !result.isEmpty { return result }
+
+        // Intel fallback
+        var hz: UInt64 = 0
+        var hzSize = MemoryLayout<UInt64>.size
+        sysctlbyname("hw.cpufrequency_max", &hz, &hzSize, nil, 0)
+        return Array(repeating: hz, count: coreCount)
+    }
+
+    private func queryPerfLevelFrequencies() -> [UInt64] {
         var result: [UInt64] = []
         var level = 0
-
         while level < 8 {
-            var n: Int32 = 0
-            var nSize = MemoryLayout<Int32>.size
+            var n: Int32 = 0; var nSize = MemoryLayout<Int32>.size
             guard sysctlbyname("hw.perflevel\(level).physicalcpu", &n, &nSize, nil, 0) == 0, n > 0 else { break }
-
-            var hz: UInt64 = 0
-            var hzSize = MemoryLayout<UInt64>.size
+            var hz: UInt64 = 0; var hzSize = MemoryLayout<UInt64>.size
+            // key does not exist on most Apple Silicon—will stay 0
             sysctlbyname("hw.perflevel\(level).maxfreq", &hz, &hzSize, nil, 0)
-
+            guard hz > 0 else { return [] }  // incomplete data, bail out
             for _ in 0..<Int(n) { result.append(hz) }
             level += 1
         }
-
-        // Intel / unknown fallback
-        if result.isEmpty {
-            var hz: UInt64 = 0
-            var hzSize = MemoryLayout<UInt64>.size
-            sysctlbyname("hw.cpufrequency_max", &hz, &hzSize, nil, 0)
-            result = Array(repeating: hz, count: coreCount)
-        }
-
         return result
     }
 
-    /// Best-effort current CPU frequency (single value shared across cores).
-    /// Returns 0 if unavailable.
+    /// Lookup table: (P-core max Hz, E-core max Hz) keyed by chip generation.
+    /// Per-level core counts come from hw.perflevelN.physicalcpu.
+    private func brandStringFrequencies() -> [UInt64] {
+        var brand = [CChar](repeating: 0, count: 256)
+        var brandSize = brand.count
+        guard sysctlbyname("machdep.cpu.brand_string", &brand, &brandSize, nil, 0) == 0 else { return [] }
+        let name = String(cString: brand).uppercased()
+
+        // (P-core Hz, E-core Hz)
+        let freqs: (UInt64, UInt64)?
+        switch true {
+        case name.contains("M4"): freqs = (4_400_000_000, 2_900_000_000)
+        case name.contains("M3"): freqs = (4_050_000_000, 2_750_000_000)
+        case name.contains("M2"): freqs = (3_490_000_000, 2_420_000_000)
+        case name.contains("M1"): freqs = (3_228_000_000, 2_064_000_000)
+        default:                  freqs = nil
+        }
+        guard let (pHz, eHz) = freqs else { return [] }
+
+        var result: [UInt64] = []
+        var level = 0
+        while level < 8 {
+            var n: Int32 = 0; var nSize = MemoryLayout<Int32>.size
+            guard sysctlbyname("hw.perflevel\(level).physicalcpu", &n, &nSize, nil, 0) == 0, n > 0 else { break }
+            // perflevel0 = Performance, perflevel1 = Efficiency
+            let hz: UInt64 = level == 0 ? pHz : eHz
+            for _ in 0..<Int(n) { result.append(hz) }
+            level += 1
+        }
+        return result
+    }
+
+    /// Current CPU frequency — unavailable on Apple Silicon without private APIs.
     private func queryCurrentHz() -> UInt64 {
-        var hz: UInt64 = 0
-        var hzSize = MemoryLayout<UInt64>.size
-        // Intel
+        var hz: UInt64 = 0; var hzSize = MemoryLayout<UInt64>.size
         if sysctlbyname("hw.cpufrequency", &hz, &hzSize, nil, 0) == 0, hz > 0 { return hz }
-        // Apple Silicon cluster (perflevel0 = P-cores)
-        if sysctlbyname("hw.perflevel0.cpufrequency", &hz, &hzSize, nil, 0) == 0, hz > 0 { return hz }
         return 0
     }
 }
