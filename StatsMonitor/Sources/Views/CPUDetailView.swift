@@ -30,7 +30,8 @@ struct CPUDetailView: View {
                 Text("Per Core")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                CoreGridView(cores: viewModel.cpuPerCore)
+                CoreGridView(cores: viewModel.cpuPerCore,
+                             frequencies: viewModel.cpuCoreFrequencies)
             }
 
             if !viewModel.topCPUProcesses.isEmpty {
@@ -226,8 +227,8 @@ struct NetworkDetailView: View {
 
 private struct CoreGridView: View {
     var cores: [Double]
+    var frequencies: [CPUCoreFrequency] = []
 
-    // bar width = available content width evenly split by effectiveColumns
     // frame width 280 – padding 16*2 = 248
     private let contentWidth: CGFloat = 248
     private let spacing: CGFloat      = 4
@@ -252,7 +253,8 @@ private struct CoreGridView: View {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(alignment: .bottom, spacing: spacing) {
                     ForEach(row, id: \.index) { item in
-                        VStack(spacing: 2) {
+                        let freq = item.index < frequencies.count ? frequencies[item.index] : .zero
+                        VStack(spacing: 1) {
                             ZStack(alignment: .bottom) {
                                 RoundedRectangle(cornerRadius: 3)
                                     .fill(Color.primary.opacity(0.08))
@@ -262,16 +264,29 @@ private struct CoreGridView: View {
                                     .frame(width: barWidth, height: max(2, barHeight * item.value / 100))
                             }
                             Text("C\(item.index)")
-                                .font(.system(size: 8))
                                 .foregroundStyle(.secondary)
-                            Text("\(Int(item.value))%")
-                                .font(.system(size: 8))
-                                .monospacedDigit()
+                            if freq.maxHz > 0 {
+                                if freq.currentHz > 0 {
+                                    Text(ghzString(freq.currentHz))
+                                }
+                                Text(ghzString(freq.maxHz))
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("\(Int(item.value))%")
+                            }
                         }
+                        .font(.system(size: 7))
+                        .monospacedDigit()
                     }
                 }
             }
         }
+    }
+
+    private func ghzString(_ hz: UInt64) -> String {
+        let ghz = Double(hz) / 1_000_000_000
+        return ghz >= 1 ? String(format: "%.1fG", ghz)
+                        : String(format: "%.0fM", Double(hz) / 1_000_000)
     }
 }
 

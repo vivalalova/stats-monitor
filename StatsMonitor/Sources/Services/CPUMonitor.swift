@@ -3,6 +3,7 @@ import Darwin
 
 struct CPUMonitor {
     private var previousTicks: [processor_cpu_load_info] = []
+    private var cachedMaxHz: [UInt64] = []   // per-core max, built once
 
     mutating func sample() -> CPUUsage {
         var cpuCount: natural_t = 0
@@ -60,10 +61,63 @@ struct CPUMonitor {
         guard total > 0 else { return .zero }
 
         return CPUUsage(
-            user:    Double(totalUser + totalNice) / Double(total) * 100,
-            system:  Double(totalSystem) / Double(total) * 100,
-            idle:    Double(totalIdle) / Double(total) * 100,
-            perCore: perCore
+            user:             Double(totalUser + totalNice) / Double(total) * 100,
+            system:           Double(totalSystem) / Double(total) * 100,
+            idle:             Double(totalIdle) / Double(total) * 100,
+            perCore:          perCore,
+            coreFrequencies:  buildCoreFrequencies(coreCount: n)
         )
+    }
+
+    // MARK: - Frequency
+
+    private mutating func buildCoreFrequencies(coreCount: Int) -> [CPUCoreFrequency] {
+        if cachedMaxHz.isEmpty {
+            cachedMaxHz = queryMaxFrequencies(coreCount: coreCount)
+        }
+        let currentHz = queryCurrentHz()
+        return cachedMaxHz.map { CPUCoreFrequency(currentHz: currentHz, maxHz: $0) }
+    }
+
+    /// Build per-core max-frequency array from sysctl perflevel data (Apple Silicon)
+    /// or hw.cpufrequency_max (Intel).
+    private func queryMaxFrequencies(coreCount: Int) -> [UInt64] {
+        var result: [UInt64] = []
+        var level = 0
+
+        while level < 8 {
+            var n: Int32 = 0
+            var nSize = MemoryLayout<Int32>.size
+            guard sysctlbyname("hw.perflevel\(level).physicalcpu", &n, &nSize, nil, 0) == 0, n > 0 else { break }
+
+            var hz: UInt64 = 0
+            var hzSize = MemoryLayout<UInt64>.size
+            sysctlbyname("hw.perflevel\(level).maxfreq", &hz, &hzSize, nil, 0)
+
+            for _ in 0..<Int(n) { result.append(hz) }
+            level += 1
+        }
+
+        // Intel / unknown fallback
+        if result.isEmpty {
+            var hz: UInt64 = 0
+            var hzSize = MemoryLayout<UInt64>.size
+            sysctlbyname("hw.cpufrequency_max", &hz, &hzSize, nil, 0)
+            result = Array(repeating: hz, count: coreCount)
+        }
+
+        return result
+    }
+
+    /// Best-effort current CPU frequency (single value shared across cores).
+    /// Returns 0 if unavailable.
+    private func queryCurrentHz() -> UInt64 {
+        var hz: UInt64 = 0
+        var hzSize = MemoryLayout<UInt64>.size
+        // Intel
+        if sysctlbyname("hw.cpufrequency", &hz, &hzSize, nil, 0) == 0, hz > 0 { return hz }
+        // Apple Silicon cluster (perflevel0 = P-cores)
+        if sysctlbyname("hw.perflevel0.cpufrequency", &hz, &hzSize, nil, 0) == 0, hz > 0 { return hz }
+        return 0
     }
 }

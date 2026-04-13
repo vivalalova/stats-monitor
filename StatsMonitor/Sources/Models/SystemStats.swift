@@ -10,15 +10,37 @@ struct SystemStats: Sendable {
     var topMemoryProcesses: [ProcInfo] = []
 }
 
+struct CPUCoreFrequency: Sendable {
+    var currentHz: UInt64   // 0 = unavailable
+    var maxHz: UInt64       // 0 = unavailable
+
+    static let zero = CPUCoreFrequency(currentHz: 0, maxHz: 0)
+
+    var displayText: String {
+        guard maxHz > 0 else { return "" }
+        if currentHz > 0 {
+            return "\(ghzString(currentHz))\n\(ghzString(maxHz))"
+        }
+        return ghzString(maxHz)
+    }
+
+    private func ghzString(_ hz: UInt64) -> String {
+        let ghz = Double(hz) / 1_000_000_000
+        return ghz >= 1 ? String(format: "%.1fG", ghz)
+                        : String(format: "%.0fM", Double(hz) / 1_000_000)
+    }
+}
+
 struct CPUUsage: Sendable {
     var user: Double
     var system: Double
     var idle: Double
     var perCore: [Double]
+    var coreFrequencies: [CPUCoreFrequency]
 
     var used: Double { user + system }
 
-    static let zero = CPUUsage(user: 0, system: 0, idle: 100, perCore: [])
+    static let zero = CPUUsage(user: 0, system: 0, idle: 100, perCore: [], coreFrequencies: [])
 }
 
 struct MemoryUsage: Sendable {

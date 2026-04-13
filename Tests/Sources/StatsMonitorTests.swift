@@ -8,15 +8,28 @@ struct StatsMonitorTests {
 
     @Test("CPU usage sums user and system")
     func cpuUsedSumsComponents() {
-        let cpu = CPUUsage(user: 30, system: 20, idle: 50, perCore: [])
+        let cpu = CPUUsage(user: 30, system: 20, idle: 50, perCore: [], coreFrequencies: [])
         #expect(cpu.used == 50)
     }
 
     @Test("CPU perCore carries through")
     func cpuPerCorePreserved() {
         let cores = [10.0, 20.0, 30.0]
-        let cpu = CPUUsage(user: 20, system: 10, idle: 70, perCore: cores)
+        let cpu = CPUUsage(user: 20, system: 10, idle: 70, perCore: cores, coreFrequencies: [])
         #expect(cpu.perCore == cores)
+    }
+
+    @Test("CPUCoreFrequency displayText shows max when current unavailable")
+    func coreFreqDisplayMaxOnly() {
+        let freq = CPUCoreFrequency(currentHz: 0, maxHz: 3_228_000_000)
+        #expect(freq.displayText == "3.2G")
+    }
+
+    @Test("CPUCoreFrequency displayText shows current and max")
+    func coreFreqDisplayBoth() {
+        let freq = CPUCoreFrequency(currentHz: 2_100_000_000, maxHz: 3_228_000_000)
+        #expect(freq.displayText.contains("2.1G"))
+        #expect(freq.displayText.contains("3.2G"))
     }
 
     // MARK: - Memory

@@ -16,6 +16,7 @@ final class StatsViewModel {
     var cpuUserPercent: String { String(format: "%.1f%%", monitor.stats.cpu.user) }
     var cpuSystemPercent: String { String(format: "%.1f%%", monitor.stats.cpu.system) }
     var cpuPerCore: [Double] { monitor.stats.cpu.perCore }
+    var cpuCoreFrequencies: [CPUCoreFrequency] { monitor.stats.cpu.coreFrequencies }
     var cpuHistory: [Double] { monitor.cpuHistory }
 
     // MARK: - GPU
