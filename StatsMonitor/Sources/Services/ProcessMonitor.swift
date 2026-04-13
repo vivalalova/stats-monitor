@@ -48,15 +48,18 @@ struct ProcessMonitor {
             }
             previousCPUSamples[pid] = (currentTicks, now)
 
-            // Disk I/O via rusage_info_v4
+            // Disk I/O via proc_pid_rusage (cumulative since process start)
             var diskReadBPS = 0.0
             var diskWriteBPS = 0.0
-            var rusage = rusage_info_v4()
-            let diskRet = proc_pidinfo(pid, PROC_PID_RUSAGE, UInt64(RUSAGE_INFO_V4),
-                                       &rusage, Int32(MemoryLayout<rusage_info_v4>.size))
-            if diskRet > 0 {
-                let curRead  = rusage.ri_diskio_bytesread
-                let curWrite = rusage.ri_diskio_byteswritten
+            var rusageInfo = rusage_info_current()
+            let diskRet = withUnsafeMutablePointer(to: &rusageInfo) {
+                $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
+                    proc_pid_rusage(pid, RUSAGE_INFO_CURRENT, $0)
+                }
+            }
+            if diskRet == 0 {
+                let curRead  = rusageInfo.ri_diskio_bytesread
+                let curWrite = rusageInfo.ri_diskio_byteswritten
                 if let prev = previousDiskSamples[pid] {
                     let elapsed = now.timeIntervalSince(prev.date)
                     if elapsed > 0 {
