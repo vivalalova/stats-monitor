@@ -4,25 +4,12 @@ import SwiftUI
 struct StatsMonitorApp: App {
     @State private var viewModel = StatsViewModel()
 
+    // macOS 加入順序是右→左，反向宣告讓顯示順序為 CPU/GPU/Memory/Disk/Network
     var body: some Scene {
         MenuBarExtra {
-            CPUDetailView(viewModel: viewModel)
+            NetworkDetailView(viewModel: viewModel)
         } label: {
-            CPUMenuBarLabel(viewModel: viewModel)
-        }
-        .menuBarExtraStyle(.window)
-
-        MenuBarExtra {
-            GPUDetailView(viewModel: viewModel)
-        } label: {
-            GPUMenuBarLabel(viewModel: viewModel)
-        }
-        .menuBarExtraStyle(.window)
-
-        MenuBarExtra {
-            MemoryDetailView(viewModel: viewModel)
-        } label: {
-            MemoryMenuBarLabel(viewModel: viewModel)
+            NetworkMenuBarLabel(viewModel: viewModel)
         }
         .menuBarExtraStyle(.window)
 
@@ -34,9 +21,23 @@ struct StatsMonitorApp: App {
         .menuBarExtraStyle(.window)
 
         MenuBarExtra {
-            NetworkDetailView(viewModel: viewModel)
+            MemoryDetailView(viewModel: viewModel)
         } label: {
-            NetworkMenuBarLabel(viewModel: viewModel)
+            MemoryMenuBarLabel(viewModel: viewModel)
+        }
+        .menuBarExtraStyle(.window)
+
+        MenuBarExtra {
+            GPUDetailView(viewModel: viewModel)
+        } label: {
+            GPUMenuBarLabel(viewModel: viewModel)
+        }
+        .menuBarExtraStyle(.window)
+
+        MenuBarExtra {
+            CPUDetailView(viewModel: viewModel)
+        } label: {
+            CPUMenuBarLabel(viewModel: viewModel)
         }
         .menuBarExtraStyle(.window)
     }
