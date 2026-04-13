@@ -85,6 +85,7 @@ struct GPUUsage: Sendable {
     var renderUtilization: Double
     var engines: [String: Double]
     var vramUsed: UInt64      // "In Use System Memory", bytes; 0 if unavailable
+    var anePowerMilliWatts: Double = 0   // IOReport Energy Model; 0 = idle / unavailable
 
     var used: Double { deviceUtilization }
 

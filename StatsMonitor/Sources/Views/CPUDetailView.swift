@@ -72,6 +72,9 @@ struct GPUDetailView: View {
             if viewModel.gpuVramUsed > 0 {
                 statRow("GPU Mem", value: viewModel.gpuVramUsedStr)
             }
+            if viewModel.anePowerMilliWatts > 0 {
+                statRow("Neural Engine", value: viewModel.anePowerStr)
+            }
             ProgressView(value: viewModel.monitor.stats.gpu.used / 100)
                 .tint(progressColor(viewModel.monitor.stats.gpu.used / 100))
 
@@ -275,17 +278,10 @@ private struct CoreGridView: View {
                                     .fill(barColor(for: item.index))
                                     .frame(width: barWidth, height: max(2, barHeight * item.value / 100))
                             }
-                            Text("C\(item.index)")
-                                .foregroundStyle(.secondary)
-                            if freq.maxHz > 0 {
-                                if freq.currentHz > 0 {
-                                    Text(ghzString(freq.currentHz))
-                                }
-                                Text(ghzString(freq.maxHz))
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                Text("\(Int(item.value))%")
+                            if freq.currentHz > 0 {
+                                Text(ghzString(freq.currentHz))
                             }
+                            Text("\(Int(item.value))%")
                         }
                         .font(.system(size: 7))
                         .monospacedDigit()

@@ -19,6 +19,7 @@ final class SystemMonitor {
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()
+    private var aneMonitor      = ANEMonitor()
     private var memoryMonitor   = MemoryMonitor()
     private var diskMonitor     = DiskMonitor()
     private var networkMonitor  = NetworkMonitor()
@@ -47,7 +48,8 @@ final class SystemMonitor {
 
     private func poll() {
         let cpu     = cpuMonitor.sample()
-        let gpu     = gpuMonitor.sample()
+        var gpu     = gpuMonitor.sample()
+        gpu.anePowerMilliWatts = aneMonitor.sample(intervalSeconds: Self.pollInterval)
         let memory  = memoryMonitor.sample()
         let disk    = diskMonitor.sample()
         let network = networkMonitor.sample()

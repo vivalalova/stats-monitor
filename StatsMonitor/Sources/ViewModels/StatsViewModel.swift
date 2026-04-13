@@ -27,6 +27,11 @@ final class StatsViewModel {
     var gpuHistory: [Double] { monitor.gpuHistory }
     var gpuVramUsed: UInt64 { monitor.stats.gpu.vramUsed }
     var gpuVramUsedStr: String { formatBytes(monitor.stats.gpu.vramUsed) }
+    var anePowerMilliWatts: Double { monitor.stats.gpu.anePowerMilliWatts }
+    var anePowerStr: String {
+        let mw = monitor.stats.gpu.anePowerMilliWatts
+        return mw >= 1000 ? String(format: "%.1f W", mw / 1000) : String(format: "%.0f mW", mw)
+    }
 
     // MARK: - Memory
 
