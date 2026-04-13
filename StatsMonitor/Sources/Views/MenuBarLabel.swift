@@ -17,7 +17,7 @@ struct GPUMenuBarLabel: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "gpu")
+            Image(systemName: "display")
             Text(viewModel.gpuPercent)
                 .monospacedDigit()
         }
