@@ -222,26 +222,35 @@ struct NetworkDetailView: View {
     }
 }
 
-// MARK: - Vertical core grid (8 per row)
+// MARK: - Vertical core grid
 
 private struct CoreGridView: View {
     var cores: [Double]
 
-    private let columns = 8
-    private let barWidth: CGFloat  = 22
-    private let barHeight: CGFloat = 48
+    // bar width = available content width evenly split by effectiveColumns
+    // frame width 280 – padding 16*2 = 248
+    private let contentWidth: CGFloat = 248
+    private let spacing: CGFloat      = 4
+    private let barHeight: CGFloat    = 48
+
+    /// ≤10 cores → fill the full row; >10 → always use 10-column width
+    private var effectiveColumns: Int { min(cores.count, 10) }
+
+    private var barWidth: CGFloat {
+        (contentWidth - spacing * CGFloat(effectiveColumns - 1)) / CGFloat(effectiveColumns)
+    }
 
     private var rows: [[(index: Int, value: Double)]] {
         let items = cores.enumerated().map { (index: $0.offset, value: $0.element) }
-        return stride(from: 0, to: items.count, by: columns).map {
-            Array(items[$0 ..< min($0 + columns, items.count)])
+        return stride(from: 0, to: items.count, by: effectiveColumns).map {
+            Array(items[$0 ..< min($0 + effectiveColumns, items.count)])
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                HStack(alignment: .bottom, spacing: 4) {
+                HStack(alignment: .bottom, spacing: spacing) {
                     ForEach(row, id: \.index) { item in
                         VStack(spacing: 2) {
                             ZStack(alignment: .bottom) {
