@@ -1,174 +1,46 @@
 import SwiftUI
 
+// MARK: - Panel exclusion
+
+extension Notification.Name {
+    static let panelOpened = Notification.Name("StatsMonitorPanelOpened")
+}
+
 // MARK: - CPU Detail
 
 struct CPUDetailView: View {
     var viewModel: StatsViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                sectionHeader("CPU")
-
-                statRow("User",   value: viewModel.cpuUserPercent)
-                statRow("System", value: viewModel.cpuSystemPercent)
-                statRow("Idle",   value: String(format: "%.1f%%", viewModel.monitor.stats.cpu.idle))
-                ProgressView(value: viewModel.monitor.stats.cpu.used / 100)
-                    .tint(progressColor(viewModel.monitor.stats.cpu.used / 100))
-
-                if viewModel.cpuHistory.count >= 2 {
-                    LineChartView(history: viewModel.cpuHistory, color: .blue)
-                }
-
-                if !viewModel.cpuPerCore.isEmpty {
-                    Divider()
-                    Text("Per Core")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    ForEach(Array(viewModel.cpuPerCore.enumerated()), id: \.offset) { i, val in
-                        HStack(spacing: 8) {
-                            Text("Core \(i)")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 52, alignment: .leading)
-                            ProgressView(value: val / 100)
-                                .tint(progressColor(val / 100))
-                            Text(String(format: "%.0f%%", val))
-                                .monospacedDigit()
-                                .frame(width: 36, alignment: .trailing)
-                        }
-                        .font(.system(size: 12))
-                    }
-                }
-
-                if !viewModel.topCPUProcesses.isEmpty {
-                    Divider()
-                    Text("Top Processes")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    ForEach(Array(viewModel.topCPUProcesses.enumerated()), id: \.offset) { _, proc in
-                        statRow(proc.name, value: viewModel.formatProcessCPU(proc.cpuPercent))
-                    }
-                }
-
-                Divider()
-                quitButton()
+        VStack(alignment: .leading, spacing: 12) {
+            if viewModel.cpuHistory.count >= 2 {
+                LineChartView(history: viewModel.cpuHistory, color: .blue)
             }
-            .padding(16)
-        }
-        .frame(width: 280, height: 480)
-    }
-}
 
-// MARK: - GPU Detail
+            statRow("Used",   value: viewModel.cpuPercent)
+            statRow("User",   value: viewModel.cpuUserPercent)
+            statRow("System", value: viewModel.cpuSystemPercent)
+            statRow("Idle",   value: String(format: "%.1f%%", viewModel.monitor.stats.cpu.idle))
+            ProgressView(value: viewModel.monitor.stats.cpu.used / 100)
+                .tint(progressColor(viewModel.monitor.stats.cpu.used / 100))
 
-struct GPUDetailView: View {
-    var viewModel: StatsViewModel
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                sectionHeader("GPU")
-
-                statRow("Device",   value: viewModel.gpuPercent)
-                statRow("Renderer", value: viewModel.gpuRenderPercent)
-                ProgressView(value: viewModel.monitor.stats.gpu.used / 100)
-                    .tint(progressColor(viewModel.monitor.stats.gpu.used / 100))
-
-                if viewModel.gpuHistory.count >= 2 {
-                    LineChartView(history: viewModel.gpuHistory, color: .purple)
-                }
-
-                let sortedEngines = viewModel.gpuEngines
-                    .sorted { $0.key < $1.key }
-                    .filter { $0.key != "Device" && $0.key != "Renderer" }
-
-                if !sortedEngines.isEmpty {
-                    Divider()
-                    Text("Engines")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    ForEach(sortedEngines, id: \.key) { key, val in
-                        HStack(spacing: 8) {
-                            Text(key)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            ProgressView(value: val / 100)
-                                .frame(width: 80)
-                                .tint(progressColor(val / 100))
-                            Text(String(format: "%.0f%%", val))
-                                .monospacedDigit()
-                                .frame(width: 36, alignment: .trailing)
-                        }
-                        .font(.system(size: 12))
-                    }
-                }
-
+            if !viewModel.cpuPerCore.isEmpty {
                 Divider()
-                quitButton()
+                Text("Per Core")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                CoreGridView(cores: viewModel.cpuPerCore)
             }
-            .padding(16)
-        }
-        .frame(width: 280, height: 360)
-    }
-}
 
-// MARK: - Memory Detail
-
-struct MemoryDetailView: View {
-    var viewModel: StatsViewModel
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                sectionHeader("Memory")
-
-                statRow("Used",       value: "\(viewModel.memoryUsed) / \(viewModel.memoryTotal)")
-                statRow("Active",     value: viewModel.memoryActive)
-                statRow("Wired",      value: viewModel.memoryWired)
-                statRow("Compressed", value: viewModel.memoryCompressed)
-                ProgressView(value: viewModel.monitor.stats.memory.usedFraction)
-                    .tint(progressColor(viewModel.monitor.stats.memory.usedFraction))
-
-                if viewModel.memoryHistory.count >= 2 {
-                    LineChartView(history: viewModel.memoryHistory, color: .orange)
-                }
-
-                if !viewModel.topMemoryProcesses.isEmpty {
-                    Divider()
-                    Text("Top Processes")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    ForEach(Array(viewModel.topMemoryProcesses.enumerated()), id: \.offset) { _, proc in
-                        statRow(proc.name, value: viewModel.formatProcessMemory(proc.memoryBytes))
-                    }
-                }
-
+            if !viewModel.topCPUProcesses.isEmpty {
                 Divider()
-                quitButton()
-            }
-            .padding(16)
-        }
-        .frame(width: 280, height: 440)
-    }
-}
-
-// MARK: - Disk Detail
-
-struct DiskDetailView: View {
-    var viewModel: StatsViewModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionHeader("Disk")
-
-            statRow("Used",  value: viewModel.diskUsed)
-            statRow("Free",  value: viewModel.diskFree)
-            statRow("Total", value: viewModel.diskTotal)
-            ProgressView(value: viewModel.monitor.stats.disk.usedFraction)
-                .tint(progressColor(viewModel.monitor.stats.disk.usedFraction))
-
-            if viewModel.diskHistory.count >= 2 {
-                LineChartView(history: viewModel.diskHistory, color: .yellow)
+                Text("Top Processes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ForEach(Array(viewModel.topCPUProcesses.enumerated()), id: \.offset) { _, proc in
+                    statRow(proc.name, value: viewModel.formatProcessCPU(proc.cpuPercent))
+                }
             }
 
             Divider()
@@ -176,6 +48,135 @@ struct DiskDetailView: View {
         }
         .padding(16)
         .frame(width: 280)
+        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "cpu") }
+        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
+            if note.object as? String != "cpu" { dismiss() }
+        }
+    }
+}
+
+// MARK: - GPU Detail
+
+struct GPUDetailView: View {
+    var viewModel: StatsViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if viewModel.gpuHistory.count >= 2 {
+                LineChartView(history: viewModel.gpuHistory, color: .purple)
+            }
+
+            statRow("Device",   value: viewModel.gpuPercent)
+            statRow("Renderer", value: viewModel.gpuRenderPercent)
+            ProgressView(value: viewModel.monitor.stats.gpu.used / 100)
+                .tint(progressColor(viewModel.monitor.stats.gpu.used / 100))
+
+            let sortedEngines = viewModel.gpuEngines
+                .sorted { $0.key < $1.key }
+                .filter { $0.key != "Device" && $0.key != "Renderer" }
+
+            if !sortedEngines.isEmpty {
+                Divider()
+                Text("Engines")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ForEach(sortedEngines, id: \.key) { key, val in
+                    HStack(spacing: 8) {
+                        Text(key)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        ProgressView(value: val / 100)
+                            .frame(width: 80)
+                            .tint(progressColor(val / 100))
+                        Text(String(format: "%.0f%%", val))
+                            .monospacedDigit()
+                            .frame(width: 36, alignment: .trailing)
+                    }
+                    .font(.system(size: 12))
+                }
+            }
+
+            Divider()
+            quitButton()
+        }
+        .padding(16)
+        .frame(width: 280)
+        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "gpu") }
+        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
+            if note.object as? String != "gpu" { dismiss() }
+        }
+    }
+}
+
+// MARK: - Memory Detail
+
+struct MemoryDetailView: View {
+    var viewModel: StatsViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if viewModel.memoryHistory.count >= 2 {
+                LineChartView(history: viewModel.memoryHistory, color: .orange)
+            }
+
+            statRow("Used",       value: "\(viewModel.memoryUsed) / \(viewModel.memoryTotal)")
+            statRow("Active",     value: viewModel.memoryActive)
+            statRow("Wired",      value: viewModel.memoryWired)
+            statRow("Compressed", value: viewModel.memoryCompressed)
+            ProgressView(value: viewModel.monitor.stats.memory.usedFraction)
+                .tint(progressColor(viewModel.monitor.stats.memory.usedFraction))
+
+            if !viewModel.topMemoryProcesses.isEmpty {
+                Divider()
+                Text("Top Processes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ForEach(Array(viewModel.topMemoryProcesses.enumerated()), id: \.offset) { _, proc in
+                    statRow(proc.name, value: viewModel.formatProcessMemory(proc.memoryBytes))
+                }
+            }
+
+            Divider()
+            quitButton()
+        }
+        .padding(16)
+        .frame(width: 280)
+        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "memory") }
+        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
+            if note.object as? String != "memory" { dismiss() }
+        }
+    }
+}
+
+// MARK: - Disk Detail
+
+struct DiskDetailView: View {
+    var viewModel: StatsViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if viewModel.diskHistory.count >= 2 {
+                LineChartView(history: viewModel.diskHistory, color: .yellow)
+            }
+
+            statRow("Used",  value: viewModel.diskUsed)
+            statRow("Free",  value: viewModel.diskFree)
+            statRow("Total", value: viewModel.diskTotal)
+            ProgressView(value: viewModel.monitor.stats.disk.usedFraction)
+                .tint(progressColor(viewModel.monitor.stats.disk.usedFraction))
+
+            Divider()
+            quitButton()
+        }
+        .padding(16)
+        .frame(width: 280)
+        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "disk") }
+        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
+            if note.object as? String != "disk" { dismiss() }
+        }
     }
 }
 
@@ -183,16 +184,14 @@ struct DiskDetailView: View {
 
 struct NetworkDetailView: View {
     var viewModel: StatsViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionHeader("Network")
-
-            statRow("↓ In",  value: viewModel.networkIn)
-            statRow("↑ Out", value: viewModel.networkOut)
-
-            let maxIn  = (viewModel.networkInHistory + viewModel.networkOutHistory).max() ?? 1
-            let maxVal = max(maxIn, 1_048_576)  // floor at 1 MB/s for scale
+        VStack(alignment: .leading, spacing: 12) {
+            let maxVal = max(
+                (viewModel.networkInHistory + viewModel.networkOutHistory).max() ?? 1,
+                1_048_576
+            )
 
             if viewModel.networkInHistory.count >= 2 {
                 Text("Download")
@@ -208,20 +207,66 @@ struct NetworkDetailView: View {
                 LineChartView(history: viewModel.networkOutHistory, maxValue: maxVal, color: .red)
             }
 
+            statRow("↓ In",  value: viewModel.networkIn)
+            statRow("↑ Out", value: viewModel.networkOut)
+
             Divider()
             quitButton()
         }
         .padding(16)
         .frame(width: 280)
+        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "network") }
+        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
+            if note.object as? String != "network" { dismiss() }
+        }
+    }
+}
+
+// MARK: - Vertical core grid (8 per row)
+
+private struct CoreGridView: View {
+    var cores: [Double]
+
+    private let columns = 8
+    private let barWidth: CGFloat  = 22
+    private let barHeight: CGFloat = 48
+
+    private var rows: [[(index: Int, value: Double)]] {
+        let items = cores.enumerated().map { (index: $0.offset, value: $0.element) }
+        return stride(from: 0, to: items.count, by: columns).map {
+            Array(items[$0 ..< min($0 + columns, items.count)])
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(alignment: .bottom, spacing: 4) {
+                    ForEach(row, id: \.index) { item in
+                        VStack(spacing: 2) {
+                            ZStack(alignment: .bottom) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.primary.opacity(0.08))
+                                    .frame(width: barWidth, height: barHeight)
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(progressColor(item.value / 100))
+                                    .frame(width: barWidth, height: max(2, barHeight * item.value / 100))
+                            }
+                            Text("C\(item.index)")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.secondary)
+                            Text("\(Int(item.value))%")
+                                .font(.system(size: 8))
+                                .monospacedDigit()
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 // MARK: - Shared helpers
-
-private func sectionHeader(_ title: String) -> some View {
-    Text(title)
-        .font(.headline)
-}
 
 private func statRow(_ label: String, value: String) -> some View {
     HStack {
