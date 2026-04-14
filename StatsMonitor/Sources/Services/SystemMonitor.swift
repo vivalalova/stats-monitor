@@ -5,7 +5,7 @@ import Util
 @Observable
 @MainActor
 final class SystemMonitor {
-    private(set) var stats = SystemStats()
+    var stats = SystemStats()
 
     private(set) var cpuHistory:        RingBuffer<Double>
     private(set) var gpuHistory:        RingBuffer<Double>

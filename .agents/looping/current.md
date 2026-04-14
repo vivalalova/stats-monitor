@@ -1,37 +1,29 @@
 ---
-title: 新增感測器 — 電池、溫度、風扇、系統運行時間
+title: 測試補強 — Service 與 ViewModel 層
 created: 2026-04-14
 priority: medium
-suggested_order: D2
-blockedBy: [a1-settings-general, b2-about-tab]
-phase: needs-review
-iteration: 2
-max_iterations: 5
-review_iterations: 3
-max_review_iterations: 5
+suggested_order: E2
+blockedBy: [e1-util-dedup, d1-data-layer-performance]
 ---
 
-# 新增感測器 — 電池、溫度、風扇
+# 測試補強 — Service 與 ViewModel 層
 
-目前缺少 battery/power、temperature、fan speed 等常見系統監控資訊。System uptime 已由 B2 About 分頁實作。
+目前測試只覆蓋 model struct（CPUUsage.used、MemoryUsage.usedFraction 等），零 service 或 ViewModel 測試。
 
 ## 範圍
 
-1. **BatteryMonitor**：via IOKit `AppleSmartBattery`——電量百分比、充電狀態、剩餘時間、循環次數、健康度。桌機（Mac mini/Studio/Pro）無電池時 graceful 回傳 nil，UI 不顯示。
-2. **ThermalMonitor**：via IOKit SMC——CPU package 溫度、GPU 溫度。Apple Silicon 與 Intel SMC key 不同（Apple Silicon: `Tp09`/`Tg0P` 等；Intel: `TC0P`/`TG0P`），需做降級處理（unavailable 時不顯示）。
-3. **FanMonitor**：via IOKit SMC——各風扇 RPM。無風扇機型（MacBook Air）graceful nil。
-4. **Model 擴充**：`SystemStats` 新增對應欄位，`StatsViewModel` 新增格式化 computed properties。
-5. **UI 呈現**：新增 System 相關區塊至 Dashboard（C1 已完成）。Battery 可在 menu bar 新增圖示（A1 設定開關已就緒）。
-6. **#Preview** for 新 UI。
+1. **StatsViewModel 測試**：驗證格式化 computed properties（cpuPercent、memoryPercent、diskPercent 等）、start/stop lifecycle 不 crash。
+2. **Service 合理性測試**：`MemoryMonitor.sample()` 回傳 total > 0 且 usedFraction in 0...1；`DiskMonitor.sample()` total > 0 且 used ≤ total；`NetworkMonitor` 初始 sample bytesInPerSec/bytesOutPerSec ≥ 0。
+3. **測試策略**：優先 integration test 直接呼叫 real monitor（硬體 API 在 macOS 上可直接跑）。僅在 CI 環境無法執行硬體 API 時才引入 `MonitorProtocol` 做 stub 注入。
+4. 使用 Swift Testing framework（`@Test`、`#expect`），與現有風格一致。
 
 ## User Stories
 
-- As a MacBook user, I want to see battery status, temperatures, and fan speeds alongside existing metrics, so that I have complete hardware awareness. (System uptime already in B2 About tab.)
-- As a desktop Mac user, I want battery/fan sections to gracefully hide when hardware is absent.
+- As a developer, I want comprehensive tests for services and view models, so that regressions are caught early and refactoring is safe.
 
 ## 驗收條件
 
-- Given a MacBook, when I view the battery section, then I see charge %, charging state, cycle count, and health
-- Given a Mac mini (no battery), when the app loads, then no battery section is shown and no errors logged
-- Given ThermalMonitor, when I compare CPU temperature with a third-party tool (like TG Pro), then values are within ±3°C
-- Given FanMonitor on a MacBook Pro, when I see fan RPM, then it matches `smc` CLI output
+- Given `tuist test`, then all new tests pass
+- Given MemoryMonitor.sample(), then total > 0 and usedFraction is in 0...1
+- Given DiskMonitor.sample(), then total > 0 and used ≤ total
+- Given StatsViewModel with known SystemStats input, then formatted strings match expected output
