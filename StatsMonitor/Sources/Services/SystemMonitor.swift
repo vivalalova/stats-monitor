@@ -1,19 +1,20 @@
 import Foundation
 import Observation
+import Util
 
 @Observable
 @MainActor
 final class SystemMonitor {
     private(set) var stats = SystemStats()
 
-    private(set) var cpuHistory:        [Double] = []
-    private(set) var gpuHistory:        [Double] = []
-    private(set) var memoryHistory:     [Double] = []
-    private(set) var diskHistory:       [Double] = []
-    private(set) var diskReadHistory:   [Double] = []
-    private(set) var diskWriteHistory:  [Double] = []
-    private(set) var networkInHistory:  [Double] = []
-    private(set) var networkOutHistory: [Double] = []
+    private(set) var cpuHistory:        RingBuffer<Double>
+    private(set) var gpuHistory:        RingBuffer<Double>
+    private(set) var memoryHistory:     RingBuffer<Double>
+    private(set) var diskHistory:       RingBuffer<Double>
+    private(set) var diskReadHistory:   RingBuffer<Double>
+    private(set) var diskWriteHistory:  RingBuffer<Double>
+    private(set) var networkInHistory:  RingBuffer<Double>
+    private(set) var networkOutHistory: RingBuffer<Double>
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()
@@ -24,12 +25,22 @@ final class SystemMonitor {
     private var processMonitor  = ProcessMonitor()
 
     private var networkProcPrev: [String: NetworkProcessMonitor.Snapshot] = [:]
+    private var isProcessPollInFlight = false
 
     private var timer: Timer?
     private let settings: AppSettings
 
     init(settings: AppSettings) {
         self.settings = settings
+        let cap = settings.historyCapacity
+        cpuHistory        = RingBuffer<Double>(capacity: cap)
+        gpuHistory        = RingBuffer<Double>(capacity: cap)
+        memoryHistory     = RingBuffer<Double>(capacity: cap)
+        diskHistory       = RingBuffer<Double>(capacity: cap)
+        diskReadHistory   = RingBuffer<Double>(capacity: cap)
+        diskWriteHistory  = RingBuffer<Double>(capacity: cap)
+        networkInHistory  = RingBuffer<Double>(capacity: cap)
+        networkOutHistory = RingBuffer<Double>(capacity: cap)
     }
 
     func start() {
@@ -66,7 +77,6 @@ final class SystemMonitor {
         let disk    = diskMonitor.sample()
         let network = networkMonitor.sample()
         let count   = settings.processCount
-        let (cpuProcs, memProcs, diskProcs) = processMonitor.sample(processCount: count)
 
         stats = SystemStats(
             cpu:                 cpu,
@@ -74,23 +84,23 @@ final class SystemMonitor {
             memory:              memory,
             disk:                disk,
             network:             network,
-            topCPUProcesses:     cpuProcs,
-            topMemoryProcesses:  memProcs,
-            topDiskProcesses:    diskProcs,
+            topCPUProcesses:     stats.topCPUProcesses,
+            topMemoryProcesses:  stats.topMemoryProcesses,
+            topDiskProcesses:    stats.topDiskProcesses,
             topNetworkProcesses: stats.topNetworkProcesses
         )
 
-        let capacity = settings.historyCapacity
-        append(cpu.used,                  to: &cpuHistory,        capacity: capacity)
-        append(gpu.used,                  to: &gpuHistory,        capacity: capacity)
-        append(memory.usedFraction * 100, to: &memoryHistory,     capacity: capacity)
-        append(disk.usedFraction * 100,   to: &diskHistory,       capacity: capacity)
-        append(disk.readBPS,              to: &diskReadHistory,   capacity: capacity)
-        append(disk.writeBPS,             to: &diskWriteHistory,  capacity: capacity)
-        append(network.bytesInPerSec,     to: &networkInHistory,  capacity: capacity)
-        append(network.bytesOutPerSec,    to: &networkOutHistory, capacity: capacity)
+        cpuHistory.append(cpu.used)
+        gpuHistory.append(gpu.used)
+        memoryHistory.append(memory.usedFraction * 100)
+        diskHistory.append(disk.usedFraction * 100)
+        diskReadHistory.append(disk.readBPS)
+        diskWriteHistory.append(disk.writeBPS)
+        networkInHistory.append(network.bytesInPerSec)
+        networkOutHistory.append(network.bytesOutPerSec)
 
         pollNetworkProcesses(processCount: count)
+        pollProcesses(processCount: count)
     }
 
     private func pollNetworkProcesses(processCount: Int) {
@@ -105,8 +115,37 @@ final class SystemMonitor {
         }
     }
 
-    private func append(_ value: Double, to buffer: inout [Double], capacity: Int) {
-        buffer.append(value)
-        if buffer.count > capacity { buffer.removeFirst() }
+    private func pollProcesses(processCount: Int) {
+        guard !isProcessPollInFlight else { return }
+        isProcessPollInFlight = true
+        let prevMonitor = processMonitor
+        Task { [weak self] in
+            guard let self else { return }
+            let (result, updated) = await Task.detached(priority: .utility) {
+                var monitor = prevMonitor
+                let result = monitor.sample(processCount: processCount)
+                return (result, monitor)
+            }.value
+            self.isProcessPollInFlight = false
+            self.processMonitor = updated
+            self.stats.topCPUProcesses    = result.cpuTop
+            self.stats.topMemoryProcesses = result.memoryTop
+            self.stats.topDiskProcesses   = result.diskTop
+        }
+    }
+
+    /// Recreates all history ring buffers with the current historyCapacity.
+    /// Call when settings.historyCapacity changes.
+    func resetHistories() {
+        let cap = settings.historyCapacity
+        guard cap != cpuHistory.capacity else { return }
+        cpuHistory        = RingBuffer<Double>(capacity: cap)
+        gpuHistory        = RingBuffer<Double>(capacity: cap)
+        memoryHistory     = RingBuffer<Double>(capacity: cap)
+        diskHistory       = RingBuffer<Double>(capacity: cap)
+        diskReadHistory   = RingBuffer<Double>(capacity: cap)
+        diskWriteHistory  = RingBuffer<Double>(capacity: cap)
+        networkInHistory  = RingBuffer<Double>(capacity: cap)
+        networkOutHistory = RingBuffer<Double>(capacity: cap)
     }
 }

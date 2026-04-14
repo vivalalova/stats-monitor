@@ -113,4 +113,63 @@ struct UtilTests {
             #expect(ghzString(3_600_000_000) == "3.6G")
         }
     }
+
+    // MARK: - RingBuffer
+
+    @Suite("RingBuffer")
+    struct RingBufferTests {
+        @Test("empty buffer has count 0")
+        func empty() {
+            let r = RingBuffer<Int>(capacity: 5)
+            #expect(r.count == 0)
+            #expect(r.isEmpty)
+        }
+
+        @Test("partial fill preserves insertion order")
+        func partialFill() {
+            var r = RingBuffer<Int>(capacity: 5)
+            r.append(1); r.append(2); r.append(3)
+            #expect(Array(r) == [1, 2, 3])
+            #expect(r.count == 3)
+        }
+
+        @Test("exactly at capacity")
+        func exactCapacity() {
+            var r = RingBuffer<Int>(capacity: 3)
+            r.append(10); r.append(20); r.append(30)
+            #expect(Array(r) == [10, 20, 30])
+            #expect(r.count == 3)
+        }
+
+        @Test("overflow: 7 appends into capacity-5 yields last 5 in insertion order")
+        func overflow() {
+            var r = RingBuffer<Int>(capacity: 5)
+            for i in 1...7 { r.append(i) }
+            #expect(Array(r) == [3, 4, 5, 6, 7])
+            #expect(r.count == 5)
+        }
+
+        @Test("Collection iteration order matches insertion order after wrap")
+        func iterationOrder() {
+            var r = RingBuffer<String>(capacity: 3)
+            ["a", "b", "c", "d"].forEach { r.append($0) }
+            #expect(r.map { $0 } == ["b", "c", "d"])
+        }
+
+        @Test("subscript access maps correctly after overflow")
+        func subscriptAccess() {
+            var r = RingBuffer<Double>(capacity: 4)
+            [1.0, 2.0, 3.0, 4.0, 5.0].forEach { r.append($0) }
+            #expect(r[0] == 2.0)
+            #expect(r[3] == 5.0)
+        }
+
+        @Test("capacity 1: only retains last appended element")
+        func capacityOne() {
+            var r = RingBuffer<Int>(capacity: 1)
+            for i in 1...5 { r.append(i) }
+            #expect(Array(r) == [5])
+            #expect(r.count == 1)
+        }
+    }
 }

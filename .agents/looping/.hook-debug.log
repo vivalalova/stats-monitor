@@ -59,3 +59,22 @@
 [10:44:28] hook fired | sid=9a6f32b6-078a-47c5-91ae-9b612320b932 | root=/Users/lova/git/vibe/stats-monitor
 [10:44:28] phase=needs-review iter=2 tasks=5
 [10:44:28] review_iter=1/5
+[10:47:59] hook fired | sid=9a6f32b6-078a-47c5-91ae-9b612320b932 | root=/Users/lova/git/vibe/stats-monitor
+[10:47:59] phase=completed iter=2 tasks=5
+📋 掃描 tasks/ — 找到 5 個 task
+  ⏸ e2-test-coverage blocked by d1-data-layer-performance
+  ⏸ z99-update-docs blocked by d1-data-layer-performance
+✅ 3 個可選 task（過濾 blocked 後）
+
+📊 排序結果：
+  d1-data-layer-performance:  dep=2  pri=medium   order=D1      ← 選中
+  d2-new-sensors:             dep=1  pri=medium   order=D2    
+  e3-localization:            dep=1  pri=low      order=E3    
+
+🚀 排程: d1-data-layer-performance → current.md
+✅ 完成
+[10:57:49] hook fired | sid=9a6f32b6-078a-47c5-91ae-9b612320b932 | root=/Users/lova/git/vibe/stats-monitor
+[10:57:49] phase=executing iter=1 tasks=4
+[11:00:59] hook fired | sid=9a6f32b6-078a-47c5-91ae-9b612320b932 | root=/Users/lova/git/vibe/stats-monitor
+[11:00:59] phase=needs-review iter=2 tasks=4
+[11:00:59] review_iter=1/5

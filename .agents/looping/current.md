@@ -1,8 +1,9 @@
 ---
-title: Util Package 充實與格式化函式去重複
+title: 資料層效能改善（RingBuffer + ProcessMonitor 背景化）
 created: 2026-04-14
-priority: high
-suggested_order: E1
+priority: medium
+suggested_order: D1
+blockedBy: a1-settings-general
 phase: needs-review
 iteration: 2
 max_iterations: 5
@@ -10,25 +11,22 @@ review_iterations: 1
 max_review_iterations: 5
 ---
 
-# Util Package 充實與格式化函式去重複
+# 資料層效能改善（RingBuffer + ProcessMonitor 背景化）
 
-`ghzString` 在 `SystemStats.swift`（CPUCoreFrequency.ghzString）和 `CPUDetailView.swift`（CoreGridView.ghzString）重複實作。`StatsViewModel` 中的 `formatBytes`、`formatBytesCompact`、`formatThroughput` 是通用格式化邏輯但被定義為 private instance method。`Packages/Util` 目前完全空（`public enum Util {}`）。
+兩項效能問題：History 陣列使用 `append + removeFirst`（O(n)）；`ProcessMonitor` 的 sysctl + proc_pidinfo 是 CPU-heavy 操作卻跑在 main actor。
 
 ## 範圍
 
-1. **建立 `Formatters.swift`**：於 `Packages/Util/Sources/Util/`，將 `ghzString`、`formatBytes`、`formatBytesCompact`、`formatThroughput` 提升為 public static method（或 free function）。
-2. **更新呼叫端**：`SystemStats.swift`、`CPUDetailView.swift`、`StatsViewModel.swift` 改為 `import Util` 並使用共用函式，刪除原始 private 實作。
-3. **Formatter 單元測試**：於 `Packages/Util/Tests/UtilTests/`，涵蓋各函式的 zero、normal、edge case（超大數值、負數等）。
+1. **RingBuffer<T> 泛型結構**：定義於 `Packages/Util`，支援 `append`、subscript、`Collection` conformance、轉 `[T]`（for chart consumption）。capacity 從 A1 建立的 `@AppStorage` historyCapacity 讀取。替換 `SystemMonitor` 中 8 條 history `[Double]` 陣列。
+2. **ProcessMonitor 背景化**：將 `sample()` 改為在 `Task.detached(priority: .utility)` 執行，結果 dispatch 回 main actor。參考 `pollNetworkProcesses()` 的已有模式。
+3. **RingBuffer 單元測試**：capacity、overflow 行為、toArray 順序。
 
 ## User Stories
 
-- As a developer, I want formatting utilities consolidated in one place, so that changes propagate consistently and there is no divergent formatting logic.
+- As a user, I want the monitoring app to use minimal CPU and remain responsive, so that it doesn't degrade my system while monitoring.
 
 ## 驗收條件
 
-- Given `Packages/Util/Sources/Util/Formatters.swift` exists, then it exports `ghzString`, `formatBytes`, `formatBytesCompact`, `formatThroughput`
-- Given the main target, when searching for duplicate `ghzString` implementations, then only one exists (in Util)
-- Given `formatBytes(0)`, then returns "0 B"
-- Given `formatBytes(1_073_741_824)`, then returns "1.0 GB"
-- Given `formatThroughput(1_048_576)`, then returns "1.0 MB/s"
-- Given `tuist build`, then no compilation errors
+- Given RingBuffer with capacity 5 and 7 appends, when converted to array, then it contains the last 5 elements in insertion order
+- Given ProcessMonitor.sample() is called, when profiling with Instruments, then no work runs on the main thread
+- Given Instruments Time Profiler attached, when ProcessMonitor.sample() executes, then sysctl/proc_pidinfo calls appear on a background thread, not Main Thread

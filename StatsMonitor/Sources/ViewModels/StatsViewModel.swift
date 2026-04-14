@@ -14,6 +14,7 @@ final class StatsViewModel {
         self.monitor = SystemMonitor(settings: s)
         monitor.start()
         observePollInterval()
+        observeHistoryCapacity()
     }
 
     // MARK: - Settings observation
@@ -31,6 +32,19 @@ final class StatsViewModel {
         }
     }
 
+    /// 當 historyCapacity 變更時，重建所有 history ring buffers。
+    private func observeHistoryCapacity() {
+        withObservationTracking {
+            _ = settings.historyCapacity
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.monitor.resetHistories()
+                self.observeHistoryCapacity()
+            }
+        }
+    }
+
     // MARK: - CPU
 
     var cpuFraction:    Double { monitor.stats.cpu.used / 100 }
@@ -43,14 +57,14 @@ final class StatsViewModel {
     var cpuSystemPercent: String { String(format: "%.1f%%", monitor.stats.cpu.system) }
     var cpuPerCore: [Double] { monitor.stats.cpu.perCore }
     var cpuCoreFrequencies: [CPUCoreFrequency] { monitor.stats.cpu.coreFrequencies }
-    var cpuHistory: [Double] { monitor.cpuHistory }
+    var cpuHistory: [Double] { Array(monitor.cpuHistory) }
 
     // MARK: - GPU
 
     var gpuPercent: String { String(format: "%.1f%%", monitor.stats.gpu.used) }
     var gpuRenderPercent: String { String(format: "%.1f%%", monitor.stats.gpu.renderUtilization) }
     var gpuEngines: [String: Double] { monitor.stats.gpu.engines }
-    var gpuHistory: [Double] { monitor.gpuHistory }
+    var gpuHistory: [Double] { Array(monitor.gpuHistory) }
     var gpuVramUsed: UInt64 { monitor.stats.gpu.vramUsed }
     var gpuVramUsedStr: String { formatBytes(monitor.stats.gpu.vramUsed) }
     var anePowerMilliWatts: Double { monitor.stats.gpu.anePowerMilliWatts }
@@ -67,7 +81,7 @@ final class StatsViewModel {
     var memoryActive: String { formatBytes(monitor.stats.memory.active) }
     var memoryWired: String { formatBytes(monitor.stats.memory.wired) }
     var memoryCompressed: String { formatBytes(monitor.stats.memory.compressed) }
-    var memoryHistory: [Double] { monitor.memoryHistory }
+    var memoryHistory: [Double] { Array(monitor.memoryHistory) }
     var memoryLabelText: String {
         "\(formatBytesCompact(monitor.stats.memory.used))/\(formatBytesCompact(monitor.stats.memory.total))"
     }
@@ -80,16 +94,16 @@ final class StatsViewModel {
     var diskPercent: String { String(format: "%.1f%%", monitor.stats.disk.usedFraction * 100) }
     var diskRead: String  { formatThroughput(monitor.stats.disk.readBPS) }
     var diskWrite: String { formatThroughput(monitor.stats.disk.writeBPS) }
-    var diskHistory: [Double]      { monitor.diskHistory }
-    var diskReadHistory: [Double]  { monitor.diskReadHistory }
-    var diskWriteHistory: [Double] { monitor.diskWriteHistory }
+    var diskHistory: [Double]      { Array(monitor.diskHistory) }
+    var diskReadHistory: [Double]  { Array(monitor.diskReadHistory) }
+    var diskWriteHistory: [Double] { Array(monitor.diskWriteHistory) }
 
     // MARK: - Network
 
     var networkIn: String { formatThroughput(monitor.stats.network.bytesInPerSec) }
     var networkOut: String { formatThroughput(monitor.stats.network.bytesOutPerSec) }
-    var networkInHistory: [Double] { monitor.networkInHistory }
-    var networkOutHistory: [Double] { monitor.networkOutHistory }
+    var networkInHistory: [Double]  { Array(monitor.networkInHistory) }
+    var networkOutHistory: [Double] { Array(monitor.networkOutHistory) }
 
     // MARK: - Processes
 

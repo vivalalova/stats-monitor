@@ -1,7 +1,7 @@
 import Foundation
 import Darwin
 
-struct ProcessMonitor {
+struct ProcessMonitor: Sendable {
     // pid -> (cumulative CPU ns, timestamp)
     private var previousCPUSamples: [Int32: (ticks: UInt64, date: Date)] = [:]
     // pid -> (cumulative disk read bytes, cumulative disk write bytes, timestamp)
