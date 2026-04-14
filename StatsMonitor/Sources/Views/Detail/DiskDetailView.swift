@@ -31,6 +31,6 @@ struct DiskDetailView: View {
     }
 }
 
-#Preview(.sizeThatFitsLayout) {
+#Preview(traits: .sizeThatFitsLayout) {
     DiskDetailView(viewModel: StatsViewModel())
 }

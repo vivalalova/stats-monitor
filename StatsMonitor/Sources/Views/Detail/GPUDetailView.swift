@@ -25,7 +25,7 @@ struct GPUDetailView: View {
     }
 }
 
-#Preview(.sizeThatFitsLayout) {
+#Preview(traits: .sizeThatFitsLayout) {
     GPUDetailView(viewModel: StatsViewModel())
 }
 

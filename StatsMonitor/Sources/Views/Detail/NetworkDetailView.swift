@@ -28,6 +28,6 @@ struct NetworkDetailView: View {
     }
 }
 
-#Preview(.sizeThatFitsLayout) {
+#Preview(traits: .sizeThatFitsLayout) {
     NetworkDetailView(viewModel: StatsViewModel())
 }

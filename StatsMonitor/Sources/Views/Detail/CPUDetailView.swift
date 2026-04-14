@@ -29,7 +29,7 @@ struct CPUDetailView: View {
     }
 }
 
-#Preview(.sizeThatFitsLayout) {
+#Preview(traits: .sizeThatFitsLayout) {
     CPUDetailView(viewModel: StatsViewModel())
 }
 
