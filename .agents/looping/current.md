@@ -1,38 +1,33 @@
 ---
-title: 設定頁基礎建設與 General 分頁
+title: About 分頁（版本與系統資訊）
 created: 2026-04-14
-priority: critical
-suggested_order: A1
-phase: needs-review
-iteration: 1
+priority: medium
+suggested_order: B2
+blockedBy: a1-settings-general
+phase: executing
+iteration: 2
 max_iterations: 5
-review_iterations: 0
+review_iterations: 1
+max_review_iterations: 5
 ---
 
-# 設定頁基礎建設與 General 分頁
+# About 分頁（版本與系統資訊）
 
-目前 `SettingsView.swift` 僅為空殼，`GeneralSettingsView` 無任何控制項，整個 app 零持久化機制。所有運作參數（polling interval 2s、history capacity 120、process count 10、5 個 menu bar item 全部顯示）皆硬編碼。缺少 launch at login。
-
-此 task 同時確立「單一視窗 + sidebar 切換」架構——Settings、Dashboard、About 全部作為同一 NSWindow 內 NavigationSplitView 的 sidebar tab，後續 task（C1 Dashboard、B2 About）僅需新增 Tab case + 對應 View。
+Menu-bar-only app 沒有標準 app menu，使用者無法查看版本號等基本資訊。A1 已建立 NavigationSplitView sidebar 架構與 `.about` Tab case placeholder，本 task 填入實際內容。
 
 ## 範圍
 
-1. **持久化層**：使用 `@AppStorage` 為所有設定項建立持久化（polling interval、history capacity、process count、每個 menu bar item 的顯示開關、launch at login）。
-2. **GeneralSettingsView 完整 UI**：Picker 調整 polling interval（1s/2s/5s/10s）、Stepper/Picker 調整 history capacity、Stepper 調整 process count、5 個 Toggle 控制各 menu bar item 顯示/隱藏、Toggle 控制開機自動啟動。
-3. **MenuBarExtra 顯示/隱藏**：將 `StatsMonitorApp.swift` 中 5 個 `MenuBarExtra` 改用 `MenuBarExtra(isInserted:content:label:)` 初始化器，綁定 `@AppStorage` 的 `Binding<Bool>`。
-4. **SystemMonitor 整合**：讀取 `@AppStorage` 值，取代硬編碼常數。pollInterval 變更時需 invalidate 現有 Timer 並以新 interval 重建（不需 restart app）。使用 `SMAppService.mainApp` 實作 launch at login。
-5. **Tab enum 擴充預備**：確保 Tab enum 已包含 `.general`、`.dashboard`、`.about` case（dashboard/about View 可先用 placeholder，由 C1/B2 實作）。
-6. **#Preview** for GeneralSettingsView。
+1. **AboutView 實作**：顯示 app icon、app name、版本號（CFBundleShortVersionString）、build 號（CFBundleVersion）、版權聲明。
+2. **系統資訊區**：Mac 型號（sysctl `hw.model`）、晶片名稱（Apple Silicon: IOKit DeviceTree `product-name`；Intel: `machdep.cpu.brand_string`）、macOS 版本（ProcessInfo）、已安裝記憶體、system uptime（`ProcessInfo.processInfo.systemUptime`，格式化為「X 天 Y 時 Z 分」）。
+3. **替換 A1 的 placeholder**：將 Tab.about 對應的 View 從 placeholder 換為 AboutView。
+4. **#Preview** for AboutView。
 
 ## User Stories
 
-- As a user, I want to customize polling frequency, history length, visible menu bar items, and enable launch at login, so that I can tailor the app to my preferences.
-- As a user, I want all settings, dashboard, and about in a single window with sidebar navigation, so that the experience is cohesive.
+- As a user, I want to see app version, build info, and my system specs in one place, so that I can identify my setup when reporting issues.
 
 ## 驗收條件
 
-- Given the app launches, when I open Settings, then I see a NavigationSplitView with sidebar containing General / Dashboard / About tabs
-- Given I change polling interval to 5s, when I relaunch the app, then polling runs at 5s
-- Given I toggle off the GPU menu bar item, when I look at the menu bar, then the GPU icon is gone
-- Given I toggle on launch at login, when I check System Settings > General > Login Items, then StatsMonitor appears
-- Given I set process count to 5, when I view any detail popover, then only 5 processes are shown
+- Given I open Settings and click About tab, then I see app version, build number, and copyright
+- Given I'm on About tab, then I see my Mac model, chip name, macOS version, and total RAM
+- Given the About tab content, when I compare with System Information.app, then the values match

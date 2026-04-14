@@ -53,7 +53,7 @@ struct SettingsView: View {
             switch selection {
             case .dashboard: DashboardPlaceholderView()
             case .general:   GeneralSettingsView(settings: settings)
-            case .about:     AboutPlaceholderView()
+            case .about:     AboutView()
             }
         }
     }
@@ -128,7 +128,7 @@ private struct GeneralSettingsView: View {
     }
 }
 
-// MARK: - Placeholders (C1 / B2 will replace these)
+// MARK: - Placeholders (C1 will replace Dashboard)
 
 private struct DashboardPlaceholderView: View {
     var body: some View {
@@ -137,22 +137,6 @@ private struct DashboardPlaceholderView: View {
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
             Text("Dashboard")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("即將推出")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-private struct AboutPlaceholderView: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "info.circle")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-            Text("About")
                 .font(.title2)
                 .fontWeight(.semibold)
             Text("即將推出")
