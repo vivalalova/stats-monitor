@@ -9,11 +9,15 @@ import SwiftUI
     if settingsWindow == nil {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 820, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "StatsMonitor"
+        let toolbar = NSToolbar(identifier: "SettingsToolbar")
+        toolbar.showsBaselineSeparator = false
+        window.toolbar = toolbar
+        window.toolbarStyle = .unifiedCompact
         window.contentView = NSHostingView(rootView: SettingsView(settings: settings, viewModel: viewModel))
         window.center()
         window.setFrameAutosaveName("SettingsWindow")
@@ -98,9 +102,14 @@ private struct GeneralSettingsView: View {
                     HStack {
                         Text("顯示數量")
                         Spacer()
-                        Stepper("\(settings.processCount) 個",
-                                value: $settings.processCount,
-                                in: 3...20)
+                        Picker("", selection: $settings.processCount) {
+                            ForEach([5, 10, 15, 20], id: \.self) { n in
+                                Text("\(n) 個").tag(n)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 80)
                     }
                 }
 
