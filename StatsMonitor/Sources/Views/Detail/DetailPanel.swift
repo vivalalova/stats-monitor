@@ -7,7 +7,7 @@ extension Notification.Name {
 enum PanelID: String {
     case cpu, gpu, memory, disk, network
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .cpu:     "CPU"
         case .gpu:     "GPU"

@@ -97,14 +97,11 @@ struct AboutView: View {
     }
 
     private var uptime: String {
-        let seconds = Int(ProcessInfo.processInfo.systemUptime)
-        let days    = seconds / 86_400
-        let hours   = (seconds % 86_400) / 3_600
-        let minutes = (seconds % 3_600) / 60
-        if days > 0 { return "\(days) 天 \(hours) 時 \(minutes) 分" }
-        if hours > 0 { return "\(hours) 時 \(minutes) 分" }
-        if minutes > 0 { return "\(minutes) 分" }
-        return "\(seconds) 秒"
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.day, .hour, .minute]
+        formatter.unitsStyle = .abbreviated
+        formatter.zeroFormattingBehavior = .dropAll
+        return formatter.string(from: ProcessInfo.processInfo.systemUptime) ?? "—"
     }
 }
 

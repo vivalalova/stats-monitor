@@ -23,7 +23,7 @@ struct CPUDetailView: View {
             if !viewModel.topCPUProcesses.isEmpty {
                 sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topCPUProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(proc.name, value: viewModel.formatProcessCPU(proc.cpuPercent))
+                    statRow(verbatim: proc.name, value: viewModel.formatProcessCPU(proc.cpuPercent))
                 }
             }
         }

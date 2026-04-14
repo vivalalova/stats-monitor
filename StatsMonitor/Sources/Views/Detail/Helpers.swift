@@ -29,7 +29,7 @@ struct BarView: View {
 // MARK: - View helpers
 
 @MainActor
-func detailToolbar(_ title: String, settings: AppSettings, viewModel: StatsViewModel) -> some View {
+func detailToolbar(_ title: LocalizedStringKey, settings: AppSettings, viewModel: StatsViewModel) -> some View {
     HStack(spacing: 8) {
         Text(title)
             .font(.system(size: 13, weight: .semibold))
@@ -49,7 +49,7 @@ func detailToolbar(_ title: String, settings: AppSettings, viewModel: StatsViewM
     .font(.system(size: 14))
 }
 
-func sectionHeader(_ title: String) -> some View {
+func sectionHeader(_ title: LocalizedStringKey) -> some View {
     Group {
         Divider()
         Text(title)
@@ -58,9 +58,22 @@ func sectionHeader(_ title: String) -> some View {
     }
 }
 
-func statRow(_ label: String, value: String) -> some View {
+func statRow(_ label: LocalizedStringKey, value: String) -> some View {
     HStack {
         Text(label)
+            .foregroundStyle(.secondary)
+        Spacer()
+        Text(value)
+            .monospacedDigit()
+            .fontWeight(.medium)
+    }
+    .font(.system(size: 13))
+}
+
+/// For dynamic non-localizable strings such as process names.
+func statRow(verbatim label: String, value: String) -> some View {
+    HStack {
+        Text(verbatim: label)
             .foregroundStyle(.secondary)
         Spacer()
         Text(value)

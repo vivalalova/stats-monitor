@@ -31,6 +31,14 @@ struct SettingsView: View {
         case general   = "General"
         case about     = "About"
 
+        var localizedTitle: LocalizedStringKey {
+            switch self {
+            case .dashboard: "Dashboard"
+            case .general:   "General"
+            case .about:     "About"
+            }
+        }
+
         var icon: String {
             switch self {
             case .dashboard: "square.grid.2x2"
@@ -47,7 +55,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationSplitView {
             List(Tab.allCases, id: \.self, selection: $selection) { tab in
-                Label(tab.rawValue, systemImage: tab.icon)
+                Label(tab.localizedTitle, systemImage: tab.icon)
             }
             .navigationSplitViewColumnWidth(min: 150, ideal: 180)
         } detail: {
@@ -80,7 +88,7 @@ private struct GeneralSettingsView: View {
                 settingsSection("歷史資料") {
                     Picker("保留時間", selection: $settings.historyCapacity) {
                         ForEach(AppSettings.historyCapacityOptions, id: \.value) { option in
-                            Text(option.label).tag(option.value)
+                            Text(LocalizedStringKey(option.label)).tag(option.value)
                         }
                     }
                     .pickerStyle(.radioGroup)
@@ -119,7 +127,7 @@ private struct GeneralSettingsView: View {
     }
 
     @ViewBuilder
-    private func settingsSection(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+    private func settingsSection(_ title: LocalizedStringKey, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.headline)

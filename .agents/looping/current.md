@@ -1,29 +1,28 @@
 ---
-title: 測試補強 — Service 與 ViewModel 層
+title: 本地化 — zh-Hant 與 en 雙語系
 created: 2026-04-14
-priority: medium
-suggested_order: E2
-blockedBy: [e1-util-dedup, d1-data-layer-performance]
+priority: low
+suggested_order: E3
+blockedBy: [a1-settings-general, c1-dashboard-tab, b2-about-tab]
 ---
 
-# 測試補強 — Service 與 ViewModel 層
+# 本地化 — zh-Hant 與 en 雙語系
 
-目前測試只覆蓋 model struct（CPUUsage.used、MemoryUsage.usedFraction 等），零 service 或 ViewModel 測試。
+Tuist 設定已配置 `defaultKnownRegions: ["zh-Hant", "en"]` 與 `developmentRegion: "zh-Hant"`，但實際零 `.strings` 或 `.xcstrings` 檔案，所有 UI 文字硬編碼英文。
 
 ## 範圍
 
-1. **StatsViewModel 測試**：驗證格式化 computed properties（cpuPercent、memoryPercent、diskPercent 等）、start/stop lifecycle 不 crash。
-2. **Service 合理性測試**：`MemoryMonitor.sample()` 回傳 total > 0 且 usedFraction in 0...1；`DiskMonitor.sample()` total > 0 且 used ≤ total；`NetworkMonitor` 初始 sample bytesInPerSec/bytesOutPerSec ≥ 0。
-3. **測試策略**：優先 integration test 直接呼叫 real monitor（硬體 API 在 macOS 上可直接跑）。僅在 CI 環境無法執行硬體 API 時才引入 `MonitorProtocol` 做 stub 注入。
-4. 使用 Swift Testing framework（`@Test`、`#expect`），與現有風格一致。
+1. **建立本地化檔案**：`Localizable.strings`（或 String Catalog `.xcstrings`）於 `StatsMonitor/Resources/`，涵蓋 zh-Hant 與 en。
+2. **替換硬編碼字串**：所有 View 中的文字改為 `String(localized:)` 或 `LocalizedStringKey`。涵蓋：Detail panel titles、stat labels（Used/User/System/Idle/Active/Wired/Compressed 等）、section headers（Per Core/Top Processes/Engines）、Settings 頁面文字、Dashboard 文字、About 文字。
+3. **確保 #Preview 正常運作**。
 
 ## User Stories
 
-- As a developer, I want comprehensive tests for services and view models, so that regressions are caught early and refactoring is safe.
+- As a user in a Traditional Chinese locale, I want the app UI in my language, so that it feels native and accessible.
 
 ## 驗收條件
 
-- Given `tuist test`, then all new tests pass
-- Given MemoryMonitor.sample(), then total > 0 and usedFraction is in 0...1
-- Given DiskMonitor.sample(), then total > 0 and used ≤ total
-- Given StatsViewModel with known SystemStats input, then formatted strings match expected output
+- Given macOS system language is zh-Hant, when I open the app, then all UI text displays in Traditional Chinese
+- Given macOS system language is en, when I open the app, then all UI text displays in English
+- Given `tuist build`, then no missing localization warnings
+- Given any View with `#Preview`, then preview renders without crash

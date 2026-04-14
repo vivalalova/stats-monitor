@@ -115,7 +115,7 @@ private func thermalStatusColor(_ celsius: Double) -> Color {
 // MARK: - MetricCard
 
 private struct MetricCard: View {
-    let title: String
+    let title: LocalizedStringKey
     let value: String
     let statusColor: Color
     let lines: [(history: [Double], color: Color)]

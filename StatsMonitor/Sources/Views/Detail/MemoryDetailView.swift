@@ -16,7 +16,7 @@ struct MemoryDetailView: View {
             if !viewModel.topMemoryProcesses.isEmpty {
                 sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topMemoryProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(proc.name, value: viewModel.formatProcessMemory(proc.memoryBytes))
+                    statRow(verbatim: proc.name, value: viewModel.formatProcessMemory(proc.memoryBytes))
                 }
             }
         }

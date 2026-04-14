@@ -24,7 +24,7 @@ struct DiskDetailView: View {
             if !viewModel.topDiskProcesses.isEmpty {
                 sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topDiskProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(proc.name, value: "↓\(viewModel.formatProcessDisk(proc.diskReadBPS)) ↑\(viewModel.formatProcessDisk(proc.diskWriteBPS))")
+                    statRow(verbatim: proc.name, value: "↓\(viewModel.formatProcessDisk(proc.diskReadBPS)) ↑\(viewModel.formatProcessDisk(proc.diskWriteBPS))")
                 }
             }
         }
