@@ -1,0 +1,27 @@
+import SwiftUI
+
+struct MemoryDetailView: View {
+    var viewModel: StatsViewModel
+
+    var body: some View {
+        DetailPanel(id: .memory) {
+            if viewModel.memoryHistory.count >= 2 {
+                LineChartView(lines: [(viewModel.memoryHistory, .orange)])
+            }
+
+            statRow("Used",       value: "\(viewModel.memoryUsed) / \(viewModel.memoryTotal)")
+            statRow("Active",     value: viewModel.memoryActive)
+            statRow("Wired",      value: viewModel.memoryWired)
+            statRow("Compressed", value: viewModel.memoryCompressed)
+            ProgressView(value: viewModel.monitor.stats.memory.usedFraction)
+                .tint(progressColor(viewModel.monitor.stats.memory.usedFraction))
+
+            if !viewModel.topMemoryProcesses.isEmpty {
+                sectionHeader("Top Processes")
+                ForEach(Array(viewModel.topMemoryProcesses.enumerated()), id: \.offset) { _, proc in
+                    statRow(proc.name, value: viewModel.formatProcessMemory(proc.memoryBytes))
+                }
+            }
+        }
+    }
+}
