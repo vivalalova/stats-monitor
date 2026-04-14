@@ -5,15 +5,15 @@ import SwiftUI
 struct DashboardView: View {
     var viewModel: StatsViewModel
 
-    private let columns = [GridItem(.adaptive(minimum: 200, maximum: .infinity), spacing: 8)]
+    private let columns = [GridItem(.adaptive(minimum: 200, maximum: .infinity), spacing: 4)]
 
     var body: some View {
         let networkMax = max(viewModel.networkInHistory.max() ?? 0,
                              viewModel.networkOutHistory.max() ?? 0,
                              1)
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                LazyVGrid(columns: columns, spacing: 8) {
+            VStack(alignment: .leading, spacing: 8) {
+                LazyVGrid(columns: columns, spacing: 4) {
                     MetricCard(
                         title: "CPU",
                         value: viewModel.cpuPercent,
@@ -57,7 +57,9 @@ struct DashboardView: View {
                             title: "Battery",
                             value: "\(viewModel.batteryPercent)  \(viewModel.batteryStatus)",
                             statusColor: batteryStatusColor(viewModel.battery),
-                            lines: [],
+                            lines: viewModel.batteryHistory.count >= 2
+                                ? [(history: viewModel.batteryHistory, color: .green)]
+                                : [],
                             maxValue: 100
                         )
                     }
@@ -86,7 +88,7 @@ struct DashboardView: View {
 
                 DashboardProcessTable(viewModel: viewModel)
             }
-            .padding(20)
+            .padding(6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -125,12 +127,13 @@ private struct MetricCard: View {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
+                    .shadow(color: .white.opacity(0.7), radius: 3, x: 0, y: 0)
                 Spacer()
                 Circle()
                     .fill(statusColor)
                     .frame(width: 8, height: 8)
             }
-            .padding(10)
+            .padding(4)
 
             VStack {
                 Spacer()
@@ -139,10 +142,11 @@ private struct MetricCard: View {
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .shadow(color: .white.opacity(0.7), radius: 3, x: 0, y: 0)
                     Spacer()
                 }
             }
-            .padding(10)
+            .padding(4)
         }
         .frame(height: 100)
         .clipShape(RoundedRectangle(cornerRadius: 8))

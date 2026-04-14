@@ -57,14 +57,14 @@ final class StatsViewModel {
     var cpuSystemPercent: String { String(format: "%.1f%%", monitor.stats.cpu.system) }
     var cpuPerCore: [Double] { monitor.stats.cpu.perCore }
     var cpuCoreFrequencies: [CPUCoreFrequency] { monitor.stats.cpu.coreFrequencies }
-    var cpuHistory: [Double] { Array(monitor.cpuHistory) }
+    var cpuHistory: [Double] { padded(monitor.cpuHistory) }
 
     // MARK: - GPU
 
     var gpuPercent: String { String(format: "%.1f%%", monitor.stats.gpu.used) }
     var gpuRenderPercent: String { String(format: "%.1f%%", monitor.stats.gpu.renderUtilization) }
     var gpuEngines: [String: Double] { monitor.stats.gpu.engines }
-    var gpuHistory: [Double] { Array(monitor.gpuHistory) }
+    var gpuHistory: [Double] { padded(monitor.gpuHistory) }
     var gpuVramUsed: UInt64 { monitor.stats.gpu.vramUsed }
     var gpuVramUsedStr: String { formatBytes(monitor.stats.gpu.vramUsed) }
     var anePowerMilliWatts: Double { monitor.stats.gpu.anePowerMilliWatts }
@@ -81,7 +81,7 @@ final class StatsViewModel {
     var memoryActive: String { formatBytes(monitor.stats.memory.active) }
     var memoryWired: String { formatBytes(monitor.stats.memory.wired) }
     var memoryCompressed: String { formatBytes(monitor.stats.memory.compressed) }
-    var memoryHistory: [Double] { Array(monitor.memoryHistory) }
+    var memoryHistory: [Double] { padded(monitor.memoryHistory) }
     var memoryLabelText: String {
         "\(formatBytesCompact(monitor.stats.memory.used))/\(formatBytesCompact(monitor.stats.memory.total))"
     }
@@ -94,16 +94,16 @@ final class StatsViewModel {
     var diskPercent: String { String(format: "%.1f%%", monitor.stats.disk.usedFraction * 100) }
     var diskRead: String  { formatThroughput(monitor.stats.disk.readBPS) }
     var diskWrite: String { formatThroughput(monitor.stats.disk.writeBPS) }
-    var diskHistory: [Double]      { Array(monitor.diskHistory) }
-    var diskReadHistory: [Double]  { Array(monitor.diskReadHistory) }
-    var diskWriteHistory: [Double] { Array(monitor.diskWriteHistory) }
+    var diskHistory: [Double]      { padded(monitor.diskHistory) }
+    var diskReadHistory: [Double]  { padded(monitor.diskReadHistory) }
+    var diskWriteHistory: [Double] { padded(monitor.diskWriteHistory) }
 
     // MARK: - Network
 
     var networkIn: String { formatThroughput(monitor.stats.network.bytesInPerSec) }
     var networkOut: String { formatThroughput(monitor.stats.network.bytesOutPerSec) }
-    var networkInHistory: [Double]  { Array(monitor.networkInHistory) }
-    var networkOutHistory: [Double] { Array(monitor.networkOutHistory) }
+    var networkInHistory: [Double]  { padded(monitor.networkInHistory) }
+    var networkOutHistory: [Double] { padded(monitor.networkOutHistory) }
 
     // MARK: - Processes
 
@@ -121,6 +121,7 @@ final class StatsViewModel {
 
     var battery: BatteryUsage?  { monitor.stats.battery }
     var hasBattery: Bool        { monitor.stats.battery != nil }
+    var batteryHistory: [Double] { padded(monitor.batteryHistory) }
 
     var batteryPercent: String {
         guard let b = monitor.stats.battery else { return "N/A" }
@@ -161,7 +162,7 @@ final class StatsViewModel {
         guard let temp = monitor.stats.thermal?.gpuTemperature else { return "—" }
         return String(format: "%.1f°C", temp)
     }
-    var cpuTempHistory: [Double] { Array(monitor.cpuTempHistory) }
+    var cpuTempHistory: [Double] { padded(monitor.cpuTempHistory) }
 
     // MARK: - Fan
 
@@ -183,5 +184,15 @@ final class StatsViewModel {
 
     func start() { monitor.start() }
     func stop()  { monitor.stop() }
+
+    // MARK: - Private Helpers
+
+    /// Pads the history to full capacity by prepending the first known value.
+    /// Ensures charts always render at full width from the first data point.
+    private func padded(_ buf: RingBuffer<Double>) -> [Double] {
+        let data = Array(buf)
+        guard !data.isEmpty, data.count < buf.capacity else { return data }
+        return Array(repeating: data[0], count: buf.capacity - data.count) + data
+    }
 
 }

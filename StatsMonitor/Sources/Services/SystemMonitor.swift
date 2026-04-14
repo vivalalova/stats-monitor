@@ -15,6 +15,7 @@ final class SystemMonitor {
     private(set) var diskWriteHistory:  RingBuffer<Double>
     private(set) var networkInHistory:  RingBuffer<Double>
     private(set) var networkOutHistory: RingBuffer<Double>
+    private(set) var batteryHistory:    RingBuffer<Double>
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()
@@ -48,6 +49,7 @@ final class SystemMonitor {
         diskWriteHistory  = RingBuffer<Double>(capacity: cap)
         networkInHistory  = RingBuffer<Double>(capacity: cap)
         networkOutHistory = RingBuffer<Double>(capacity: cap)
+        batteryHistory    = RingBuffer<Double>(capacity: cap)
         cpuTempHistory    = RingBuffer<Double>(capacity: cap)
         // SMC-dependent monitors share the same connection
         thermalMonitor = ThermalMonitor(smc: smcClient)
@@ -115,6 +117,9 @@ final class SystemMonitor {
         diskWriteHistory.append(disk.writeBPS)
         networkInHistory.append(network.bytesInPerSec)
         networkOutHistory.append(network.bytesOutPerSec)
+        if let pct = battery?.percentage {
+            batteryHistory.append(pct)
+        }
         if let temp = thermal?.cpuTemperature {
             cpuTempHistory.append(temp)
         }
@@ -167,6 +172,7 @@ final class SystemMonitor {
         diskWriteHistory  = RingBuffer<Double>(capacity: cap)
         networkInHistory  = RingBuffer<Double>(capacity: cap)
         networkOutHistory = RingBuffer<Double>(capacity: cap)
+        batteryHistory    = RingBuffer<Double>(capacity: cap)
         cpuTempHistory    = RingBuffer<Double>(capacity: cap)
     }
 }
