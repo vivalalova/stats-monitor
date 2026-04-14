@@ -283,7 +283,7 @@ private struct CoreGridView: View {
                             }
                             Text("\(Int(item.value))%")
                         }
-                        .font(.system(size: 7))
+                        .font(.system(size: 9))
                         .monospacedDigit()
                     }
                 }
