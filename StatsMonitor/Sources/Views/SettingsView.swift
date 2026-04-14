@@ -9,7 +9,7 @@ import SwiftUI
     if settingsWindow == nil {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 820, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
@@ -57,7 +57,7 @@ struct SettingsView: View {
             List(Tab.allCases, id: \.self, selection: $selection) { tab in
                 Label(tab.localizedTitle, systemImage: tab.icon)
             }
-            .navigationSplitViewColumnWidth(min: 150, ideal: 180)
+            .navigationSplitViewColumnWidth(min: 130, ideal: 130, max: 130)
         } detail: {
             switch selection {
             case .dashboard: DashboardView(viewModel: viewModel)

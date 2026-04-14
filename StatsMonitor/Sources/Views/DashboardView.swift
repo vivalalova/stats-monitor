@@ -5,11 +5,7 @@ import SwiftUI
 struct DashboardView: View {
     var viewModel: StatsViewModel
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-    ]
+    private let columns = [GridItem(.adaptive(minimum: 200, maximum: .infinity), spacing: 12)]
 
     var body: some View {
         let networkMax = max(viewModel.networkInHistory.max() ?? 0,
@@ -148,6 +144,11 @@ private struct MetricCard: View {
 private struct DashboardProcessTable: View {
     var viewModel: StatsViewModel
 
+    enum SortColumn { case name, cpu, memory, disk, network }
+
+    @State private var sortColumn: SortColumn = .cpu
+    @State private var ascending: Bool = false
+
     private var mergedProcesses: [ProcInfo] {
         var byName: [String: ProcInfo] = [:]
         let all = viewModel.topCPUProcesses
@@ -169,11 +170,26 @@ private struct DashboardProcessTable: View {
                 byName[proc.name] = proc
             }
         }
-        return byName.values.sorted {
-            if $0.cpuPercent != $1.cpuPercent { return $0.cpuPercent > $1.cpuPercent }
-            if $0.memoryBytes != $1.memoryBytes { return $0.memoryBytes > $1.memoryBytes }
-            return $0.name < $1.name
+        return Array(byName.values).sorted(using: sortColumn, ascending: ascending)
+    }
+
+    private func toggleSort(_ col: SortColumn) {
+        if sortColumn == col { ascending.toggle() } else { sortColumn = col; ascending = false }
+    }
+
+    @ViewBuilder
+    private func colHeader(_ label: LocalizedStringKey, col: SortColumn, width: CGFloat) -> some View {
+        Button { toggleSort(col) } label: {
+            HStack(spacing: 2) {
+                Spacer(minLength: 0)
+                Text(label)
+                Image(systemName: ascending ? "chevron.up" : "chevron.down")
+                    .imageScale(.small)
+                    .opacity(sortColumn == col ? 1 : 0)
+            }
         }
+        .buttonStyle(.plain)
+        .frame(width: width, alignment: .trailing)
     }
 
     var body: some View {
@@ -184,12 +200,21 @@ private struct DashboardProcessTable: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Text("Name")
+                    Button { toggleSort(.name) } label: {
+                        HStack(spacing: 2) {
+                            Text("Name")
+                            Image(systemName: ascending ? "chevron.up" : "chevron.down")
+                                .imageScale(.small)
+                                .opacity(sortColumn == .name ? 1 : 0)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    .buttonStyle(.plain)
                     Spacer()
-                    Text("CPU%")    .frame(width: 60, alignment: .trailing)
-                    Text("Memory")  .frame(width: 72, alignment: .trailing)
-                    Text("Disk")    .frame(width: 72, alignment: .trailing)
-                    Text("Network") .frame(width: 80, alignment: .trailing)
+                    colHeader("CPU%",    col: .cpu,     width: 60)
+                    colHeader("Memory",  col: .memory,  width: 72)
+                    colHeader("Disk",    col: .disk,    width: 72)
+                    colHeader("Network", col: .network, width: 80)
                 }
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
@@ -225,6 +250,24 @@ private struct DashboardProcessTable: View {
                     .background(Color.primary.opacity(0.02), in: RoundedRectangle(cornerRadius: 4))
                 }
             }
+        }
+    }
+}
+
+// MARK: - ProcInfo sort helper
+
+private extension Array where Element == ProcInfo {
+    func sorted(using col: DashboardProcessTable.SortColumn, ascending: Bool) -> [ProcInfo] {
+        sorted { a, b in
+            let less: Bool
+            switch col {
+            case .name:    less = a.name < b.name
+            case .cpu:     less = a.cpuPercent < b.cpuPercent
+            case .memory:  less = a.memoryBytes < b.memoryBytes
+            case .disk:    less = a.diskTotalBPS < b.diskTotalBPS
+            case .network: less = a.networkTotalBPS < b.networkTotalBPS
+            }
+            return ascending ? less : !less
         }
     }
 }
