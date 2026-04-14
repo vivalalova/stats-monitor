@@ -17,9 +17,6 @@ struct GPUDetailView: View {
             if viewModel.anePowerMilliWatts > 0 {
                 statRow("Neural Engine", value: viewModel.anePowerStr)
             }
-            ProgressView(value: viewModel.monitor.stats.gpu.used / 100)
-                .tint(progressColor(viewModel.monitor.stats.gpu.used / 100))
-
             if !viewModel.gpuEngines.isEmpty {
                 sectionHeader("Engines")
                 EngineGridView(engines: viewModel.gpuEngines)

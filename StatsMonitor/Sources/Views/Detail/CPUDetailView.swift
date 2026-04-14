@@ -13,9 +13,6 @@ struct CPUDetailView: View {
             statRow("User",   value: viewModel.cpuUserPercent)
             statRow("System", value: viewModel.cpuSystemPercent)
             statRow("Idle",   value: String(format: "%.1f%%", viewModel.monitor.stats.cpu.idle))
-            ProgressView(value: viewModel.monitor.stats.cpu.used / 100)
-                .tint(progressColor(viewModel.monitor.stats.cpu.used / 100))
-
             if !viewModel.cpuPerCore.isEmpty {
                 sectionHeader("Per Core")
                 CoreGridView(cores: viewModel.cpuPerCore,

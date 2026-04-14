@@ -21,9 +21,6 @@ struct DiskDetailView: View {
             statRow("Used",  value: viewModel.diskUsed)
             statRow("Free",  value: viewModel.diskFree)
             statRow("Total", value: viewModel.diskTotal)
-            ProgressView(value: viewModel.monitor.stats.disk.usedFraction)
-                .tint(progressColor(viewModel.monitor.stats.disk.usedFraction))
-
             if !viewModel.topDiskProcesses.isEmpty {
                 sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topDiskProcesses.enumerated()), id: \.offset) { _, proc in

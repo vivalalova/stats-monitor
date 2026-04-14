@@ -13,9 +13,6 @@ struct MemoryDetailView: View {
             statRow("Active",     value: viewModel.memoryActive)
             statRow("Wired",      value: viewModel.memoryWired)
             statRow("Compressed", value: viewModel.memoryCompressed)
-            ProgressView(value: viewModel.monitor.stats.memory.usedFraction)
-                .tint(progressColor(viewModel.monitor.stats.memory.usedFraction))
-
             if !viewModel.topMemoryProcesses.isEmpty {
                 sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topMemoryProcesses.enumerated()), id: \.offset) { _, proc in
