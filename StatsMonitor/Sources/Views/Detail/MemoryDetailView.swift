@@ -23,7 +23,6 @@ struct MemoryDetailView: View {
     }
 }
 
-#Preview {
+#Preview(.sizeThatFitsLayout) {
     MemoryDetailView(viewModel: StatsViewModel())
-        .fixedSize()
 }

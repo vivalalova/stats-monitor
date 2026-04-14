@@ -28,7 +28,6 @@ struct NetworkDetailView: View {
     }
 }
 
-#Preview {
+#Preview(.sizeThatFitsLayout) {
     NetworkDetailView(viewModel: StatsViewModel())
-        .fixedSize()
 }

@@ -29,9 +29,8 @@ struct CPUDetailView: View {
     }
 }
 
-#Preview {
+#Preview(.sizeThatFitsLayout) {
     CPUDetailView(viewModel: StatsViewModel())
-        .fixedSize()
 }
 
 // MARK: - Core grid
