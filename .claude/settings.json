@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "swift-lsp@claude-plugins-official": true,
+    "apple-toolkit@plugins-local": true
+  }
+}

@@ -45,6 +45,7 @@ StatsMonitor/Sources/
     ThermalMonitor.swift      # IOKit SMC（CPU/GPU 溫度；不支援時回傳 nil）
     FanMonitor.swift          # IOKit SMC（風扇 RPM；無風扇機型回傳空陣列）
     SMCClient.swift           # SMC 連線管理，ThermalMonitor/FanMonitor 共用
+    PowerMonitor.swift        # IOReport Energy Model（CPU/GPU/整機功率 mW；非 Apple Silicon 回傳 nil）
   ViewModels/
     StatsViewModel.swift      # @Observable，聚合所有 monitor 格式化屬性
   Views/
@@ -80,7 +81,8 @@ Packages/Util/
 |---|---|---|---|
 | `pollInterval` | `pollInterval` | `2.0` 秒 | 感測器輪詢間隔（1/2/5/10 秒） |
 | `historyCapacity` | `historyCapacity` | `120` | RingBuffer 容量（60/120/300 筆） |
-| `processCount` | `processCount` | `10` | 熱門行程顯示數量（3–20） |
+| `processCount` | `processCount` | `10` | 熱門行程顯示數量（5/10/15/20 Picker） |
+| `dashboardColumns` | `dashboardColumns` | `3` | Dashboard 格式欄數（1–5 滑桿，toolbar 控制） |
 | `showCPU` | `showCPU` | `true` | Menu bar 顯示 CPU |
 | `showGPU` | `showGPU` | `true` | Menu bar 顯示 GPU |
 | `showMemory` | `showMemory` | `true` | Menu bar 顯示 Memory |
@@ -90,7 +92,7 @@ Packages/Util/
 
 ## Settings 視窗分頁
 
-- **Dashboard**：總覽卡片（各指標折線圖 + 數值）+ 合併熱門行程表
+- **Dashboard**：總覽卡片（CPU/GPU/Memory/Disk/Network/Disk I/O/Battery/Thermal/Power/Fans 折線圖 + 數值）+ 合併熱門行程表；toolbar slider 控制欄數（1–5）
 - **General**：AppSettings 所有可調選項
 - **About**：版本資訊、系統規格（型號/晶片/macOS/RAM/開機時間）
 
@@ -118,6 +120,7 @@ Packages/Util/
 - 共用 helper（`statRow`、`sectionHeader` 等）接受 `LocalizedStringKey`，字串字面量自動轉型
 - **Process name** 顯示用 `statRow(verbatim: proc.name, ...)` 避免誤查本地化表
 - `AboutView.uptime` 使用 `DateComponentsFormatter` 自動跟隨系統語言
+- **未本地化字串在 ViewModel 層**：`StatsViewModel` 中的狀態字串（"Charging"/"Plugged In"/"On Battery"/"N/A"/"No fans" 及 "RPM"/"W"/"mW"/"cycles" 等單位）為硬編碼英文，不在 Localizable.strings 中
 
 ## 測試覆蓋
 
@@ -125,7 +128,7 @@ Packages/Util/
 
 | 層 | 測試內容 |
 |---|---|
-| Model | CPUUsage.used、MemoryUsage.usedFraction/used、DiskUsage.usedFraction、GPUUsage、BatteryUsage、FanUsage.fraction、ThermalUsage、ProcInfo |
+| Model | CPUUsage.used、MemoryUsage.usedFraction/used、DiskUsage.usedFraction、GPUUsage、BatteryUsage、FanUsage.fraction、ThermalUsage、PowerUsage、ProcInfo |
 | ViewModel | formatted properties（cpuPercent、memoryPercent 等）with known SystemStats input、batteryStatus 所有分支、anePowerStr 分支、lifecycle（start/stop）、formatProcess helpers |
 | Service 整合 | MemoryMonitor.sample()（total > 0、usedFraction in 0…1）、DiskMonitor.sample()（total > 0、used ≤ total）、NetworkMonitor.sample()（bytesIn/Out ≥ 0） |
 | Util | formatBytes / formatBytesCompact / formatThroughput / ghzString / RingBuffer |
@@ -140,6 +143,7 @@ Packages/Util/
 - `ProcessMonitor` 與 `NetworkProcessMonitor` 背景非同步執行（`Task.detached`）
 - Battery/Thermal/Fan monitor 在不支援硬體時回傳 nil / 空陣列，UI graceful 隱藏
 - ThermalMonitor 與 FanMonitor 共用 `SMCClient` 連線
+- `PowerMonitor` 使用 IOReport Energy Model 量測 CPU/GPU/整機功率（mW）；非 Apple Silicon 或首次呼叫回傳 nil（需兩次 sample 計算 delta）
 
 ## 慣例
 
