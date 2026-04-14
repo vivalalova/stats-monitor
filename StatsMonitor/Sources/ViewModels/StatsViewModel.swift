@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Util
 
 @Observable
 @MainActor
@@ -107,27 +108,4 @@ final class StatsViewModel {
     func start() { monitor.start() }
     func stop()  { monitor.stop() }
 
-    // MARK: - Formatters
-
-    private func formatBytesCompact(_ bytes: UInt64) -> String {
-        let gb = Double(bytes) / 1_073_741_824
-        if gb >= 1 { return String(format: "%.1fG", gb) }
-        let mb = Double(bytes) / 1_048_576
-        return String(format: "%.0fM", mb)
-    }
-
-    private func formatBytes(_ bytes: UInt64) -> String {
-        let gb = Double(bytes) / 1_073_741_824
-        if gb >= 1 { return String(format: "%.1f GB", gb) }
-        let mb = Double(bytes) / 1_048_576
-        if mb >= 1 { return String(format: "%.0f MB", mb) }
-        return String(format: "%.0f KB", Double(bytes) / 1_024)
-    }
-
-    private func formatThroughput(_ bytesPerSec: Double) -> String {
-        let mb = bytesPerSec / 1_048_576
-        if mb >= 1 { return String(format: "%.1f MB/s", mb) }
-        let kb = bytesPerSec / 1_024
-        return String(format: "%.0f KB/s", kb)
-    }
 }

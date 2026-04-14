@@ -1,4 +1,5 @@
 import Foundation
+import Util
 
 struct SystemStats: Sendable {
     var cpu: CPUUsage = .zero
@@ -26,11 +27,6 @@ struct CPUCoreFrequency: Sendable {
         return ghzString(maxHz)
     }
 
-    private func ghzString(_ hz: UInt64) -> String {
-        let ghz = Double(hz) / 1_000_000_000
-        return ghz >= 1 ? String(format: "%.1fG", ghz)
-                        : String(format: "%.0fM", Double(hz) / 1_000_000)
-    }
 }
 
 struct CPUUsage: Sendable {

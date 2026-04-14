@@ -1,39 +1,34 @@
 ---
-title: Dashboard 總覽分頁
+title: Util Package 充實與格式化函式去重複
 created: 2026-04-14
 priority: high
-suggested_order: C1
-blockedBy: a1-settings-general
+suggested_order: E1
 phase: needs-review
-iteration: 1
+iteration: 2
 max_iterations: 5
 review_iterations: 1
 max_review_iterations: 5
 ---
 
-# Dashboard 總覽分頁
+# Util Package 充實與格式化函式去重複
 
-目前只能逐一點擊 menu bar item 查看單一資源的 detail popover，缺乏一覽全局的總覽頁。A1 已在 NavigationSplitView sidebar 建立 `.dashboard` Tab case，本 task 填入實際內容。
+`ghzString` 在 `SystemStats.swift`（CPUCoreFrequency.ghzString）和 `CPUDetailView.swift`（CoreGridView.ghzString）重複實作。`StatsViewModel` 中的 `formatBytes`、`formatBytesCompact`、`formatThroughput` 是通用格式化邏輯但被定義為 private instance method。`Packages/Util` 目前完全空（`public enum Util {}`）。
 
 ## 範圍
 
-1. **DashboardView 實作**：在 Settings 視窗的 sidebar Dashboard tab 中，以 grid 排列 5 項監控摘要（CPU / GPU / Memory / Disk / Network），每項包含：
-   - mini LineChartView（重用現有元件，縮小 height）
-   - 關鍵數值（使用率百分比 / 主要指標 / 狀態色塊，重用 `progressColor`）
-2. **統一 Process Table**：Dashboard 底部顯示合併的 top processes 表格（Name / CPU% / Memory / Disk I/O / Network I/O），取各維度 top N 聯集。
-3. **共享 ViewModel**：使用 `StatsMonitorApp` 已有的共享 `@State StatsViewModel` instance，透過 Environment 或參數傳入 DashboardView。
-4. **Dashboard 作為預設 tab**：Settings 視窗開啟時，sidebar 預設選中 Dashboard（非 General）。
-5. **視窗尺寸調整**：Dashboard 內容較多，可能需要擴大視窗 minWidth 或讓視窗 resizable。
-6. **#Preview** for DashboardView。
+1. **建立 `Formatters.swift`**：於 `Packages/Util/Sources/Util/`，將 `ghzString`、`formatBytes`、`formatBytesCompact`、`formatThroughput` 提升為 public static method（或 free function）。
+2. **更新呼叫端**：`SystemStats.swift`、`CPUDetailView.swift`、`StatsViewModel.swift` 改為 `import Util` 並使用共用函式，刪除原始 private 實作。
+3. **Formatter 單元測試**：於 `Packages/Util/Tests/UtilTests/`，涵蓋各函式的 zero、normal、edge case（超大數值、負數等）。
 
 ## User Stories
 
-- As a user, I want a single dashboard view showing all system metrics and charts at once, so that I can monitor everything without clicking multiple menu bar items.
-- As a user, I want to see which processes are consuming the most resources across all categories in one table.
+- As a developer, I want formatting utilities consolidated in one place, so that changes propagate consistently and there is no divergent formatting logic.
 
 ## 驗收條件
 
-- Given I open Settings, then Dashboard tab is selected by default and shows 5 metric cards
-- Given the dashboard is visible, when system stats update every poll cycle, then all mini charts and values refresh in real time
-- Given the dashboard, then I see a unified process table showing top consumers across CPU/memory/disk/network
-- Given I resize the window, then the grid layout adapts responsively
+- Given `Packages/Util/Sources/Util/Formatters.swift` exists, then it exports `ghzString`, `formatBytes`, `formatBytesCompact`, `formatThroughput`
+- Given the main target, when searching for duplicate `ghzString` implementations, then only one exists (in Util)
+- Given `formatBytes(0)`, then returns "0 B"
+- Given `formatBytes(1_073_741_824)`, then returns "1.0 GB"
+- Given `formatThroughput(1_048_576)`, then returns "1.0 MB/s"
+- Given `tuist build`, then no compilation errors

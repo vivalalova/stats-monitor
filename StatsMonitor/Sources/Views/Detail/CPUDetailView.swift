@@ -1,4 +1,5 @@
 import SwiftUI
+import Util
 
 struct CPUDetailView: View {
     var viewModel: StatsViewModel
@@ -89,9 +90,4 @@ private struct CoreGridView: View {
         }
     }
 
-    private func ghzString(_ hz: UInt64) -> String {
-        let ghz = Double(hz) / 1_000_000_000
-        return ghz >= 1 ? String(format: "%.1fG", ghz)
-                        : String(format: "%.0fM", Double(hz) / 1_000_000)
-    }
 }
