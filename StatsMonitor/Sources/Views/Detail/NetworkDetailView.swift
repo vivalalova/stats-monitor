@@ -21,7 +21,7 @@ struct NetworkDetailView: View {
             if !viewModel.topNetworkProcesses.isEmpty {
                 sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topNetworkProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(proc.name, value: "↓\(viewModel.formatProcessNetwork(proc.networkInBPS)) ↑\(viewModel.formatProcessNetwork(proc.networkOutBPS))")
+                    statRow(verbatim: proc.name, value: "↓\(viewModel.formatProcessNetwork(proc.networkInBPS)) ↑\(viewModel.formatProcessNetwork(proc.networkOutBPS))")
                 }
             }
         }

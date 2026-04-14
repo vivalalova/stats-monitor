@@ -7,7 +7,7 @@ extension Notification.Name {
 enum PanelID: String {
     case cpu, gpu, memory, disk, network
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .cpu:     "CPU"
         case .gpu:     "GPU"
@@ -22,10 +22,12 @@ struct DetailPanel<Content: View>: View {
     let id: PanelID
     @ViewBuilder let content: () -> Content
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
+    @Environment(StatsViewModel.self) private var viewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            detailToolbar(id.title)
+            detailToolbar(id.title, settings: settings, viewModel: viewModel)
             content()
         }
         .padding(16)
@@ -42,4 +44,6 @@ struct DetailPanel<Content: View>: View {
         Text("CPU content goes here")
             .foregroundStyle(.secondary)
     }
+    .environment(AppSettings())
+    .environment(StatsViewModel())
 }

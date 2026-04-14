@@ -1,21 +1,20 @@
 import Foundation
 import Observation
+import Util
 
 @Observable
 @MainActor
 final class SystemMonitor {
-    private(set) var stats = SystemStats()
+    var stats = SystemStats()
 
-    private static let historyCapacity = 120
-
-    private(set) var cpuHistory:         [Double] = [Double](repeating: 0, count: 120)
-    private(set) var gpuHistory:         [Double] = [Double](repeating: 0, count: 120)
-    private(set) var memoryHistory:      [Double] = [Double](repeating: 0, count: 120)
-    private(set) var diskHistory:        [Double] = [Double](repeating: 0, count: 120)
-    private(set) var diskReadHistory:    [Double] = [Double](repeating: 0, count: 120)
-    private(set) var diskWriteHistory:   [Double] = [Double](repeating: 0, count: 120)
-    private(set) var networkInHistory:   [Double] = [Double](repeating: 0, count: 120)
-    private(set) var networkOutHistory:  [Double] = [Double](repeating: 0, count: 120)
+    private(set) var cpuHistory:        RingBuffer<Double>
+    private(set) var gpuHistory:        RingBuffer<Double>
+    private(set) var memoryHistory:     RingBuffer<Double>
+    private(set) var diskHistory:       RingBuffer<Double>
+    private(set) var diskReadHistory:   RingBuffer<Double>
+    private(set) var diskWriteHistory:  RingBuffer<Double>
+    private(set) var networkInHistory:  RingBuffer<Double>
+    private(set) var networkOutHistory: RingBuffer<Double>
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()
@@ -25,20 +24,39 @@ final class SystemMonitor {
     private var networkMonitor  = NetworkMonitor()
     private var processMonitor  = ProcessMonitor()
 
-    // Persisted previous snapshots for nettop delta calculation
+    private let smcClient                         = SMCClient()
+    private var batteryMonitor                    = BatteryMonitor()
+    private var thermalMonitor: ThermalMonitor
+    private var fanMonitor: FanMonitor
+
+    private(set) var cpuTempHistory: RingBuffer<Double>
+
     private var networkProcPrev: [String: NetworkProcessMonitor.Snapshot] = [:]
+    private var isProcessPollInFlight = false
 
     private var timer: Timer?
+    private let settings: AppSettings
 
-    static let pollInterval: TimeInterval = 2
+    init(settings: AppSettings) {
+        self.settings = settings
+        let cap = settings.historyCapacity
+        cpuHistory        = RingBuffer<Double>(capacity: cap)
+        gpuHistory        = RingBuffer<Double>(capacity: cap)
+        memoryHistory     = RingBuffer<Double>(capacity: cap)
+        diskHistory       = RingBuffer<Double>(capacity: cap)
+        diskReadHistory   = RingBuffer<Double>(capacity: cap)
+        diskWriteHistory  = RingBuffer<Double>(capacity: cap)
+        networkInHistory  = RingBuffer<Double>(capacity: cap)
+        networkOutHistory = RingBuffer<Double>(capacity: cap)
+        cpuTempHistory    = RingBuffer<Double>(capacity: cap)
+        // SMC-dependent monitors share the same connection
+        thermalMonitor = ThermalMonitor(smc: smcClient)
+        fanMonitor     = FanMonitor(smc: smcClient)
+    }
 
     func start() {
         poll()
-        timer = Timer.scheduledTimer(withTimeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.poll()
-            }
-        }
+        scheduleTimer()
     }
 
     func stop() {
@@ -46,54 +64,109 @@ final class SystemMonitor {
         timer = nil
     }
 
+    /// pollInterval 變更時呼叫：invalidate 現有 timer 並以新 interval 重建。
+    func restartTimer() {
+        timer?.invalidate()
+        timer = nil
+        scheduleTimer()
+    }
+
+    private func scheduleTimer() {
+        let interval = settings.pollInterval
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.poll()
+            }
+        }
+    }
+
     private func poll() {
         let cpu     = cpuMonitor.sample()
         var gpu     = gpuMonitor.sample()
-        gpu.anePowerMilliWatts = aneMonitor.sample(intervalSeconds: Self.pollInterval)
+        gpu.anePowerMilliWatts = aneMonitor.sample(intervalSeconds: settings.pollInterval)
         let memory  = memoryMonitor.sample()
         let disk    = diskMonitor.sample()
         let network = networkMonitor.sample()
-        let (cpuProcs, memProcs, diskProcs) = processMonitor.sample()
+        let battery = batteryMonitor.sample()
+        let thermal = thermalMonitor.sample()
+        let fans    = fanMonitor.sample()
+        let count   = settings.processCount
 
-        // Preserve network process list until the async nettop result arrives
         stats = SystemStats(
             cpu:                 cpu,
             gpu:                 gpu,
             memory:              memory,
             disk:                disk,
             network:             network,
-            topCPUProcesses:     cpuProcs,
-            topMemoryProcesses:  memProcs,
-            topDiskProcesses:    diskProcs,
+            battery:             battery,
+            thermal:             thermal,
+            fans:                fans,
+            topCPUProcesses:     stats.topCPUProcesses,
+            topMemoryProcesses:  stats.topMemoryProcesses,
+            topDiskProcesses:    stats.topDiskProcesses,
             topNetworkProcesses: stats.topNetworkProcesses
         )
 
-        append(cpu.used,                  to: &cpuHistory)
-        append(gpu.used,                  to: &gpuHistory)
-        append(memory.usedFraction * 100, to: &memoryHistory)
-        append(disk.usedFraction * 100,   to: &diskHistory)
-        append(disk.readBPS,              to: &diskReadHistory)
-        append(disk.writeBPS,             to: &diskWriteHistory)
-        append(network.bytesInPerSec,     to: &networkInHistory)
-        append(network.bytesOutPerSec,    to: &networkOutHistory)
+        cpuHistory.append(cpu.used)
+        gpuHistory.append(gpu.used)
+        memoryHistory.append(memory.usedFraction * 100)
+        diskHistory.append(disk.usedFraction * 100)
+        diskReadHistory.append(disk.readBPS)
+        diskWriteHistory.append(disk.writeBPS)
+        networkInHistory.append(network.bytesInPerSec)
+        networkOutHistory.append(network.bytesOutPerSec)
+        if let temp = thermal?.cpuTemperature {
+            cpuTempHistory.append(temp)
+        }
 
-        pollNetworkProcesses()
+        pollNetworkProcesses(processCount: count)
+        pollProcesses(processCount: count)
     }
 
-    private func pollNetworkProcesses() {
+    private func pollNetworkProcesses(processCount: Int) {
         let prev = networkProcPrev
         Task { [weak self] in
             guard let self else { return }
             let (procs, updated) = await Task.detached(priority: .utility) {
-                NetworkProcessMonitor.run(previous: prev)
+                NetworkProcessMonitor.run(previous: prev, processCount: processCount)
             }.value
             self.networkProcPrev = updated
             self.stats.topNetworkProcesses = procs
         }
     }
 
-    private func append(_ value: Double, to buffer: inout [Double]) {
-        buffer.append(value)
-        if buffer.count > Self.historyCapacity { buffer.removeFirst() }
+    private func pollProcesses(processCount: Int) {
+        guard !isProcessPollInFlight else { return }
+        isProcessPollInFlight = true
+        let prevMonitor = processMonitor
+        Task { [weak self] in
+            guard let self else { return }
+            let (result, updated) = await Task.detached(priority: .utility) {
+                var monitor = prevMonitor
+                let result = monitor.sample(processCount: processCount)
+                return (result, monitor)
+            }.value
+            self.isProcessPollInFlight = false
+            self.processMonitor = updated
+            self.stats.topCPUProcesses    = result.cpuTop
+            self.stats.topMemoryProcesses = result.memoryTop
+            self.stats.topDiskProcesses   = result.diskTop
+        }
+    }
+
+    /// Recreates all history ring buffers with the current historyCapacity.
+    /// Call when settings.historyCapacity changes.
+    func resetHistories() {
+        let cap = settings.historyCapacity
+        guard cap != cpuHistory.capacity else { return }
+        cpuHistory        = RingBuffer<Double>(capacity: cap)
+        gpuHistory        = RingBuffer<Double>(capacity: cap)
+        memoryHistory     = RingBuffer<Double>(capacity: cap)
+        diskHistory       = RingBuffer<Double>(capacity: cap)
+        diskReadHistory   = RingBuffer<Double>(capacity: cap)
+        diskWriteHistory  = RingBuffer<Double>(capacity: cap)
+        networkInHistory  = RingBuffer<Double>(capacity: cap)
+        networkOutHistory = RingBuffer<Double>(capacity: cap)
+        cpuTempHistory    = RingBuffer<Double>(capacity: cap)
     }
 }

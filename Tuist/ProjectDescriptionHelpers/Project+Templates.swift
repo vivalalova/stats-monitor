@@ -39,6 +39,7 @@ extension Project {
                     ],
                     dependencies: [
                         .package(product: "Util", type: .runtime),
+                        .sdk(name: "ServiceManagement", type: .framework),
                     ]
                 ),
                 .target(

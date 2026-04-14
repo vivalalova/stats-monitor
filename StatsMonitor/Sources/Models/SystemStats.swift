@@ -1,4 +1,5 @@
 import Foundation
+import Util
 
 struct SystemStats: Sendable {
     var cpu: CPUUsage = .zero
@@ -6,6 +7,9 @@ struct SystemStats: Sendable {
     var memory: MemoryUsage = .zero
     var disk: DiskUsage = .zero
     var network: NetworkUsage = .zero
+    var battery: BatteryUsage? = nil    // nil on desktop Macs (no battery hardware)
+    var thermal: ThermalUsage? = nil    // nil when SMC is unavailable or all keys fail
+    var fans: [FanUsage] = []           // empty on fanless Macs (e.g. MacBook Air M-series)
     var topCPUProcesses: [ProcInfo] = []
     var topMemoryProcesses: [ProcInfo] = []
     var topDiskProcesses: [ProcInfo] = []
@@ -26,11 +30,6 @@ struct CPUCoreFrequency: Sendable {
         return ghzString(maxHz)
     }
 
-    private func ghzString(_ hz: UInt64) -> String {
-        let ghz = Double(hz) / 1_000_000_000
-        return ghz >= 1 ? String(format: "%.1fG", ghz)
-                        : String(format: "%.0fM", Double(hz) / 1_000_000)
-    }
 }
 
 struct CPUUsage: Sendable {
@@ -103,4 +102,35 @@ struct ProcInfo: Sendable {
 
     var diskTotalBPS: Double { diskReadBPS + diskWriteBPS }
     var networkTotalBPS: Double { networkInBPS + networkOutBPS }
+}
+
+struct BatteryUsage: Sendable {
+    var percentage: Double      // 0.0–100.0
+    var isCharging: Bool
+    var isPluggedIn: Bool       // AC power connected (may not be actively charging)
+    var timeRemaining: Int?     // minutes; nil while estimating
+    var cycleCount: Int
+    var designCapacity: Int     // mAh
+    var maxCapacity: Int        // mAh (current maximum)
+    var health: Double          // maxCapacity / designCapacity × 100
+}
+
+struct ThermalUsage: Sendable {
+    var cpuTemperature: Double      // °C (CPU package / highest cluster temp)
+    var gpuTemperature: Double?     // °C; nil when no discrete GPU or key unavailable
+}
+
+struct FanUsage: Sendable {
+    var id: Int
+    var currentRPM: Double
+    var minRPM: Double
+    var maxRPM: Double
+    var name: String
+
+    /// Normalised 0–1 fraction of full RPM range. Clamped so spin-down below minRPM and
+    /// turbo-boost above maxRPM don't produce out-of-range values.
+    var fraction: Double {
+        guard maxRPM > minRPM else { return 0 }
+        return min(max((currentRPM - minRPM) / (maxRPM - minRPM), 0), 1)
+    }
 }
