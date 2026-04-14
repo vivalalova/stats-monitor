@@ -17,3 +17,4 @@ xcuserdata/
 
 # Claude rules (symlinked)
 .claude/rules/shared/
+.agents/looping/.hook-debug.log

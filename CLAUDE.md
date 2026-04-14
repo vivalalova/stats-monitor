@@ -9,7 +9,7 @@ macOS menu bar app — SwiftUI + Tuist
 - **專案管理**: Tuist（Buildable Folder 結構）
 - **架構**: MVVM（@Observable）
 - **Concurrency**: Swift Strict Concurrency complete
-- **語系**: zh-Hant（主）、en
+- **語系**: zh-Hant（developmentRegion）、en
 
 ## 指令
 
@@ -24,34 +24,122 @@ tuist clean         # 清理
 ## 專案結構
 
 ```
-StatsMonitor/Sources/       # 主程式碼
-  App/                      # App 入口（MenuBarExtra scene）
-  Models/                   # 資料結構（SystemStats 等）
-  Services/                 # 系統監控（CPU、Memory、Disk、Network）
-  ViewModels/               # @Observable view models
-  Views/                    # SwiftUI views（menu bar label、detail popover）
-StatsMonitor/Resources/     # 資源檔案
-Tests/Sources/              # 測試（Swift Testing）
-Packages/Util/              # 本地共用 Package
+StatsMonitor/Sources/
+  App/
+    StatsMonitorApp.swift     # MenuBarExtra scene + window management
+    AppSettings.swift         # @Observable 使用者設定，UserDefaults 持久化
+  Models/
+    SystemStats.swift         # 所有資料結構（CPUUsage/MemoryUsage/DiskUsage/…）
+  Services/
+    SystemMonitor.swift       # 協調層，polling loop + RingBuffer history
+    CPUMonitor.swift          # host_processor_info
+    CPUFrequencyMonitor.swift # sysctl cpu frequency
+    GPUMonitor.swift          # IOAccelerator（Metal GPU stats）
+    ANEMonitor.swift          # IOReport Apple Neural Engine 功率
+    MemoryMonitor.swift       # host_statistics64
+    DiskMonitor.swift         # statfs + DiskArbitration IO stats
+    NetworkMonitor.swift      # getifaddrs
+    NetworkProcessMonitor.swift # lsof-based per-process network
+    ProcessMonitor.swift      # proc_pidinfo（CPU/Memory/Disk top processes）
+    BatteryMonitor.swift      # IOKit AppleSmartBattery（桌機回傳 nil）
+    ThermalMonitor.swift      # IOKit SMC（CPU/GPU 溫度；不支援時回傳 nil）
+    FanMonitor.swift          # IOKit SMC（風扇 RPM；無風扇機型回傳空陣列）
+    SMCClient.swift           # SMC 連線管理，ThermalMonitor/FanMonitor 共用
+  ViewModels/
+    StatsViewModel.swift      # @Observable，聚合所有 monitor 格式化屬性
+  Views/
+    MenuBarLabel.swift        # Menu bar 文字顯示
+    LineChartView.swift       # 共用折線圖元件
+    DashboardView.swift       # Settings 視窗 Dashboard 分頁（總覽卡片 + 行程表）
+    SettingsView.swift        # Settings 視窗 NavigationSplitView（三分頁）
+    AboutView.swift           # About 分頁（版本資訊 + 系統規格）
+    Detail/
+      DetailPanel.swift       # 點擊 menu bar 展開的 popover 容器
+      CPUDetailView.swift     # CPU 詳細（用量、每核心、頻率、熱門行程）
+      GPUDetailView.swift     # GPU 詳細（Device/Renderer/VRAM/ANE/Engines）
+      MemoryDetailView.swift  # Memory 詳細（Used/Active/Wired/Compressed/行程）
+      DiskDetailView.swift    # Disk 詳細（IO throughput/Used/Free/Total/行程）
+      NetworkDetailView.swift # Network 詳細（In/Out throughput/行程）
+      Helpers.swift           # statRow/sectionHeader/detailToolbar/BarView 等共用元件
+StatsMonitor/Resources/
+  Assets.xcassets             # App 圖示
+  zh-Hant.lproj/Localizable.strings  # 正體中文本地化（developmentRegion）
+  en.lproj/Localizable.strings       # 英文本地化
+Tests/Sources/
+  StatsMonitorTests.swift     # Swift Testing：Model / ViewModel / Service 整合測試
+Packages/Util/
+  Sources/Util/
+    Formatters.swift          # formatBytes / formatBytesCompact / formatThroughput / ghzString
+    RingBuffer.swift          # 固定容量 O(1) 環形緩衝（history 用）
+    Util.swift                # Package entry（re-export）
 ```
+
+## AppSettings — UserDefaults Keys
+
+| Property | Key | 預設值 | 說明 |
+|---|---|---|---|
+| `pollInterval` | `pollInterval` | `2.0` 秒 | 感測器輪詢間隔（1/2/5/10 秒） |
+| `historyCapacity` | `historyCapacity` | `120` | RingBuffer 容量（60/120/300 筆） |
+| `processCount` | `processCount` | `10` | 熱門行程顯示數量（3–20） |
+| `showCPU` | `showCPU` | `true` | Menu bar 顯示 CPU |
+| `showGPU` | `showGPU` | `true` | Menu bar 顯示 GPU |
+| `showMemory` | `showMemory` | `true` | Menu bar 顯示 Memory |
+| `showDisk` | `showDisk` | `true` | Menu bar 顯示 Disk |
+| `showNetwork` | `showNetwork` | `true` | Menu bar 顯示 Network |
+| `launchAtLogin` | SMAppService | system | 登入時自動啟動 |
+
+## Settings 視窗分頁
+
+- **Dashboard**：總覽卡片（各指標折線圖 + 數值）+ 合併熱門行程表
+- **General**：AppSettings 所有可調選項
+- **About**：版本資訊、系統規格（型號/晶片/macOS/RAM/開機時間）
 
 ## Packages 規範
 
 ### Packages/Util
 
-**適合放入**：跨 Feature 共用的純邏輯工具（Extension、Formatter、Validator）
+**適合放入**：跨 Feature 共用的純邏輯工具（Formatter、RingBuffer 等）
 
 **不適合放入**：UI 元件、Feature 專屬邏輯、第三方封裝
 
 **引用方式**：`import Util`
 
+**目前內容**：
+- `formatBytes(UInt64) -> String` — KB/MB/GB 格式化
+- `formatBytesCompact(UInt64) -> String` — 緊湊格式（用於 menu bar label）
+- `formatThroughput(Double) -> String` — KB/s、MB/s
+- `ghzString(UInt64) -> String` — CPU 頻率顯示
+- `RingBuffer<T>` — 固定容量 O(1) append，Collection，用於 history chart data
+
+## 本地化機制
+
+- `developmentRegion: "zh-Hant"`：zh-Hant 為原始語言
+- UI 字串：以 `LocalizedStringKey` 字面量傳入，SwiftUI `Text` 自動查找 `Localizable.strings`
+- 共用 helper（`statRow`、`sectionHeader` 等）接受 `LocalizedStringKey`，字串字面量自動轉型
+- **Process name** 顯示用 `statRow(verbatim: proc.name, ...)` 避免誤查本地化表
+- `AboutView.uptime` 使用 `DateComponentsFormatter` 自動跟隨系統語言
+
+## 測試覆蓋
+
+測試框架：**Swift Testing**（`@Suite`、`@Test`、`#expect`）
+
+| 層 | 測試內容 |
+|---|---|
+| Model | CPUUsage.used、MemoryUsage.usedFraction/used、DiskUsage.usedFraction、GPUUsage、BatteryUsage、FanUsage.fraction、ThermalUsage、ProcInfo |
+| ViewModel | formatted properties（cpuPercent、memoryPercent 等）with known SystemStats input、batteryStatus 所有分支、anePowerStr 分支、lifecycle（start/stop）、formatProcess helpers |
+| Service 整合 | MemoryMonitor.sample()（total > 0、usedFraction in 0…1）、DiskMonitor.sample()（total > 0、used ≤ total）、NetworkMonitor.sample()（bytesIn/Out ≥ 0） |
+| Util | formatBytes / formatBytesCompact / formatThroughput / ghzString / RingBuffer |
+
 ## 重要細節
 
 - Menu-bar-only app（LSUIElement = true，無 Dock icon）
 - `MenuBarExtra` 使用 `.window` style，非 `.menu` style
-- 系統 stats 透過 Darwin C API（`host_processor_info`、`host_statistics64`、`getifaddrs`）
-- Timer polling 約 2 秒間隔
-- Detail popover 底部需有 Quit 按鈕（無標準 app menu）
+- 系統 stats 透過 Darwin C API（`host_processor_info`、`host_statistics64`、`getifaddrs`）+ IOKit SMC
+- Poll interval 由 `AppSettings.pollInterval` 控制（預設 2 秒），可即時調整
+- History 使用 `RingBuffer<Double>`，容量由 `AppSettings.historyCapacity` 決定
+- `ProcessMonitor` 與 `NetworkProcessMonitor` 背景非同步執行（`Task.detached`）
+- Battery/Thermal/Fan monitor 在不支援硬體時回傳 nil / 空陣列，UI graceful 隱藏
+- ThermalMonitor 與 FanMonitor 共用 `SMCClient` 連線
 
 ## 慣例
 
