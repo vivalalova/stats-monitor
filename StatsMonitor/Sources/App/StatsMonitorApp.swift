@@ -9,35 +9,35 @@ struct StatsMonitorApp: App {
         MenuBarExtra {
             NetworkDetailView(viewModel: viewModel)
         } label: {
-            NetworkMenuBarLabel(viewModel: viewModel)
+            MenuBarItemLabel(icon: "network", text: "↓\(viewModel.networkIn)", width: 100)
         }
         .menuBarExtraStyle(.window)
 
         MenuBarExtra {
             DiskDetailView(viewModel: viewModel)
         } label: {
-            DiskMenuBarLabel(viewModel: viewModel)
+            MenuBarItemLabel(icon: "internaldrive", text: viewModel.diskPercent)
         }
         .menuBarExtraStyle(.window)
 
         MenuBarExtra {
             MemoryDetailView(viewModel: viewModel)
         } label: {
-            MemoryMenuBarLabel(viewModel: viewModel)
+            MenuBarItemLabel(icon: "memorychip", text: viewModel.memoryPercent)
         }
         .menuBarExtraStyle(.window)
 
         MenuBarExtra {
             GPUDetailView(viewModel: viewModel)
         } label: {
-            GPUMenuBarLabel(viewModel: viewModel)
+            MenuBarItemLabel(icon: "display", text: viewModel.gpuPercent)
         }
         .menuBarExtraStyle(.window)
 
         MenuBarExtra {
             CPUDetailView(viewModel: viewModel)
         } label: {
-            CPUMenuBarLabel(viewModel: viewModel)
+            MenuBarItemLabel(icon: "cpu", text: viewModel.cpuPercent)
         }
         .menuBarExtraStyle(.window)
     }

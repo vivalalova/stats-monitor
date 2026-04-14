@@ -6,15 +6,46 @@ extension Notification.Name {
     static let panelOpened = Notification.Name("StatsMonitorPanelOpened")
 }
 
-// MARK: - CPU Detail
+enum PanelID: String {
+    case cpu, gpu, memory, disk, network
 
-struct CPUDetailView: View {
-    var viewModel: StatsViewModel
+    var title: String {
+        switch self {
+        case .cpu:     "CPU"
+        case .gpu:     "GPU"
+        case .memory:  "Memory"
+        case .disk:    "Disk"
+        case .network: "Network"
+        }
+    }
+}
+
+private struct DetailPanel<Content: View>: View {
+    let id: PanelID
+    @ViewBuilder let content: () -> Content
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            detailToolbar("CPU")
+            detailToolbar(id.title)
+            content()
+        }
+        .padding(16)
+        .frame(width: 280)
+        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: id.rawValue) }
+        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
+            if note.object as? String != id.rawValue { dismiss() }
+        }
+    }
+}
+
+// MARK: - CPU Detail
+
+struct CPUDetailView: View {
+    var viewModel: StatsViewModel
+
+    var body: some View {
+        DetailPanel(id: .cpu) {
             if viewModel.cpuHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.cpuHistory, .blue)])
             }
@@ -27,29 +58,17 @@ struct CPUDetailView: View {
                 .tint(progressColor(viewModel.monitor.stats.cpu.used / 100))
 
             if !viewModel.cpuPerCore.isEmpty {
-                Divider()
-                Text("Per Core")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                sectionHeader("Per Core")
                 CoreGridView(cores: viewModel.cpuPerCore,
                              frequencies: viewModel.cpuCoreFrequencies)
             }
 
             if !viewModel.topCPUProcesses.isEmpty {
-                Divider()
-                Text("Top Processes")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topCPUProcesses.enumerated()), id: \.offset) { _, proc in
                     statRow(proc.name, value: viewModel.formatProcessCPU(proc.cpuPercent))
                 }
             }
-        }
-        .padding(16)
-        .frame(width: 280)
-        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "cpu") }
-        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
-            if note.object as? String != "cpu" { dismiss() }
         }
     }
 }
@@ -58,11 +77,9 @@ struct CPUDetailView: View {
 
 struct GPUDetailView: View {
     var viewModel: StatsViewModel
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            detailToolbar("GPU")
+        DetailPanel(id: .gpu) {
             if viewModel.gpuHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.gpuHistory, .purple)])
             }
@@ -79,18 +96,9 @@ struct GPUDetailView: View {
                 .tint(progressColor(viewModel.monitor.stats.gpu.used / 100))
 
             if !viewModel.gpuEngines.isEmpty {
-                Divider()
-                Text("Engines")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                sectionHeader("Engines")
                 EngineGridView(engines: viewModel.gpuEngines)
             }
-        }
-        .padding(16)
-        .frame(width: 280)
-        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "gpu") }
-        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
-            if note.object as? String != "gpu" { dismiss() }
         }
     }
 }
@@ -99,11 +107,9 @@ struct GPUDetailView: View {
 
 struct MemoryDetailView: View {
     var viewModel: StatsViewModel
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            detailToolbar("Memory")
+        DetailPanel(id: .memory) {
             if viewModel.memoryHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.memoryHistory, .orange)])
             }
@@ -116,21 +122,11 @@ struct MemoryDetailView: View {
                 .tint(progressColor(viewModel.monitor.stats.memory.usedFraction))
 
             if !viewModel.topMemoryProcesses.isEmpty {
-                Divider()
-                Text("Top Processes")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topMemoryProcesses.enumerated()), id: \.offset) { _, proc in
                     statRow(proc.name, value: viewModel.formatProcessMemory(proc.memoryBytes))
                 }
             }
-
-        }
-        .padding(16)
-        .frame(width: 280)
-        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "memory") }
-        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
-            if note.object as? String != "memory" { dismiss() }
         }
     }
 }
@@ -139,11 +135,9 @@ struct MemoryDetailView: View {
 
 struct DiskDetailView: View {
     var viewModel: StatsViewModel
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            detailToolbar("Disk")
+        DetailPanel(id: .disk) {
             let maxIO = max(
                 (viewModel.diskReadHistory + viewModel.diskWriteHistory).max() ?? 1,
                 1_048_576
@@ -164,20 +158,11 @@ struct DiskDetailView: View {
                 .tint(progressColor(viewModel.monitor.stats.disk.usedFraction))
 
             if !viewModel.topDiskProcesses.isEmpty {
-                Divider()
-                Text("Top Processes")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topDiskProcesses.enumerated()), id: \.offset) { _, proc in
                     statRow(proc.name, value: "↓\(viewModel.formatProcessDisk(proc.diskReadBPS)) ↑\(viewModel.formatProcessDisk(proc.diskWriteBPS))")
                 }
             }
-        }
-        .padding(16)
-        .frame(width: 280)
-        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "disk") }
-        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
-            if note.object as? String != "disk" { dismiss() }
         }
     }
 }
@@ -186,11 +171,9 @@ struct DiskDetailView: View {
 
 struct NetworkDetailView: View {
     var viewModel: StatsViewModel
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            detailToolbar("Network")
+        DetailPanel(id: .network) {
             let maxVal = max(
                 (viewModel.networkInHistory + viewModel.networkOutHistory).max() ?? 1,
                 1_048_576
@@ -205,20 +188,37 @@ struct NetworkDetailView: View {
             statRow("↑ Out", value: viewModel.networkOut)
 
             if !viewModel.topNetworkProcesses.isEmpty {
-                Divider()
-                Text("Top Processes")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                sectionHeader("Top Processes")
                 ForEach(Array(viewModel.topNetworkProcesses.enumerated()), id: \.offset) { _, proc in
                     statRow(proc.name, value: "↓\(viewModel.formatProcessNetwork(proc.networkInBPS)) ↑\(viewModel.formatProcessNetwork(proc.networkOutBPS))")
                 }
             }
         }
-        .padding(16)
-        .frame(width: 280)
-        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: "network") }
-        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
-            if note.object as? String != "network" { dismiss() }
+    }
+}
+
+// MARK: - Shared bar primitives
+
+private enum BarMetrics {
+    // frame width 280 – padding 16*2 = 248
+    static let contentWidth: CGFloat = 248
+    static let spacing: CGFloat      = 4
+    static let height: CGFloat       = 48
+}
+
+private struct BarView: View {
+    let width: CGFloat
+    let color: Color
+    let value: Double  // 0...100
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color.primary.opacity(0.08))
+                .frame(width: width, height: BarMetrics.height)
+            RoundedRectangle(cornerRadius: 3)
+                .fill(color)
+                .frame(width: width, height: max(2, BarMetrics.height * value / 100))
         }
     }
 }
@@ -229,16 +229,11 @@ private struct CoreGridView: View {
     var cores: [Double]
     var frequencies: [CPUCoreFrequency] = []
 
-    // frame width 280 – padding 16*2 = 248
-    private let contentWidth: CGFloat = 248
-    private let spacing: CGFloat      = 4
-    private let barHeight: CGFloat    = 48
-
-    /// ≤10 cores → fill the full row; >10 → always use 10-column width
+    // ≤10 cores → fill the full row; >10 → always use 10-column width
     private var effectiveColumns: Int { min(cores.count, 10) }
 
     private var barWidth: CGFloat {
-        (contentWidth - spacing * CGFloat(effectiveColumns - 1)) / CGFloat(effectiveColumns)
+        (BarMetrics.contentWidth - BarMetrics.spacing * CGFloat(effectiveColumns - 1)) / CGFloat(effectiveColumns)
     }
 
     private var rows: [[(index: Int, value: Double)]] {
@@ -248,9 +243,9 @@ private struct CoreGridView: View {
         }
     }
 
-    /// P-cores (blue) come first in the frequencies array with higher maxHz;
-    /// E-cores (green) follow with lower maxHz.
-    /// Returns nil when cluster distinction is unavailable.
+    // P-cores (blue) come first in the frequencies array with higher maxHz;
+    // E-cores (green) follow with lower maxHz.
+    // Returns nil when cluster distinction is unavailable.
     private var pCoreCount: Int? {
         guard !frequencies.isEmpty else { return nil }
         let distinctMax = Set(frequencies.map(\.maxHz).filter { $0 > 0 })
@@ -266,18 +261,11 @@ private struct CoreGridView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                HStack(alignment: .bottom, spacing: spacing) {
+                HStack(alignment: .bottom, spacing: BarMetrics.spacing) {
                     ForEach(row, id: \.index) { item in
                         let freq = item.index < frequencies.count ? frequencies[item.index] : .zero
                         VStack(spacing: 1) {
-                            ZStack(alignment: .bottom) {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color.primary.opacity(0.08))
-                                    .frame(width: barWidth, height: barHeight)
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(barColor(for: item.index))
-                                    .frame(width: barWidth, height: max(2, barHeight * item.value / 100))
-                            }
+                            BarView(width: barWidth, color: barColor(for: item.index), value: item.value)
                             if freq.currentHz > 0 {
                                 Text(ghzString(freq.currentHz))
                             }
@@ -303,10 +291,6 @@ private struct CoreGridView: View {
 private struct EngineGridView: View {
     var engines: [String: Double]
 
-    private let contentWidth: CGFloat = 248
-    private let spacing: CGFloat      = 4
-    private let barHeight: CGFloat    = 48
-
     private var sorted: [(key: String, value: Double)] {
         engines.sorted { $0.key < $1.key }
     }
@@ -314,21 +298,14 @@ private struct EngineGridView: View {
     private var effectiveColumns: Int { min(sorted.count, 8) }
 
     private var barWidth: CGFloat {
-        (contentWidth - spacing * CGFloat(effectiveColumns - 1)) / CGFloat(effectiveColumns)
+        (BarMetrics.contentWidth - BarMetrics.spacing * CGFloat(effectiveColumns - 1)) / CGFloat(effectiveColumns)
     }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: spacing) {
+        HStack(alignment: .bottom, spacing: BarMetrics.spacing) {
             ForEach(sorted, id: \.key) { item in
                 VStack(spacing: 1) {
-                    ZStack(alignment: .bottom) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.primary.opacity(0.08))
-                            .frame(width: barWidth, height: barHeight)
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.purple)
-                            .frame(width: barWidth, height: max(2, barHeight * item.value / 100))
-                    }
+                    BarView(width: barWidth, color: .purple, value: item.value)
                     Text(abbreviate(item.key))
                         .foregroundStyle(.secondary)
                     Text("\(Int(item.value))%")
@@ -339,7 +316,7 @@ private struct EngineGridView: View {
         }
     }
 
-    /// Single-word → first 4 chars. Multi-word → uppercased initials.
+    // Single-word → first 4 chars. Multi-word → uppercased initials.
     private func abbreviate(_ name: String) -> String {
         let words = name.split(separator: " ")
         if words.count == 1 { return String(words[0].prefix(4)) }
@@ -370,6 +347,15 @@ private func detailToolbar(_ title: String) -> some View {
     .font(.system(size: 14))
 }
 
+private func sectionHeader(_ title: String) -> some View {
+    Group {
+        Divider()
+        Text(title)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+    }
+}
+
 private func statRow(_ label: String, value: String) -> some View {
     HStack {
         Text(label)
@@ -389,4 +375,3 @@ private func progressColor(_ fraction: Double) -> Color {
     default:      .red
     }
 }
-
