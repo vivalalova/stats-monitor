@@ -14,7 +14,7 @@ struct MenuBarItemLabel: View {
     }
 }
 
-#Preview {
+#Preview(traits: .sizeThatFitsLayout) {
     HStack(spacing: 16) {
         MenuBarItemLabel(icon: "cpu",          text: "42%")
         MenuBarItemLabel(icon: "display",      text: "18%")

@@ -78,7 +78,7 @@ func progressColor(_ fraction: Double) -> Color {
     }
 }
 
-#Preview("BarView") {
+#Preview("BarView", traits: .sizeThatFitsLayout) {
     HStack(alignment: .bottom, spacing: 8) {
         BarView(width: 32, color: .blue,   value: 80)
         BarView(width: 32, color: .green,  value: 40)

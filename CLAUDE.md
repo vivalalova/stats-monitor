@@ -61,4 +61,4 @@ Packages/Util/              # 本地共用 Package
 - 間距 8pt 倍數
 - `@Observable` 管理狀態（非 `ObservableObject`）
 - Buildable Folder：在現有資料夾新增檔案不需 `tuist generate`
-- 所有 SwiftUI View 必須附 `#Preview`
+- 所有 SwiftUI View 必須附 `#Preview(traits: .sizeThatFitsLayout)`

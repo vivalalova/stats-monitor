@@ -40,7 +40,7 @@ struct LineChartView: View {
     }
 }
 
-#Preview {
+#Preview(traits: .sizeThatFitsLayout) {
     let history = (0..<60).map { _ in Double.random(in: 0...100) }
     LineChartView(lines: [
         (history: history, color: .blue),

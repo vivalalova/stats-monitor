@@ -37,7 +37,7 @@ struct DetailPanel<Content: View>: View {
     }
 }
 
-#Preview {
+#Preview(traits: .sizeThatFitsLayout) {
     DetailPanel(id: .cpu) {
         Text("CPU content goes here")
             .foregroundStyle(.secondary)

@@ -59,7 +59,7 @@ private struct GeneralSettingsView: View {
     }
 }
 
-#Preview {
+#Preview(traits: .sizeThatFitsLayout) {
     SettingsView()
         .frame(width: 640, height: 420)
 }
