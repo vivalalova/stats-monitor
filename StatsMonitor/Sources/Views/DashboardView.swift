@@ -88,7 +88,7 @@ struct DashboardView: View {
 
                 DashboardProcessTable(viewModel: viewModel)
             }
-            .padding(6)
+            .padding(8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
