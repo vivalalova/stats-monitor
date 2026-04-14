@@ -7,10 +7,15 @@ struct DiskMonitor {
     private var previousDate:  Date   = .now
 
     mutating func sample() -> DiskUsage {
-        // Disk space
-        let attrs = try? FileManager.default.attributesOfFileSystem(forPath: "/")
-        let total = attrs?[.systemSize]     as? UInt64 ?? 0
-        let free  = attrs?[.systemFreeSize] as? UInt64 ?? 0
+        // Disk space — use volumeAvailableCapacityForImportantUsage to include
+        // APFS purgeable space, matching what macOS Storage reports.
+        let url = URL(fileURLWithPath: "/")
+        let res = try? url.resourceValues(forKeys: [
+            .volumeTotalCapacityKey,
+            .volumeAvailableCapacityForImportantUsageKey
+        ])
+        let total = UInt64(res?.volumeTotalCapacity ?? 0)
+        let free  = UInt64(res?.volumeAvailableCapacityForImportantUsage ?? 0)
 
         // Disk I/O via IOKit IOBlockStorageDriver
         let (curRead, curWrite) = ioBytes()

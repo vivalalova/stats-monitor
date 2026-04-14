@@ -109,7 +109,7 @@ private struct GeneralSettingsView: View {
                         Picker("", selection: $settings.processCount) {
                             ForEach([5, 10, 15, 20], id: \.self) { n in
                                 Text("\(n) 個").tag(n)
-                            }
+                            } 
                         }
                         .labelsHidden()
                         .pickerStyle(.menu)
