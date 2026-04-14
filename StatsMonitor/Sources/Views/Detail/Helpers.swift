@@ -77,3 +77,13 @@ func progressColor(_ fraction: Double) -> Color {
     default:      .red
     }
 }
+
+#Preview("BarView") {
+    HStack(alignment: .bottom, spacing: 8) {
+        BarView(width: 32, color: .blue,   value: 80)
+        BarView(width: 32, color: .green,  value: 40)
+        BarView(width: 32, color: .orange, value: 60)
+        BarView(width: 32, color: .red,    value: 95)
+    }
+    .padding()
+}

@@ -28,6 +28,10 @@ struct GPUDetailView: View {
     }
 }
 
+#Preview {
+    GPUDetailView(viewModel: StatsViewModel())
+}
+
 // MARK: - Engine grid
 
 private struct EngineGridView: View {

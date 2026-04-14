@@ -33,3 +33,7 @@ struct DiskDetailView: View {
         }
     }
 }
+
+#Preview {
+    DiskDetailView(viewModel: StatsViewModel())
+}

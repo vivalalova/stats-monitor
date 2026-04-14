@@ -13,3 +13,14 @@ struct MenuBarItemLabel: View {
         .frame(width: width)
     }
 }
+
+#Preview {
+    HStack(spacing: 16) {
+        MenuBarItemLabel(icon: "cpu",          text: "42%")
+        MenuBarItemLabel(icon: "display",      text: "18%")
+        MenuBarItemLabel(icon: "memorychip",   text: "71%")
+        MenuBarItemLabel(icon: "internaldrive",text: "55%")
+        MenuBarItemLabel(icon: "network",      text: "↓1.2MB", width: 100)
+    }
+    .padding()
+}

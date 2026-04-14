@@ -36,3 +36,10 @@ struct DetailPanel<Content: View>: View {
         }
     }
 }
+
+#Preview {
+    DetailPanel(id: .cpu) {
+        Text("CPU content goes here")
+            .foregroundStyle(.secondary)
+    }
+}

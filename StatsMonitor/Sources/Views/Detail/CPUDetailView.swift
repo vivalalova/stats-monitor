@@ -32,6 +32,10 @@ struct CPUDetailView: View {
     }
 }
 
+#Preview {
+    CPUDetailView(viewModel: StatsViewModel())
+}
+
 // MARK: - Core grid
 
 private struct CoreGridView: View {

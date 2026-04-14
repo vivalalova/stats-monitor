@@ -39,3 +39,13 @@ struct LineChartView: View {
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 }
+
+#Preview {
+    let history = (0..<60).map { _ in Double.random(in: 0...100) }
+    LineChartView(lines: [
+        (history: history, color: .blue),
+        (history: (0..<60).map { _ in Double.random(in: 0...60) }, color: .green),
+    ])
+    .padding()
+    .frame(width: 280)
+}

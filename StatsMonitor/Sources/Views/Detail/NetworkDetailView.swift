@@ -27,3 +27,7 @@ struct NetworkDetailView: View {
         }
     }
 }
+
+#Preview {
+    NetworkDetailView(viewModel: StatsViewModel())
+}

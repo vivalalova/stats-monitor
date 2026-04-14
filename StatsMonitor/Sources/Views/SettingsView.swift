@@ -58,3 +58,8 @@ private struct GeneralSettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
+
+#Preview {
+    SettingsView()
+        .frame(width: 640, height: 420)
+}
