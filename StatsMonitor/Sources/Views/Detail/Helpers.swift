@@ -29,13 +29,13 @@ struct BarView: View {
 // MARK: - View helpers
 
 @MainActor
-func detailToolbar(_ title: String, settings: AppSettings) -> some View {
+func detailToolbar(_ title: String, settings: AppSettings, viewModel: StatsViewModel) -> some View {
     HStack(spacing: 8) {
         Text(title)
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(.primary)
         Spacer()
-        Button { openSettings(settings: settings) } label: {
+        Button { openSettings(settings: settings, viewModel: viewModel) } label: {
             Image(systemName: "gearshape")
         }
         .help("Settings")

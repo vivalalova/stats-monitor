@@ -32,6 +32,11 @@ final class StatsViewModel {
 
     // MARK: - CPU
 
+    var cpuFraction:    Double { monitor.stats.cpu.used / 100 }
+    var gpuFraction:    Double { monitor.stats.gpu.used / 100 }
+    var memoryFraction: Double { monitor.stats.memory.usedFraction }
+    var diskFraction:   Double { monitor.stats.disk.usedFraction }
+
     var cpuPercent: String { String(format: "%.1f%%", monitor.stats.cpu.used) }
     var cpuUserPercent: String { String(format: "%.1f%%", monitor.stats.cpu.user) }
     var cpuSystemPercent: String { String(format: "%.1f%%", monitor.stats.cpu.system) }

@@ -5,16 +5,16 @@ import SwiftUI
 
 @MainActor private var settingsWindow: NSWindow?
 
-@MainActor func openSettings(settings: AppSettings) {
+@MainActor func openSettings(settings: AppSettings, viewModel: StatsViewModel) {
     if settingsWindow == nil {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 680, height: 460),
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 520),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "StatsMonitor"
-        window.contentView = NSHostingView(rootView: SettingsView(settings: settings))
+        window.contentView = NSHostingView(rootView: SettingsView(settings: settings, viewModel: viewModel))
         window.center()
         window.setFrameAutosaveName("SettingsWindow")
         settingsWindow = window
@@ -41,6 +41,7 @@ struct SettingsView: View {
     }
 
     let settings: AppSettings
+    let viewModel: StatsViewModel
     @State private var selection: Tab = .dashboard
 
     var body: some View {
@@ -51,7 +52,7 @@ struct SettingsView: View {
             .navigationSplitViewColumnWidth(min: 150, ideal: 180)
         } detail: {
             switch selection {
-            case .dashboard: DashboardPlaceholderView()
+            case .dashboard: DashboardView(viewModel: viewModel)
             case .general:   GeneralSettingsView(settings: settings)
             case .about:     AboutView()
             }
@@ -128,27 +129,9 @@ private struct GeneralSettingsView: View {
     }
 }
 
-// MARK: - Placeholders (C1 will replace Dashboard)
-
-private struct DashboardPlaceholderView: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "square.grid.2x2")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-            Text("Dashboard")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("即將推出")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 // MARK: - Preview
 
 #Preview(traits: .sizeThatFitsLayout) {
-    SettingsView(settings: AppSettings())
-        .frame(width: 680, height: 460)
+    SettingsView(settings: AppSettings(), viewModel: StatsViewModel())
+        .frame(width: 820, height: 520)
 }
