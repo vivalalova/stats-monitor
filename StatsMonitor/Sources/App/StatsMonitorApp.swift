@@ -6,36 +6,43 @@ struct StatsMonitorApp: App {
 
     // macOS 加入順序是右→左，反向宣告讓顯示順序為 CPU/GPU/Memory/Disk/Network
     var body: some Scene {
-        MenuBarExtra {
+        @Bindable var s = viewModel.settings
+
+        MenuBarExtra(isInserted: $s.showNetwork) {
             NetworkDetailView(viewModel: viewModel)
+                .environment(viewModel.settings)
         } label: {
             MenuBarItemLabel(icon: "network", text: "↓\(viewModel.networkIn)", width: 100)
         }
         .menuBarExtraStyle(.window)
 
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $s.showDisk) {
             DiskDetailView(viewModel: viewModel)
+                .environment(viewModel.settings)
         } label: {
             MenuBarItemLabel(icon: "internaldrive", text: viewModel.diskPercent)
         }
         .menuBarExtraStyle(.window)
 
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $s.showMemory) {
             MemoryDetailView(viewModel: viewModel)
+                .environment(viewModel.settings)
         } label: {
             MenuBarItemLabel(icon: "memorychip", text: viewModel.memoryPercent)
         }
         .menuBarExtraStyle(.window)
 
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $s.showGPU) {
             GPUDetailView(viewModel: viewModel)
+                .environment(viewModel.settings)
         } label: {
             MenuBarItemLabel(icon: "display", text: viewModel.gpuPercent)
         }
         .menuBarExtraStyle(.window)
 
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $s.showCPU) {
             CPUDetailView(viewModel: viewModel)
+                .environment(viewModel.settings)
         } label: {
             MenuBarItemLabel(icon: "cpu", text: viewModel.cpuPercent)
         }

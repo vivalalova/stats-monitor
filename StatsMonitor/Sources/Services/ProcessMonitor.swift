@@ -7,7 +7,7 @@ struct ProcessMonitor {
     // pid -> (cumulative disk read bytes, cumulative disk write bytes, timestamp)
     private var previousDiskSamples: [Int32: (read: UInt64, write: UInt64, date: Date)] = [:]
 
-    mutating func sample() -> (cpuTop: [ProcInfo], memoryTop: [ProcInfo], diskTop: [ProcInfo]) {
+    mutating func sample(processCount: Int = 10) -> (cpuTop: [ProcInfo], memoryTop: [ProcInfo], diskTop: [ProcInfo]) {
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size = 0
         guard sysctl(&mib, 4, nil, &size, nil, 0) == 0, size > 0 else { return ([], [], []) }
@@ -82,10 +82,10 @@ struct ProcessMonitor {
         previousCPUSamples  = previousCPUSamples.filter  { activePIDs.contains($0.key) }
         previousDiskSamples = previousDiskSamples.filter { activePIDs.contains($0.key) }
 
-        let cpuTop  = Array(infos.sorted { $0.cpuPercent    > $1.cpuPercent    }.prefix(10))
-        let memTop  = Array(infos.sorted { $0.memoryBytes   > $1.memoryBytes   }.prefix(10))
+        let cpuTop  = Array(infos.sorted { $0.cpuPercent    > $1.cpuPercent    }.prefix(processCount))
+        let memTop  = Array(infos.sorted { $0.memoryBytes   > $1.memoryBytes   }.prefix(processCount))
         let diskTop = Array(infos.filter { $0.diskTotalBPS  > 0 }
-                                 .sorted { $0.diskTotalBPS  > $1.diskTotalBPS  }.prefix(10))
+                                 .sorted { $0.diskTotalBPS  > $1.diskTotalBPS  }.prefix(processCount))
         return (cpuTop, memTop, diskTop)
     }
 }

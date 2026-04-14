@@ -15,7 +15,8 @@ struct NetworkProcessMonitor {
     ///   - previous: previous cumulative samples keyed by "procname.pid"
     /// - Returns: top processes sorted by total bandwidth, plus updated snapshots
     static func run(
-        previous: [String: Snapshot]
+        previous: [String: Snapshot],
+        processCount: Int = 10
     ) -> (procs: [ProcInfo], updated: [String: Snapshot]) {
 
         let task = Process()
@@ -94,7 +95,7 @@ struct NetworkProcessMonitor {
         let topProcs = Array(
             results
                 .sorted { $0.networkTotalBPS > $1.networkTotalBPS }
-                .prefix(10)
+                .prefix(processCount)
         )
         return (topProcs, updated)
     }

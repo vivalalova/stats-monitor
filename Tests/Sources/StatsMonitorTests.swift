@@ -65,7 +65,7 @@ struct StatsMonitorTests {
 
     @Test("GPU used equals deviceUtilization")
     func gpuUsedEqualsDeviceUtilization() {
-        let gpu = GPUUsage(deviceUtilization: 42, renderUtilization: 30, engines: [:])
+        let gpu = GPUUsage(deviceUtilization: 42, renderUtilization: 30, engines: [:], vramUsed: 0)
         #expect(gpu.used == 42)
     }
 
@@ -79,7 +79,7 @@ struct StatsMonitorTests {
     @Test("GPU engines carried through")
     func gpuEnginesPreserved() {
         let engines = ["Vertex": 55.0, "Fragment": 30.0]
-        let gpu = GPUUsage(deviceUtilization: 55, renderUtilization: 30, engines: engines)
+        let gpu = GPUUsage(deviceUtilization: 55, renderUtilization: 30, engines: engines, vramUsed: 0)
         #expect(gpu.engines["Vertex"] == 55.0)
     }
 

@@ -1,58 +1,38 @@
 ---
-title: Popover 細節強化（Chart、Per-Core、Process 排名）
-created: 2026-04-13
-priority: high
-suggested_order: A2
-phase: completed
+title: 設定頁基礎建設與 General 分頁
+created: 2026-04-14
+priority: critical
+suggested_order: A1
+phase: needs-review
 iteration: 1
 max_iterations: 5
 review_iterations: 0
 ---
 
-# Popover 細節強化（Chart、Per-Core、Process 排名）
+# 設定頁基礎建設與 General 分頁
 
-目前 5 個 popover 只顯示即時數字。需強化為：
-1. 歷史趨勢 mini chart（最近 N 筆 polling 樣本的折線/長條圖）
-2. CPU 每核心使用率
-3. GPU 每核心（若硬體支援）使用率
-4. 各 popover 顯示佔用該資源最多的 process 排名（top 5）
+目前 `SettingsView.swift` 僅為空殼，`GeneralSettingsView` 無任何控制項，整個 app 零持久化機制。所有運作參數（polling interval 2s、history capacity 120、process count 10、5 個 menu bar item 全部顯示）皆硬編碼。缺少 launch at login。
 
-## 架構設計
+此 task 同時確立「單一視窗 + sidebar 切換」架構——Settings、Dashboard、About 全部作為同一 NSWindow 內 NavigationSplitView 的 sidebar tab，後續 task（C1 Dashboard、B2 About）僅需新增 Tab case + 對應 View。
 
-### Chart
-- `RingBuffer<Double>` 或 `[Double]` 儲存最近 60 筆（約 2 分鐘）polling 樣本
-- SwiftUI `Canvas` 或 `Path` 畫折線圖；不引入第三方圖表庫
-- `SystemMonitor` 每次 `poll()` 後 append 到各指標的歷史 buffer
-- CPU/GPU/Memory/Disk/Network 各自保有歷史序列
+## 範圍
 
-### Per-Core CPU
-- `CPUMonitor.sample()` 改回傳 per-core 使用率陣列（現在只回傳總平均）
-- `CPUUsage` 新增 `perCore: [Double]`（每核心 used%）
-- `CPUDetailView` 展示核心列表（`Core 0: 45%` 等）+ 個別 progress bar
-
-### Per-Core GPU
-- IOKit `IOAccelerator` PerformanceStatistics 查找 per-engine 使用率（`Vertex Utilization %`, `Fragment Utilization %` 等）
-- `GPUUsage` 新增 `engines: [String: Double]`
-- `GPUDetailView` 展示各 engine 名稱與使用率
-
-### Process 排名
-- 使用 `proc_pidinfo` / `sysctl` 列出所有 process，取 CPU/Memory 各自 top 5
-- CPU popover：top 5 CPU 耗用 process（name + %）
-- Memory popover：top 5 Memory 耗用 process（name + MB）
-- GPU/Disk/Network popover：如取得困難則顯示 N/A 佔位，不影響其他功能交付
+1. **持久化層**：使用 `@AppStorage` 為所有設定項建立持久化（polling interval、history capacity、process count、每個 menu bar item 的顯示開關、launch at login）。
+2. **GeneralSettingsView 完整 UI**：Picker 調整 polling interval（1s/2s/5s/10s）、Stepper/Picker 調整 history capacity、Stepper 調整 process count、5 個 Toggle 控制各 menu bar item 顯示/隱藏、Toggle 控制開機自動啟動。
+3. **MenuBarExtra 顯示/隱藏**：將 `StatsMonitorApp.swift` 中 5 個 `MenuBarExtra` 改用 `MenuBarExtra(isInserted:content:label:)` 初始化器，綁定 `@AppStorage` 的 `Binding<Bool>`。
+4. **SystemMonitor 整合**：讀取 `@AppStorage` 值，取代硬編碼常數。pollInterval 變更時需 invalidate 現有 Timer 並以新 interval 重建（不需 restart app）。使用 `SMAppService.mainApp` 實作 launch at login。
+5. **Tab enum 擴充預備**：確保 Tab enum 已包含 `.general`、`.dashboard`、`.about` case（dashboard/about View 可先用 placeholder，由 C1/B2 實作）。
+6. **#Preview** for GeneralSettingsView。
 
 ## User Stories
 
-- As a user, I want to see a mini chart in each popover, so that I can spot usage trends without opening another tool
-- As a user, I want per-core CPU breakdown, so that I can identify which core is under load
-- As a user, I want to see which processes are consuming the most CPU/memory, so that I can decide what to kill
+- As a user, I want to customize polling frequency, history length, visible menu bar items, and enable launch at login, so that I can tailor the app to my preferences.
+- As a user, I want all settings, dashboard, and about in a single window with sidebar navigation, so that the experience is cohesive.
 
 ## 驗收條件
 
-- Given CPU popover 開啟, when 已有至少 2 筆 polling 數據, then 顯示折線趨勢圖（時間軸 x 軸，使用率 y 軸）
-- Given CPU popover 開啟, when 機器有多核心, then 每核心獨立顯示使用率與 progress bar
-- Given GPU popover 開啟, when GPU 回傳多個 engine, then 分列顯示各 engine 使用率
-- Given CPU popover 開啟, when top process 可取得, then 顯示 top 5 CPU process（name + %）
-- Given Memory popover 開啟, when top process 可取得, then 顯示 top 5 Memory process（name + MB）
-- Given `tuist build`, then build 成功無 error
-- Given `tuist test`, then 所有 tests pass
+- Given the app launches, when I open Settings, then I see a NavigationSplitView with sidebar containing General / Dashboard / About tabs
+- Given I change polling interval to 5s, when I relaunch the app, then polling runs at 5s
+- Given I toggle off the GPU menu bar item, when I look at the menu bar, then the GPU icon is gone
+- Given I toggle on launch at login, when I check System Settings > General > Login Items, then StatsMonitor appears
+- Given I set process count to 5, when I view any detail popover, then only 5 processes are shown

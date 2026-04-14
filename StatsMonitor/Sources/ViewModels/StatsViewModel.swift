@@ -4,10 +4,30 @@ import Observation
 @Observable
 @MainActor
 final class StatsViewModel {
-    let monitor = SystemMonitor()
+    let settings: AppSettings
+    let monitor: SystemMonitor
 
     init() {
+        let s = AppSettings()
+        self.settings = s
+        self.monitor = SystemMonitor(settings: s)
         monitor.start()
+        observePollInterval()
+    }
+
+    // MARK: - Settings observation
+
+    /// 當 pollInterval 變更時，重建 timer。
+    private func observePollInterval() {
+        withObservationTracking {
+            _ = settings.pollInterval
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.monitor.restartTimer()
+                self.observePollInterval()
+            }
+        }
     }
 
     // MARK: - CPU
