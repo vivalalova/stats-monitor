@@ -27,6 +27,7 @@ struct GPUDetailView: View {
 
 #Preview {
     GPUDetailView(viewModel: StatsViewModel())
+        .fixedSize()
 }
 
 // MARK: - Engine grid

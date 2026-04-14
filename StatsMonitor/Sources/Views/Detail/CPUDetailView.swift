@@ -31,6 +31,7 @@ struct CPUDetailView: View {
 
 #Preview {
     CPUDetailView(viewModel: StatsViewModel())
+        .fixedSize()
 }
 
 // MARK: - Core grid

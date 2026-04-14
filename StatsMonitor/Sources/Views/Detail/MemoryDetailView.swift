@@ -25,4 +25,5 @@ struct MemoryDetailView: View {
 
 #Preview {
     MemoryDetailView(viewModel: StatsViewModel())
+        .fixedSize()
 }
