@@ -80,6 +80,10 @@ private struct GeneralSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                settingsSection("系統") {
+                    Toggle("登入時自動啟動", isOn: $settings.launchAtLogin)
+                }
+
                 settingsSection("更新頻率") {
                     Picker("輪詢間隔", selection: $settings.pollInterval) {
                         ForEach(AppSettings.pollIntervalOptions, id: \.self) { interval in
@@ -126,9 +130,6 @@ private struct GeneralSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                settingsSection("系統") {
-                    Toggle("登入時自動啟動", isOn: $settings.launchAtLogin)
-                }
             }
             .padding(24)
         }

@@ -13,7 +13,7 @@ struct StatsMonitorApp: App {
                 .environment(viewModel.settings)
                 .environment(viewModel)
         } label: {
-            MenuBarItemLabel(icon: "network", text: "↓\(viewModel.networkIn)", width: 100)
+            MenuBarItemLabel(icon: "network", text: viewModel.networkIn, width: 100)
         }
         .menuBarExtraStyle(.window)
 

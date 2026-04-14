@@ -5,15 +5,15 @@ import SwiftUI
 struct DashboardView: View {
     var viewModel: StatsViewModel
 
-    private let columns = [GridItem(.adaptive(minimum: 200, maximum: .infinity), spacing: 12)]
+    private let columns = [GridItem(.adaptive(minimum: 200, maximum: .infinity), spacing: 8)]
 
     var body: some View {
         let networkMax = max(viewModel.networkInHistory.max() ?? 0,
                              viewModel.networkOutHistory.max() ?? 0,
                              1)
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                LazyVGrid(columns: columns, spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                LazyVGrid(columns: columns, spacing: 8) {
                     MetricCard(
                         title: "CPU",
                         value: viewModel.cpuPercent,
@@ -118,7 +118,9 @@ private struct MetricCard: View {
     let maxValue: Double
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        ZStack(alignment: .topLeading) {
+            LineChartView(lines: lines, maxValue: maxValue, height: nil, cornerRadius: 8)
+
             HStack {
                 Text(title)
                     .font(.subheadline)
@@ -128,14 +130,22 @@ private struct MetricCard: View {
                     .fill(statusColor)
                     .frame(width: 8, height: 8)
             }
-            LineChartView(lines: lines, maxValue: maxValue, height: 60)
-            Text(value)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+            .padding(10)
+
+            VStack {
+                Spacer()
+                HStack {
+                    Text(value)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    Spacer()
+                }
+            }
+            .padding(10)
         }
-        .padding(10)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+        .frame(height: 100)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 

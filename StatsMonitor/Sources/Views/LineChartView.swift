@@ -4,7 +4,8 @@ import SwiftUI
 struct LineChartView: View {
     var lines: [(history: [Double], color: Color)]
     var maxValue: Double = 100
-    var height: CGFloat = 100
+    var height: CGFloat? = 100
+    var cornerRadius: CGFloat = 4
 
     var body: some View {
         Canvas { context, size in
@@ -35,8 +36,8 @@ struct LineChartView: View {
             }
         }
         .frame(height: height)
-        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 4))
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: cornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
     }
 }
 
