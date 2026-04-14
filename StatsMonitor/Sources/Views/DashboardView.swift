@@ -5,12 +5,17 @@ import SwiftUI
 struct DashboardView: View {
     var viewModel: StatsViewModel
 
-    private let columns = [GridItem(.adaptive(minimum: 200, maximum: .infinity), spacing: 4)]
+    private var settings: AppSettings { viewModel.settings }
+
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 4), count: settings.dashboardColumns)
+    }
+
+    private func histMax(_ h: [Double]) -> Double {
+        max(h.max() ?? 0, 1)
+    }
 
     var body: some View {
-        let networkMax = max(viewModel.networkInHistory.max() ?? 0,
-                             viewModel.networkOutHistory.max() ?? 0,
-                             1)
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 LazyVGrid(columns: columns, spacing: 4) {
@@ -19,27 +24,27 @@ struct DashboardView: View {
                         value: viewModel.cpuPercent,
                         statusColor: progressColor(viewModel.cpuFraction),
                         lines: [(history: viewModel.cpuHistory, color: .blue)],
-                        maxValue: 100
+                        maxValue: histMax(viewModel.cpuHistory)
                     )
                     MetricCard(
                         title: "GPU",
                         value: viewModel.gpuPercent,
                         statusColor: progressColor(viewModel.gpuFraction),
                         lines: [(history: viewModel.gpuHistory, color: .purple)],
-                        maxValue: 100
+                        maxValue: histMax(viewModel.gpuHistory)
                     )
                     MetricCard(
                         title: "Memory",
                         value: viewModel.memoryPercent,
                         statusColor: progressColor(viewModel.memoryFraction),
                         lines: [(history: viewModel.memoryHistory, color: .cyan)],
-                        maxValue: 100
+                        maxValue: histMax(viewModel.memoryHistory)
                     )
                     MetricCard(
                         title: "Disk",
                         value: viewModel.diskPercent,
                         statusColor: progressColor(viewModel.diskFraction),
-                        lines: [(history: viewModel.diskHistory, color: .indigo)],
+                        lines: [],
                         maxValue: 100
                     )
                     MetricCard(
@@ -50,7 +55,7 @@ struct DashboardView: View {
                             (history: viewModel.networkInHistory,  color: .blue),
                             (history: viewModel.networkOutHistory, color: .green),
                         ],
-                        maxValue: networkMax
+                        maxValue: histMax(viewModel.networkInHistory + viewModel.networkOutHistory)
                     )
                     if viewModel.hasBattery {
                         MetricCard(
@@ -60,11 +65,10 @@ struct DashboardView: View {
                             lines: viewModel.batteryHistory.count >= 2
                                 ? [(history: viewModel.batteryHistory, color: .green)]
                                 : [],
-                            maxValue: 100
+                            maxValue: histMax(viewModel.batteryHistory)
                         )
                     }
                     if viewModel.hasThermal {
-                        let tempMax = max(viewModel.cpuTempHistory.max() ?? 100, 100)
                         MetricCard(
                             title: "Thermal",
                             value: "CPU \(viewModel.cpuTempStr)",
@@ -72,7 +76,26 @@ struct DashboardView: View {
                             lines: viewModel.cpuTempHistory.count >= 2
                                 ? [(history: viewModel.cpuTempHistory, color: .orange)]
                                 : [],
-                            maxValue: tempMax
+                            maxValue: histMax(viewModel.cpuTempHistory)
+                        )
+                    }
+                    MetricCard(
+                        title: "Disk I/O",
+                        value: "↓\(viewModel.diskRead)  ↑\(viewModel.diskWrite)",
+                        statusColor: .blue,
+                        lines: [
+                            (history: viewModel.diskReadHistory,  color: .teal),
+                            (history: viewModel.diskWriteHistory, color: .orange),
+                        ],
+                        maxValue: histMax(viewModel.diskReadHistory + viewModel.diskWriteHistory)
+                    )
+                    if viewModel.hasPower {
+                        MetricCard(
+                            title: "Power",
+                            value: viewModel.powerStr,
+                            statusColor: powerStatusColor(viewModel.power?.totalWatts ?? 0),
+                            lines: [(history: viewModel.powerHistory, color: .red)],
+                            maxValue: histMax(viewModel.powerHistory)
                         )
                     }
                     if viewModel.hasFans {
@@ -91,6 +114,24 @@ struct DashboardView: View {
             .padding(8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Slider(
+                    value: Binding(
+                        get: { Double(settings.dashboardColumns) },
+                        set: { new in
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                settings.dashboardColumns = Int(new.rounded())
+                            }
+                        }
+                    ),
+                    in: 1...5, step: 1
+                )
+                .frame(width: 110)
+                .background(.clear)
+                .shadow(radius: 0)
+            }
+        }
     }
 }
 
@@ -100,6 +141,14 @@ private func batteryStatusColor(_ battery: BatteryUsage?) -> Color {
     guard let b = battery else { return .gray }
     if b.isCharging { return .green }
     return progressColor(1.0 - b.percentage / 100.0)  // low charge → red
+}
+
+private func powerStatusColor(_ watts: Double) -> Color {
+    switch watts {
+    case ..<10:  .green
+    case ..<30:  .orange
+    default:     .red
+    }
 }
 
 private func thermalStatusColor(_ celsius: Double) -> Color {

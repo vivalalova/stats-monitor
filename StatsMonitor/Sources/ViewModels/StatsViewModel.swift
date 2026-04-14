@@ -117,6 +117,16 @@ final class StatsViewModel {
     func formatProcessDisk(_ bps: Double) -> String { formatThroughput(bps) }
     func formatProcessNetwork(_ bps: Double) -> String { formatThroughput(bps) }
 
+    // MARK: - Power
+
+    var power: PowerUsage?   { monitor.stats.power }
+    var hasPower: Bool       { monitor.stats.power != nil }
+    var powerHistory: [Double] { padded(monitor.powerHistory) }
+    var powerStr: String {
+        guard let p = monitor.stats.power else { return "N/A" }
+        return String(format: "%.1f W", p.totalWatts)
+    }
+
     // MARK: - Battery
 
     var battery: BatteryUsage?  { monitor.stats.battery }

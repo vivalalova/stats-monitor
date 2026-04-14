@@ -63,6 +63,15 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(showNetwork, forKey: "showNetwork") }
     }
 
+    // MARK: - Dashboard Column Count
+
+    var dashboardColumns: Int = {
+        let v = UserDefaults.standard.integer(forKey: "dashboardColumns")
+        return v > 0 ? v : 3
+    }() {
+        didSet { UserDefaults.standard.set(dashboardColumns, forKey: "dashboardColumns") }
+    }
+
     // MARK: - Launch at Login
 
     /// 初始值從 SMAppService 讀取，setter 同步更新 SMAppService。

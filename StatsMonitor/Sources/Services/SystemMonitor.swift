@@ -16,6 +16,8 @@ final class SystemMonitor {
     private(set) var networkInHistory:  RingBuffer<Double>
     private(set) var networkOutHistory: RingBuffer<Double>
     private(set) var batteryHistory:    RingBuffer<Double>
+    private(set) var cpuTempHistory:    RingBuffer<Double>
+    private(set) var powerHistory:      RingBuffer<Double>
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()
@@ -24,13 +26,12 @@ final class SystemMonitor {
     private var diskMonitor     = DiskMonitor()
     private var networkMonitor  = NetworkMonitor()
     private var processMonitor  = ProcessMonitor()
+    private var powerMonitor    = PowerMonitor()
 
     private let smcClient                         = SMCClient()
     private var batteryMonitor                    = BatteryMonitor()
     private var thermalMonitor: ThermalMonitor
     private var fanMonitor: FanMonitor
-
-    private(set) var cpuTempHistory: RingBuffer<Double>
 
     private var networkProcPrev: [String: NetworkProcessMonitor.Snapshot] = [:]
     private var isProcessPollInFlight = false
@@ -51,6 +52,7 @@ final class SystemMonitor {
         networkOutHistory = RingBuffer<Double>(capacity: cap)
         batteryHistory    = RingBuffer<Double>(capacity: cap)
         cpuTempHistory    = RingBuffer<Double>(capacity: cap)
+        powerHistory      = RingBuffer<Double>(capacity: cap)
         // SMC-dependent monitors share the same connection
         thermalMonitor = ThermalMonitor(smc: smcClient)
         fanMonitor     = FanMonitor(smc: smcClient)
@@ -92,6 +94,7 @@ final class SystemMonitor {
         let battery = batteryMonitor.sample()
         let thermal = thermalMonitor.sample()
         let fans    = fanMonitor.sample()
+        let power   = powerMonitor.sample(intervalSeconds: settings.pollInterval)
         let count   = settings.processCount
 
         stats = SystemStats(
@@ -102,6 +105,7 @@ final class SystemMonitor {
             network:             network,
             battery:             battery,
             thermal:             thermal,
+            power:               power,
             fans:                fans,
             topCPUProcesses:     stats.topCPUProcesses,
             topMemoryProcesses:  stats.topMemoryProcesses,
@@ -122,6 +126,9 @@ final class SystemMonitor {
         }
         if let temp = thermal?.cpuTemperature {
             cpuTempHistory.append(temp)
+        }
+        if let pwr = power {
+            powerHistory.append(pwr.totalMilliWatts / 1000)   // store as Watts
         }
 
         pollNetworkProcesses(processCount: count)
@@ -174,5 +181,6 @@ final class SystemMonitor {
         networkOutHistory = RingBuffer<Double>(capacity: cap)
         batteryHistory    = RingBuffer<Double>(capacity: cap)
         cpuTempHistory    = RingBuffer<Double>(capacity: cap)
+        powerHistory      = RingBuffer<Double>(capacity: cap)
     }
 }

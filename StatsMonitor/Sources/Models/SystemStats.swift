@@ -9,6 +9,7 @@ struct SystemStats: Sendable {
     var network: NetworkUsage = .zero
     var battery: BatteryUsage? = nil    // nil on desktop Macs (no battery hardware)
     var thermal: ThermalUsage? = nil    // nil when SMC is unavailable or all keys fail
+    var power:   PowerUsage?   = nil    // nil when IOReport unavailable (non-Apple Silicon)
     var fans: [FanUsage] = []           // empty on fanless Macs (e.g. MacBook Air M-series)
     var topCPUProcesses: [ProcInfo] = []
     var topMemoryProcesses: [ProcInfo] = []
@@ -118,6 +119,16 @@ struct BatteryUsage: Sendable {
 struct ThermalUsage: Sendable {
     var cpuTemperature: Double      // °C (CPU package / highest cluster temp)
     var gpuTemperature: Double?     // °C; nil when no discrete GPU or key unavailable
+}
+
+struct PowerUsage: Sendable {
+    var cpuMilliWatts:   Double   // CPU cluster(s) power
+    var gpuMilliWatts:   Double   // GPU power
+    var totalMilliWatts: Double   // all Energy Model channels
+
+    var totalWatts: Double { totalMilliWatts / 1000 }
+    var cpuWatts:   Double { cpuMilliWatts   / 1000 }
+    var gpuWatts:   Double { gpuMilliWatts   / 1000 }
 }
 
 struct FanUsage: Sendable {
