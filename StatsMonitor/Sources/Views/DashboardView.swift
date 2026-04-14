@@ -56,6 +56,36 @@ struct DashboardView: View {
                         ],
                         maxValue: networkMax
                     )
+                    if viewModel.hasBattery {
+                        MetricCard(
+                            title: "Battery",
+                            value: "\(viewModel.batteryPercent)  \(viewModel.batteryStatus)",
+                            statusColor: batteryStatusColor(viewModel.battery),
+                            lines: [],
+                            maxValue: 100
+                        )
+                    }
+                    if viewModel.hasThermal {
+                        let tempMax = max(viewModel.cpuTempHistory.max() ?? 100, 100)
+                        MetricCard(
+                            title: "Thermal",
+                            value: "CPU \(viewModel.cpuTempStr)",
+                            statusColor: thermalStatusColor(viewModel.thermal?.cpuTemperature ?? 0),
+                            lines: viewModel.cpuTempHistory.count >= 2
+                                ? [(history: viewModel.cpuTempHistory, color: .orange)]
+                                : [],
+                            maxValue: tempMax
+                        )
+                    }
+                    if viewModel.hasFans {
+                        MetricCard(
+                            title: "Fans",
+                            value: viewModel.fansSummary,
+                            statusColor: .blue,
+                            lines: [],
+                            maxValue: 100
+                        )
+                    }
                 }
 
                 DashboardProcessTable(viewModel: viewModel)
@@ -63,6 +93,22 @@ struct DashboardView: View {
             .padding(20)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+// MARK: - Dashboard Helpers
+
+private func batteryStatusColor(_ battery: BatteryUsage?) -> Color {
+    guard let b = battery else { return .gray }
+    if b.isCharging { return .green }
+    return progressColor(1.0 - b.percentage / 100.0)  // low charge → red
+}
+
+private func thermalStatusColor(_ celsius: Double) -> Color {
+    switch celsius {
+    case ..<60:  .green
+    case ..<80:  .orange
+    default:     .red
     }
 }
 

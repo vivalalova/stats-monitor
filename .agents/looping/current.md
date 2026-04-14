@@ -1,32 +1,37 @@
 ---
-title: 資料層效能改善（RingBuffer + ProcessMonitor 背景化）
+title: 新增感測器 — 電池、溫度、風扇、系統運行時間
 created: 2026-04-14
 priority: medium
-suggested_order: D1
-blockedBy: a1-settings-general
+suggested_order: D2
+blockedBy: [a1-settings-general, b2-about-tab]
 phase: needs-review
 iteration: 2
 max_iterations: 5
-review_iterations: 1
+review_iterations: 3
 max_review_iterations: 5
 ---
 
-# 資料層效能改善（RingBuffer + ProcessMonitor 背景化）
+# 新增感測器 — 電池、溫度、風扇
 
-兩項效能問題：History 陣列使用 `append + removeFirst`（O(n)）；`ProcessMonitor` 的 sysctl + proc_pidinfo 是 CPU-heavy 操作卻跑在 main actor。
+目前缺少 battery/power、temperature、fan speed 等常見系統監控資訊。System uptime 已由 B2 About 分頁實作。
 
 ## 範圍
 
-1. **RingBuffer<T> 泛型結構**：定義於 `Packages/Util`，支援 `append`、subscript、`Collection` conformance、轉 `[T]`（for chart consumption）。capacity 從 A1 建立的 `@AppStorage` historyCapacity 讀取。替換 `SystemMonitor` 中 8 條 history `[Double]` 陣列。
-2. **ProcessMonitor 背景化**：將 `sample()` 改為在 `Task.detached(priority: .utility)` 執行，結果 dispatch 回 main actor。參考 `pollNetworkProcesses()` 的已有模式。
-3. **RingBuffer 單元測試**：capacity、overflow 行為、toArray 順序。
+1. **BatteryMonitor**：via IOKit `AppleSmartBattery`——電量百分比、充電狀態、剩餘時間、循環次數、健康度。桌機（Mac mini/Studio/Pro）無電池時 graceful 回傳 nil，UI 不顯示。
+2. **ThermalMonitor**：via IOKit SMC——CPU package 溫度、GPU 溫度。Apple Silicon 與 Intel SMC key 不同（Apple Silicon: `Tp09`/`Tg0P` 等；Intel: `TC0P`/`TG0P`），需做降級處理（unavailable 時不顯示）。
+3. **FanMonitor**：via IOKit SMC——各風扇 RPM。無風扇機型（MacBook Air）graceful nil。
+4. **Model 擴充**：`SystemStats` 新增對應欄位，`StatsViewModel` 新增格式化 computed properties。
+5. **UI 呈現**：新增 System 相關區塊至 Dashboard（C1 已完成）。Battery 可在 menu bar 新增圖示（A1 設定開關已就緒）。
+6. **#Preview** for 新 UI。
 
 ## User Stories
 
-- As a user, I want the monitoring app to use minimal CPU and remain responsive, so that it doesn't degrade my system while monitoring.
+- As a MacBook user, I want to see battery status, temperatures, and fan speeds alongside existing metrics, so that I have complete hardware awareness. (System uptime already in B2 About tab.)
+- As a desktop Mac user, I want battery/fan sections to gracefully hide when hardware is absent.
 
 ## 驗收條件
 
-- Given RingBuffer with capacity 5 and 7 appends, when converted to array, then it contains the last 5 elements in insertion order
-- Given ProcessMonitor.sample() is called, when profiling with Instruments, then no work runs on the main thread
-- Given Instruments Time Profiler attached, when ProcessMonitor.sample() executes, then sysctl/proc_pidinfo calls appear on a background thread, not Main Thread
+- Given a MacBook, when I view the battery section, then I see charge %, charging state, cycle count, and health
+- Given a Mac mini (no battery), when the app loads, then no battery section is shown and no errors logged
+- Given ThermalMonitor, when I compare CPU temperature with a third-party tool (like TG Pro), then values are within ±3°C
+- Given FanMonitor on a MacBook Pro, when I see fan RPM, then it matches `smc` CLI output

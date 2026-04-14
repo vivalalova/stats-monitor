@@ -117,6 +117,68 @@ final class StatsViewModel {
     func formatProcessDisk(_ bps: Double) -> String { formatThroughput(bps) }
     func formatProcessNetwork(_ bps: Double) -> String { formatThroughput(bps) }
 
+    // MARK: - Battery
+
+    var battery: BatteryUsage?  { monitor.stats.battery }
+    var hasBattery: Bool        { monitor.stats.battery != nil }
+
+    var batteryPercent: String {
+        guard let b = monitor.stats.battery else { return "N/A" }
+        return String(format: "%.0f%%", b.percentage)
+    }
+    var batteryFraction: Double {
+        (monitor.stats.battery?.percentage ?? 0) / 100.0
+    }
+    var batteryStatus: String {
+        guard let b = monitor.stats.battery else { return "" }
+        if b.isCharging { return "Charging" }
+        if b.isPluggedIn { return "Plugged In" }
+        if let mins = b.timeRemaining {
+            let h = mins / 60, m = mins % 60
+            return h > 0 ? "\(h)h \(m)m" : "\(m)m"
+        }
+        return "On Battery"
+    }
+    var batteryHealth: String {
+        guard let b = monitor.stats.battery else { return "" }
+        return String(format: "%.0f%%", b.health)
+    }
+    var batteryCycles: String {
+        guard let b = monitor.stats.battery else { return "" }
+        return "\(b.cycleCount) cycles"
+    }
+
+    // MARK: - Thermal
+
+    var thermal: ThermalUsage?  { monitor.stats.thermal }
+    var hasThermal: Bool        { monitor.stats.thermal != nil }
+
+    var cpuTempStr: String {
+        guard let t = monitor.stats.thermal else { return "N/A" }
+        return String(format: "%.1f°C", t.cpuTemperature)
+    }
+    var gpuTempStr: String {
+        guard let temp = monitor.stats.thermal?.gpuTemperature else { return "—" }
+        return String(format: "%.1f°C", temp)
+    }
+    var cpuTempHistory: [Double] { Array(monitor.cpuTempHistory) }
+
+    // MARK: - Fan
+
+    var fans: [FanUsage]    { monitor.stats.fans }
+    var hasFans: Bool       { !monitor.stats.fans.isEmpty }
+
+    func fanRPMStr(_ fan: FanUsage) -> String {
+        String(format: "%.0f RPM", fan.currentRPM)
+    }
+    var fansSummary: String {
+        let f = monitor.stats.fans
+        guard !f.isEmpty else { return "No fans" }
+        if f.count == 1 { return String(format: "%.0f RPM", f[0].currentRPM) }
+        let avg = f.map(\.currentRPM).reduce(0, +) / Double(f.count)
+        return String(format: "%.0f RPM avg", avg)
+    }
+
     // MARK: - Lifecycle
 
     func start() { monitor.start() }

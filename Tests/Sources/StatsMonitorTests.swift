@@ -92,4 +92,77 @@ struct StatsMonitorTests {
         #expect(p.cpuPercent == 12.5)
         #expect(p.memoryBytes == 500_000_000)
     }
+
+    // MARK: - BatteryUsage
+
+    @Test("BatteryUsage stores all fields")
+    func batteryUsageFields() {
+        let b = BatteryUsage(percentage: 80, isCharging: true, isPluggedIn: true,
+                             timeRemaining: nil, cycleCount: 120,
+                             designCapacity: 5000, maxCapacity: 4800, health: 96)
+        #expect(b.percentage == 80)
+        #expect(b.isCharging == true)
+        #expect(b.cycleCount == 120)
+        #expect(b.health == 96)
+    }
+
+    @Test("BatteryUsage struct preserves raw percentage without clamping")
+    func batteryPercentagePassThrough() {
+        // IOKit can return CurrentCapacity > MaxCapacity during calibration
+        let b = BatteryUsage(percentage: 103, isCharging: false, isPluggedIn: true,
+                             timeRemaining: nil, cycleCount: 0,
+                             designCapacity: 5000, maxCapacity: 5000, health: 103)
+        // struct itself doesn't clamp — BatteryMonitor.sample() clamps before constructing
+        #expect(b.percentage == 103)  // pass-through: struct preserves whatever percentage is given
+    }
+
+    // MARK: - FanUsage
+
+    @Test("FanUsage fraction is zero when RPM range is zero")
+    func fanFractionZeroRange() {
+        let fan = FanUsage(id: 0, currentRPM: 1000, minRPM: 1000, maxRPM: 1000, name: "Fan 0")
+        #expect(fan.fraction == 0)
+    }
+
+    @Test("FanUsage fraction is within 0...1 for normal RPM")
+    func fanFractionNormal() {
+        let fan = FanUsage(id: 0, currentRPM: 3000, minRPM: 1000, maxRPM: 5000, name: "Fan 0")
+        // (3000-1000)/(5000-1000) = 0.5
+        #expect(abs(fan.fraction - 0.5) < 0.001)
+    }
+
+    @Test("FanUsage fraction clamps to 0 when below minRPM")
+    func fanFractionClampedAtZero() {
+        let fan = FanUsage(id: 0, currentRPM: 500, minRPM: 1000, maxRPM: 5000, name: "Fan 0")
+        #expect(fan.fraction == 0)
+    }
+
+    @Test("FanUsage fraction clamps to 1 when above maxRPM")
+    func fanFractionClampedAtOne() {
+        let fan = FanUsage(id: 0, currentRPM: 7000, minRPM: 1000, maxRPM: 5000, name: "Fan 0")
+        #expect(fan.fraction == 1)
+    }
+
+    @Test("FanUsage diskTotalBPS-analogue: fraction at boundaries")
+    func fanFractionAtBoundaries() {
+        let atMin = FanUsage(id: 0, currentRPM: 1000, minRPM: 1000, maxRPM: 5000, name: "Fan 0")
+        let atMax = FanUsage(id: 0, currentRPM: 5000, minRPM: 1000, maxRPM: 5000, name: "Fan 0")
+        #expect(atMin.fraction == 0)
+        #expect(atMax.fraction == 1)
+    }
+
+    // MARK: - ThermalUsage
+
+    @Test("ThermalUsage stores CPU temperature")
+    func thermalUsageCPUTemp() {
+        let t = ThermalUsage(cpuTemperature: 72.5, gpuTemperature: nil)
+        #expect(t.cpuTemperature == 72.5)
+        #expect(t.gpuTemperature == nil)
+    }
+
+    @Test("ThermalUsage stores GPU temperature when present")
+    func thermalUsageGPUTemp() {
+        let t = ThermalUsage(cpuTemperature: 65.0, gpuTemperature: 58.3)
+        #expect(t.gpuTemperature == 58.3)
+    }
 }

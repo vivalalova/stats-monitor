@@ -24,6 +24,13 @@ final class SystemMonitor {
     private var networkMonitor  = NetworkMonitor()
     private var processMonitor  = ProcessMonitor()
 
+    private let smcClient                         = SMCClient()
+    private var batteryMonitor                    = BatteryMonitor()
+    private var thermalMonitor: ThermalMonitor
+    private var fanMonitor: FanMonitor
+
+    private(set) var cpuTempHistory: RingBuffer<Double>
+
     private var networkProcPrev: [String: NetworkProcessMonitor.Snapshot] = [:]
     private var isProcessPollInFlight = false
 
@@ -41,6 +48,10 @@ final class SystemMonitor {
         diskWriteHistory  = RingBuffer<Double>(capacity: cap)
         networkInHistory  = RingBuffer<Double>(capacity: cap)
         networkOutHistory = RingBuffer<Double>(capacity: cap)
+        cpuTempHistory    = RingBuffer<Double>(capacity: cap)
+        // SMC-dependent monitors share the same connection
+        thermalMonitor = ThermalMonitor(smc: smcClient)
+        fanMonitor     = FanMonitor(smc: smcClient)
     }
 
     func start() {
@@ -76,6 +87,9 @@ final class SystemMonitor {
         let memory  = memoryMonitor.sample()
         let disk    = diskMonitor.sample()
         let network = networkMonitor.sample()
+        let battery = batteryMonitor.sample()
+        let thermal = thermalMonitor.sample()
+        let fans    = fanMonitor.sample()
         let count   = settings.processCount
 
         stats = SystemStats(
@@ -84,6 +98,9 @@ final class SystemMonitor {
             memory:              memory,
             disk:                disk,
             network:             network,
+            battery:             battery,
+            thermal:             thermal,
+            fans:                fans,
             topCPUProcesses:     stats.topCPUProcesses,
             topMemoryProcesses:  stats.topMemoryProcesses,
             topDiskProcesses:    stats.topDiskProcesses,
@@ -98,6 +115,9 @@ final class SystemMonitor {
         diskWriteHistory.append(disk.writeBPS)
         networkInHistory.append(network.bytesInPerSec)
         networkOutHistory.append(network.bytesOutPerSec)
+        if let temp = thermal?.cpuTemperature {
+            cpuTempHistory.append(temp)
+        }
 
         pollNetworkProcesses(processCount: count)
         pollProcesses(processCount: count)
@@ -147,5 +167,6 @@ final class SystemMonitor {
         diskWriteHistory  = RingBuffer<Double>(capacity: cap)
         networkInHistory  = RingBuffer<Double>(capacity: cap)
         networkOutHistory = RingBuffer<Double>(capacity: cap)
+        cpuTempHistory    = RingBuffer<Double>(capacity: cap)
     }
 }
