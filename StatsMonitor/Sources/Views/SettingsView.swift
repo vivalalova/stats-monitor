@@ -1,31 +1,4 @@
-import AppKit
 import SwiftUI
-
-// MARK: - Settings window opener
-
-@MainActor private var settingsWindow: NSWindow?
-
-@MainActor func openSettings(settings: AppSettings, viewModel: StatsViewModel) {
-    if settingsWindow == nil {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "StatsMonitor"
-        let toolbar = NSToolbar(identifier: "SettingsToolbar")
-        toolbar.showsBaselineSeparator = false
-        window.toolbar = toolbar
-        window.toolbarStyle = .unifiedCompact
-        window.contentView = NSHostingView(rootView: SettingsView(settings: settings, viewModel: viewModel))
-        window.center()
-        window.setFrameAutosaveName("SettingsWindow")
-        settingsWindow = window
-    }
-    settingsWindow?.makeKeyAndOrderFront(nil)
-    NSApp.activate(ignoringOtherApps: true)
-}
 
 // MARK: - View
 
@@ -69,6 +42,7 @@ struct SettingsView: View {
             case .about:     AboutView()
             }
         }
+        .frame(minWidth: 820, minHeight: 520)
     }
 }
 

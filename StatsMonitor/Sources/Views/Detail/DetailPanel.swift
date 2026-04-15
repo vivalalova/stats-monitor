@@ -17,12 +17,10 @@ enum PanelID: String, CaseIterable {
 struct PanelView: View {
     let id: PanelID
     let content: AnyView
-    @Environment(AppSettings.self) private var settings
-    @Environment(StatsViewModel.self) private var viewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            detailToolbar(id.title, settings: settings, viewModel: viewModel)
+            DetailToolbar(title: id.title)
             content
         }
         .padding(16)

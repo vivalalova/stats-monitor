@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // MARK: - Bar primitives
@@ -28,25 +29,29 @@ struct BarView: View {
 
 // MARK: - View helpers
 
-@MainActor
-func detailToolbar(_ title: LocalizedStringKey, settings: AppSettings, viewModel: StatsViewModel) -> some View {
-    HStack(spacing: 8) {
-        Text(title)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.primary)
-        Spacer()
-        Button { openSettings(settings: settings, viewModel: viewModel) } label: {
-            Image(systemName: "gearshape")
+struct DetailToolbar: View {
+    let title: LocalizedStringKey
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+            Spacer()
+            Button { openSettings() } label: {
+                Image(systemName: "gearshape")
+            }
+            .help("Settings")
+            Button { NSApplication.shared.terminate(nil) } label: {
+                Image(systemName: "power")
+            }
+            .help("Quit StatsMonitor")
         }
-        .help("Settings")
-        Button { NSApplication.shared.terminate(nil) } label: {
-            Image(systemName: "power")
-        }
-        .help("Quit StatsMonitor")
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .font(.system(size: 14))
     }
-    .buttonStyle(.plain)
-    .foregroundStyle(.secondary)
-    .font(.system(size: 14))
 }
 
 func sectionHeader(_ title: LocalizedStringKey) -> some View {
