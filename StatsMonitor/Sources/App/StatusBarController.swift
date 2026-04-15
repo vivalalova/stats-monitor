@@ -7,13 +7,13 @@ final class StatusBarController {
     private let viewModel: StatsViewModel
     private var popover: NSPopover?
     private var currentPanel: PanelID?
+    private var hostingView: NSHostingView<CombinedMenuBarLabel>?
 
     init(viewModel: StatsViewModel) {
         self.viewModel = viewModel
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         setupButton()
-        updateLength()
-        observeSettings()
+        observeForLength()
     }
 
     // MARK: - Setup
@@ -30,9 +30,9 @@ final class StatusBarController {
         button.addSubview(hv)
         NSLayoutConstraint.activate([
             hv.leadingAnchor.constraint(equalTo: button.leadingAnchor),
-            hv.trailingAnchor.constraint(equalTo: button.trailingAnchor),
             hv.centerYAnchor.constraint(equalTo: button.centerYAnchor),
         ])
+        hostingView = hv
 
         button.target = self
         button.action = #selector(handleClick(_:))
@@ -41,26 +41,25 @@ final class StatusBarController {
     // MARK: - Length
 
     private func updateLength() {
-        let s = viewModel.settings
-        let slots: [(Bool, CGFloat)] = [
-            (s.showCPU, 80), (s.showGPU, 80), (s.showMemory, 80),
-            (s.showDisk, 80), (s.showNetwork, 95),
-        ]
-        let enabled = slots.filter(\.0)
-        statusItem.length = enabled.isEmpty
-            ? 30
-            : enabled.map(\.1).reduce(0, +) + CGFloat(enabled.count - 1) * 4
+        guard let hv = hostingView else { return }
+        hv.layoutSubtreeIfNeeded()
+        let w = hv.fittingSize.width
+        if w > 0 { statusItem.length = w }
     }
 
-    private func observeSettings() {
-        let s = viewModel.settings
+    /// 觀察所有影響 label 寬度的值（指標數值 + show 設定），任一改變就重算 length
+    private func observeForLength() {
+        let vm = viewModel
+        let s = vm.settings
         withObservationTracking {
             _ = s.showCPU; _ = s.showGPU; _ = s.showMemory
             _ = s.showDisk; _ = s.showNetwork
+            _ = vm.cpuPercent; _ = vm.gpuPercent; _ = vm.memoryPercent
+            _ = vm.diskPercent; _ = vm.networkIn
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.updateLength()
-                self?.observeSettings()
+                self?.observeForLength()
             }
         }
     }
@@ -75,16 +74,14 @@ final class StatusBarController {
 
     private func panelAt(x: CGFloat) -> PanelID {
         let s = viewModel.settings
-        let ordered: [(PanelID, CGFloat, Bool)] = [
-            (.cpu, 80, s.showCPU), (.gpu, 80, s.showGPU), (.memory, 80, s.showMemory),
-            (.disk, 80, s.showDisk), (.network, 95, s.showNetwork),
-        ]
-        var cursor: CGFloat = 0
-        for (id, width, enabled) in ordered where enabled {
-            if x <= cursor + width { return id }
-            cursor += width + 4
-        }
-        return ordered.filter(\.2).last?.0 ?? .cpu
+        let enabled: [PanelID] = [
+            s.showCPU ? .cpu : nil, s.showGPU ? .gpu : nil, s.showMemory ? .memory : nil,
+            s.showDisk ? .disk : nil, s.showNetwork ? .network : nil,
+        ].compactMap { $0 }
+        guard !enabled.isEmpty else { return .cpu }
+        let slotWidth = statusItem.length / CGFloat(enabled.count)
+        let index = min(Int(x / slotWidth), enabled.count - 1)
+        return enabled[max(index, 0)]
     }
 
     // MARK: - Popover
