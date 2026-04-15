@@ -4,7 +4,7 @@ struct MemoryDetailView: View {
     var viewModel: StatsViewModel
 
     var body: some View {
-        DetailPanel(id: .memory) {
+        VStack(alignment: .leading, spacing: 12) {
             if viewModel.memoryHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.memoryHistory, .orange)])
             }

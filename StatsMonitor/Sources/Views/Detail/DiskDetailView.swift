@@ -4,7 +4,7 @@ struct DiskDetailView: View {
     var viewModel: StatsViewModel
 
     var body: some View {
-        DetailPanel(id: .disk) {
+        VStack(alignment: .leading, spacing: 12) {
             let maxIO = max(
                 (viewModel.diskReadHistory + viewModel.diskWriteHistory).max() ?? 1,
                 1_048_576

@@ -5,7 +5,7 @@ struct CPUDetailView: View {
     var viewModel: StatsViewModel
 
     var body: some View {
-        DetailPanel(id: .cpu) {
+        VStack(alignment: .leading, spacing: 12) {
             if viewModel.cpuHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.cpuHistory, .blue)])
             }

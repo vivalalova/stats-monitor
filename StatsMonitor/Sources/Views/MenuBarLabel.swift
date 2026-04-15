@@ -8,9 +8,38 @@ struct MenuBarItemLabel: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-            Text(text).monospacedDigit()
+            Text(text)
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: width)
+        .frame(width: width, alignment: .leading)
+    }
+}
+
+struct CombinedMenuBarLabel: View {
+    var viewModel: StatsViewModel
+    var settings: AppSettings
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if settings.showCPU {
+                MenuBarItemLabel(icon: "cpu", text: viewModel.cpuPercent)
+            }
+            if settings.showGPU {
+                MenuBarItemLabel(icon: "display", text: viewModel.gpuPercent)
+            }
+            if settings.showMemory {
+                MenuBarItemLabel(icon: "memorychip", text: viewModel.memoryPercent)
+            }
+            if settings.showDisk {
+                MenuBarItemLabel(icon: "internaldrive", text: viewModel.diskPercent)
+            }
+            if settings.showNetwork {
+                MenuBarItemLabel(icon: "network", text: viewModel.networkIn, width: 95)
+            }
+        }
+        .fixedSize()
     }
 }
 
@@ -20,7 +49,7 @@ struct MenuBarItemLabel: View {
         MenuBarItemLabel(icon: "display",      text: "18%")
         MenuBarItemLabel(icon: "memorychip",   text: "71%")
         MenuBarItemLabel(icon: "internaldrive",text: "55%")
-        MenuBarItemLabel(icon: "network",      text: "↓1.2MB", width: 100)
+        MenuBarItemLabel(icon: "network",      text: "↓1.2MB", width: 95)
     }
     .padding()
 }

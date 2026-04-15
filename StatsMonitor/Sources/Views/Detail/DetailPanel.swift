@@ -1,10 +1,6 @@
 import SwiftUI
 
-extension Notification.Name {
-    static let panelOpened = Notification.Name("StatsMonitorPanelOpened")
-}
-
-enum PanelID: String {
+enum PanelID: String, CaseIterable {
     case cpu, gpu, memory, disk, network
 
     var title: LocalizedStringKey {
@@ -18,32 +14,24 @@ enum PanelID: String {
     }
 }
 
-struct DetailPanel<Content: View>: View {
+struct PanelView: View {
     let id: PanelID
-    @ViewBuilder let content: () -> Content
-    @Environment(\.dismiss) private var dismiss
+    let content: AnyView
     @Environment(AppSettings.self) private var settings
     @Environment(StatsViewModel.self) private var viewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             detailToolbar(id.title, settings: settings, viewModel: viewModel)
-            content()
+            content
         }
         .padding(16)
         .frame(width: 280)
-        .onAppear { NotificationCenter.default.post(name: .panelOpened, object: id.rawValue) }
-        .onReceive(NotificationCenter.default.publisher(for: .panelOpened)) { note in
-            if note.object as? String != id.rawValue { dismiss() }
-        }
     }
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    DetailPanel(id: .cpu) {
-        Text("CPU content goes here")
-            .foregroundStyle(.secondary)
-    }
-    .environment(AppSettings())
-    .environment(StatsViewModel())
+    PanelView(id: .cpu, content: AnyView(Text("CPU content")))
+        .environment(AppSettings())
+        .environment(StatsViewModel())
 }

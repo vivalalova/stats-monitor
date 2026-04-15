@@ -4,7 +4,7 @@ struct GPUDetailView: View {
     var viewModel: StatsViewModel
 
     var body: some View {
-        DetailPanel(id: .gpu) {
+        VStack(alignment: .leading, spacing: 12) {
             if viewModel.gpuHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.gpuHistory, .purple)])
             }

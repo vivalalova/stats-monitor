@@ -4,7 +4,7 @@ struct NetworkDetailView: View {
     var viewModel: StatsViewModel
 
     var body: some View {
-        DetailPanel(id: .network) {
+        VStack(alignment: .leading, spacing: 12) {
             let maxVal = max(
                 (viewModel.networkInHistory + viewModel.networkOutHistory).max() ?? 1,
                 1_048_576
