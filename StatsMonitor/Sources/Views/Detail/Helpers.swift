@@ -54,6 +54,23 @@ struct DetailToolbar: View {
     }
 }
 
+struct DetailPanelContent<Content: View>: View {
+    private let title: LocalizedStringKey
+    private let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = LocalizedStringKey(title)
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DetailToolbar(title: title)
+            content
+        }
+    }
+}
+
 func sectionHeader(_ title: LocalizedStringKey) -> some View {
     Group {
         Divider()

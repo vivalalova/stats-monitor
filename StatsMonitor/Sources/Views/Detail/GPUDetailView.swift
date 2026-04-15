@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct GPUDetailView: View {
+    static let panelTitle = "GPU"
+
     var viewModel: StatsViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        DetailPanelContent(title: Self.panelTitle) {
             if viewModel.gpuHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.gpuHistory, .purple)])
             }

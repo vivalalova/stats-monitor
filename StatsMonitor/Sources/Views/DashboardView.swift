@@ -114,6 +114,31 @@ struct DashboardView: View {
             .padding(8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                DashboardColumnsSlider(settings: settings)
+            }
+        }
+    }
+}
+
+struct DashboardColumnsSlider: View {
+    let settings: AppSettings
+
+    static func binding(for settings: AppSettings) -> Binding<Double> {
+        Binding(
+            get: { Double(settings.dashboardColumns) },
+            set: { newValue in
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    settings.dashboardColumns = Int(newValue.rounded())
+                }
+            }
+        )
+    }
+
+    var body: some View {
+        Slider(value: Self.binding(for: settings), in: 1...5, step: 1)
+            .frame(width: 110)
     }
 }
 

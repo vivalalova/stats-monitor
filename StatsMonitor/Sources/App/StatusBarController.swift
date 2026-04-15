@@ -94,7 +94,9 @@ final class StatusBarController: NSObject {
             if currentPanel == panel { currentPanel = nil; return }
         }
 
-        let content = PanelView(id: panel, content: AnyView(detailView(for: panel)))
+        let content = PanelView {
+            detailView(for: panel)
+        }
             .environment(viewModel.settings)
             .environment(viewModel)
 
@@ -110,13 +112,14 @@ final class StatusBarController: NSObject {
 
     // MARK: - Detail views
 
+    @ViewBuilder
     private func detailView(for panel: PanelID) -> some View {
         switch panel {
-        case .cpu:     AnyView(CPUDetailView(viewModel: viewModel))
-        case .gpu:     AnyView(GPUDetailView(viewModel: viewModel))
-        case .memory:  AnyView(MemoryDetailView(viewModel: viewModel))
-        case .disk:    AnyView(DiskDetailView(viewModel: viewModel))
-        case .network: AnyView(NetworkDetailView(viewModel: viewModel))
+        case .cpu:     CPUDetailView(viewModel: viewModel)
+        case .gpu:     GPUDetailView(viewModel: viewModel)
+        case .memory:  MemoryDetailView(viewModel: viewModel)
+        case .disk:    DiskDetailView(viewModel: viewModel)
+        case .network: NetworkDetailView(viewModel: viewModel)
         }
     }
 }

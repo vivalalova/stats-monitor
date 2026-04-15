@@ -67,33 +67,6 @@ struct SettingsView: View {
             minWidth: SettingsWindowLayout.defaultWidth,
             minHeight: SettingsWindowLayout.defaultHeight
         )
-        .toolbar {
-            if selection == .dashboard {
-                ToolbarItem(placement: .primaryAction) {
-                    DashboardColumnsSlider(settings: settings)
-                }
-            }
-        }
-    }
-}
-
-private struct DashboardColumnsSlider: View {
-    let settings: AppSettings
-
-    var body: some View {
-        Slider(
-            value: Binding(
-                get: { Double(settings.dashboardColumns) },
-                set: { newValue in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        settings.dashboardColumns = Int(newValue.rounded())
-                    }
-                }
-            ),
-            in: 1...5,
-            step: 1
-        )
-        .frame(width: 110)
     }
 }
 

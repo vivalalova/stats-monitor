@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct NetworkDetailView: View {
+    static let panelTitle = "Network"
+
     var viewModel: StatsViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        DetailPanelContent(title: Self.panelTitle) {
             let maxVal = max(
                 (viewModel.networkInHistory + viewModel.networkOutHistory).max() ?? 1,
                 1_048_576

@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct DiskDetailView: View {
+    static let panelTitle = "Disk"
+
     var viewModel: StatsViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        DetailPanelContent(title: Self.panelTitle) {
             let maxIO = max(
                 (viewModel.diskReadHistory + viewModel.diskWriteHistory).max() ?? 1,
                 1_048_576

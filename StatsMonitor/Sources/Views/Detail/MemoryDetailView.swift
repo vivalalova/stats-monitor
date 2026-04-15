@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct MemoryDetailView: View {
+    static let panelTitle = "Memory"
+
     var viewModel: StatsViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        DetailPanelContent(title: Self.panelTitle) {
             if viewModel.memoryHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.memoryHistory, .orange)])
             }

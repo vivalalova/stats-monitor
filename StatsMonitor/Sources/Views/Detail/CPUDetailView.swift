@@ -2,10 +2,12 @@ import SwiftUI
 import Util
 
 struct CPUDetailView: View {
+    static let panelTitle = "CPU"
+
     var viewModel: StatsViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        DetailPanelContent(title: Self.panelTitle) {
             if viewModel.cpuHistory.count >= 2 {
                 LineChartView(lines: [(viewModel.cpuHistory, .blue)])
             }

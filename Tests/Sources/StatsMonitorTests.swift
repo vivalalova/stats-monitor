@@ -1,4 +1,5 @@
 import Testing
+import SwiftUI
 @testable import StatsMonitor
 
 @Suite("StatsMonitor Tests")
@@ -366,6 +367,57 @@ struct SettingsWindowTests {
         #expect(SettingsWindowLayout.defaultHeight == 520)
         #expect(SettingsWindowLayout.sidebarWidth == 130)
         #expect(SettingsWindowLayout.defaultWidth > SettingsWindowLayout.sidebarWidth)
+    }
+}
+
+@Suite("Dashboard Toolbar")
+@MainActor
+struct DashboardToolbarTests {
+
+    @Test("columns slider binding reflects and rounds dashboard column count")
+    func columnsSliderBindingRoundsToNearestWholeNumber() {
+        let defaults = UserDefaults.standard
+        let key = "dashboardColumns"
+        let originalValue = defaults.object(forKey: key)
+        defer {
+            if let originalValue {
+                defaults.set(originalValue, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        let settings = AppSettings()
+        settings.dashboardColumns = 3
+
+        let binding = DashboardColumnsSlider.binding(for: settings)
+
+        #expect(binding.wrappedValue == 3)
+
+        binding.wrappedValue = 4.6
+        #expect(settings.dashboardColumns == 5)
+
+        binding.wrappedValue = 1.2
+        #expect(settings.dashboardColumns == 1)
+    }
+}
+
+@Suite("Detail Panels")
+@MainActor
+struct DetailPanelTests {
+
+    @Test("each detail view owns its panel title")
+    func detailViewsExposeTheirOwnTitles() {
+        let titles = [
+            CPUDetailView.panelTitle,
+            GPUDetailView.panelTitle,
+            MemoryDetailView.panelTitle,
+            DiskDetailView.panelTitle,
+            NetworkDetailView.panelTitle,
+        ]
+
+        #expect(titles == ["CPU", "GPU", "Memory", "Disk", "Network"])
+        #expect(Set(titles).count == PanelID.allCases.count)
     }
 }
 
