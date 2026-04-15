@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @MainActor
-final class StatusBarController {
+final class StatusBarController: NSObject {
     private let statusItem: NSStatusItem
     private let viewModel: StatsViewModel
     private var popover: NSPopover?
@@ -12,6 +12,7 @@ final class StatusBarController {
     init(viewModel: StatsViewModel) {
         self.viewModel = viewModel
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        super.init()
         setupButton()
         observeForLength()
     }
@@ -99,11 +100,15 @@ final class StatusBarController {
 
         let pop = NSPopover()
         pop.behavior = .transient
+        pop.delegate = self
         pop.contentViewController = NSHostingController(rootView: content)
         pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        NSApp.activate(ignoringOtherApps: true)
         popover = pop
         currentPanel = panel
     }
+
+    // MARK: - Detail views
 
     private func detailView(for panel: PanelID) -> some View {
         switch panel {
@@ -113,5 +118,14 @@ final class StatusBarController {
         case .disk:    AnyView(DiskDetailView(viewModel: viewModel))
         case .network: AnyView(NetworkDetailView(viewModel: viewModel))
         }
+    }
+}
+
+// MARK: - NSPopoverDelegate
+
+extension StatusBarController: NSPopoverDelegate {
+    func popoverDidClose(_ notification: Notification) {
+        popover = nil
+        currentPanel = nil
     }
 }

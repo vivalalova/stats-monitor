@@ -1,8 +1,18 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ items" : {
+
+    },
+    "%@ sec" : {
+
+    },
+    "%@%%" : {
+
+    },
     "%lld items" : {
       "comment" : "Dynamic picker / stepper labels",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -14,6 +24,7 @@
     },
     "%lld sec" : {
       "comment" : "Dynamic picker / stepper labels",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -23,8 +34,57 @@
         }
       }
     },
+    "↑ Out" : {
+      "comment" : "Network detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↑ 上傳"
+          }
+        }
+      }
+    },
+    "↑ Write" : {
+      "comment" : "Disk detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↑ 寫入"
+          }
+        }
+      }
+    },
+    "↓ In" : {
+      "comment" : "Network detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↓ 下載"
+          }
+        }
+      }
+    },
+    "↓ Read" : {
+      "comment" : "Disk detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↓ 讀取"
+          }
+        }
+      }
+    },
     "1 min (60)" : {
       "comment" : "History capacity picker options",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -36,6 +96,7 @@
     },
     "2 min (120)" : {
       "comment" : "History capacity picker options",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -47,6 +108,7 @@
     },
     "5 min (300)" : {
       "comment" : "History capacity picker options",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -58,6 +120,7 @@
     },
     "About" : {
       "comment" : "Settings sidebar tabs",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -69,6 +132,7 @@
     },
     "Active" : {
       "comment" : "Memory detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -80,6 +144,7 @@
     },
     "Battery" : {
       "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -91,6 +156,7 @@
     },
     "Chip" : {
       "comment" : "About — system info labels",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -102,6 +168,7 @@
     },
     "Compressed" : {
       "comment" : "Memory detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -113,6 +180,7 @@
     },
     "Dashboard" : {
       "comment" : "Settings sidebar tabs",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -124,6 +192,7 @@
     },
     "Device" : {
       "comment" : "GPU detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -135,6 +204,7 @@
     },
     "Disk" : {
       "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -157,6 +227,7 @@
     },
     "Engines" : {
       "comment" : "GPU detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -168,6 +239,7 @@
     },
     "Fans" : {
       "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -179,6 +251,7 @@
     },
     "Free" : {
       "comment" : "Disk detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -188,19 +261,9 @@
         }
       }
     },
-    "GPU Mem" : {
-      "comment" : "GPU detail",
-      "localizations" : {
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "GPU 記憶體"
-          }
-        }
-      }
-    },
     "General" : {
       "comment" : "Settings sidebar tabs",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -210,8 +273,21 @@
         }
       }
     },
+    "GPU Mem" : {
+      "comment" : "GPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPU 記憶體"
+          }
+        }
+      }
+    },
     "History" : {
       "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -223,6 +299,7 @@
     },
     "Idle" : {
       "comment" : "CPU detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -245,6 +322,7 @@
     },
     "Launch at Login" : {
       "comment" : "General Settings",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -256,6 +334,7 @@
     },
     "Memory" : {
       "comment" : "MetricCard / PanelID titles + About system info",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -267,6 +346,7 @@
     },
     "Menu Bar Items" : {
       "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -278,6 +358,7 @@
     },
     "Model" : {
       "comment" : "About — system info labels",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -300,6 +381,7 @@
     },
     "Network" : {
       "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -311,6 +393,7 @@
     },
     "Neural Engine" : {
       "comment" : "GPU detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -322,6 +405,7 @@
     },
     "Per Core" : {
       "comment" : "CPU detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -333,6 +417,7 @@
     },
     "Poll Interval" : {
       "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -344,6 +429,7 @@
     },
     "Process List" : {
       "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -355,6 +441,7 @@
     },
     "Quit StatsMonitor" : {
       "comment" : "Toolbar tooltips",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -366,6 +453,7 @@
     },
     "Renderer" : {
       "comment" : "GPU detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -377,6 +465,7 @@
     },
     "Retention Period" : {
       "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -388,6 +477,7 @@
     },
     "Settings" : {
       "comment" : "Toolbar tooltips",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -399,6 +489,7 @@
     },
     "System" : {
       "comment" : "CPU detail + General Settings section header",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -421,6 +512,7 @@
     },
     "Thermal" : {
       "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -443,6 +535,7 @@
     },
     "Total" : {
       "comment" : "Disk detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -454,6 +547,7 @@
     },
     "Update Frequency" : {
       "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -465,6 +559,7 @@
     },
     "Uptime" : {
       "comment" : "About — system info labels",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -476,6 +571,7 @@
     },
     "Used" : {
       "comment" : "CPU / Memory / Disk detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -487,6 +583,7 @@
     },
     "User" : {
       "comment" : "CPU detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -509,55 +606,12 @@
     },
     "Wired" : {
       "comment" : "Memory detail",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "固定"
-          }
-        }
-      }
-    },
-    "↓ In" : {
-      "comment" : "Network detail",
-      "localizations" : {
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "↓ 下載"
-          }
-        }
-      }
-    },
-    "↓ Read" : {
-      "comment" : "Disk detail",
-      "localizations" : {
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "↓ 讀取"
-          }
-        }
-      }
-    },
-    "↑ Out" : {
-      "comment" : "Network detail",
-      "localizations" : {
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "↑ 上傳"
-          }
-        }
-      }
-    },
-    "↑ Write" : {
-      "comment" : "Disk detail",
-      "localizations" : {
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "↑ 寫入"
           }
         }
       }
