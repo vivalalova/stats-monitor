@@ -31,7 +31,7 @@ struct BarView: View {
 
 struct DetailToolbar: View {
     let title: LocalizedStringKey
-    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         HStack(spacing: 8) {
@@ -39,7 +39,7 @@ struct DetailToolbar: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.primary)
             Spacer()
-            Button { openSettings() } label: {
+            Button { openWindow(id: AppSceneID.settingsWindow) } label: {
                 Image(systemName: "gearshape")
             }
             .help("Settings")

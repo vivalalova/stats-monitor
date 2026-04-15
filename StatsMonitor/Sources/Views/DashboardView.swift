@@ -114,24 +114,6 @@ struct DashboardView: View {
             .padding(8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Slider(
-                    value: Binding(
-                        get: { Double(settings.dashboardColumns) },
-                        set: { new in
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                settings.dashboardColumns = Int(new.rounded())
-                            }
-                        }
-                    ),
-                    in: 1...5, step: 1
-                )
-                .frame(width: 110)
-                .background(.clear)
-                .shadow(radius: 0)
-            }
-        }
     }
 }
 

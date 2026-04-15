@@ -1,4 +1,15 @@
+import AppKit
 import SwiftUI
+
+enum AppSceneID {
+    static let settingsWindow = "settings-window"
+}
+
+enum SettingsWindowLayout {
+    static let defaultWidth: CGFloat = 820
+    static let defaultHeight: CGFloat = 520
+    static let sidebarWidth: CGFloat = 130
+}
 
 // MARK: - View
 
@@ -34,7 +45,17 @@ struct SettingsView: View {
             List(Tab.allCases, id: \.self, selection: $selection) { tab in
                 Label(tab.localizedTitle, systemImage: tab.icon)
             }
-            .navigationSplitViewColumnWidth(min: 130, ideal: 130, max: 130)
+            .navigationSplitViewColumnWidth(
+                min: SettingsWindowLayout.sidebarWidth,
+                ideal: SettingsWindowLayout.sidebarWidth,
+                max: SettingsWindowLayout.sidebarWidth
+            )
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    SidebarToggleButton()
+                }
+            }
+            .toolbar(removing: .sidebarToggle)
         } detail: {
             switch selection {
             case .dashboard: DashboardView(viewModel: viewModel)
@@ -42,7 +63,48 @@ struct SettingsView: View {
             case .about:     AboutView()
             }
         }
-        .frame(minWidth: 820, minHeight: 520)
+        .frame(
+            minWidth: SettingsWindowLayout.defaultWidth,
+            minHeight: SettingsWindowLayout.defaultHeight
+        )
+        .toolbar {
+            if selection == .dashboard {
+                ToolbarItem(placement: .primaryAction) {
+                    DashboardColumnsSlider(settings: settings)
+                }
+            }
+        }
+    }
+}
+
+private struct DashboardColumnsSlider: View {
+    let settings: AppSettings
+
+    var body: some View {
+        Slider(
+            value: Binding(
+                get: { Double(settings.dashboardColumns) },
+                set: { newValue in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        settings.dashboardColumns = Int(newValue.rounded())
+                    }
+                }
+            ),
+            in: 1...5,
+            step: 1
+        )
+        .frame(width: 110)
+    }
+}
+
+private struct SidebarToggleButton: View {
+    var body: some View {
+        Button {
+            NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+        } label: {
+            Image(systemName: "sidebar.left")
+        }
+        .help("Toggle Sidebar")
     }
 }
 
@@ -123,7 +185,10 @@ private struct GeneralSettingsView: View {
 
 // MARK: - Preview
 
-#Preview(traits: .sizeThatFitsLayout) {
+#Preview {
     SettingsView(settings: AppSettings(), viewModel: StatsViewModel())
-        .frame(width: 820, height: 520)
+        .frame(
+            width: SettingsWindowLayout.defaultWidth,
+            height: SettingsWindowLayout.defaultHeight
+        )
 }

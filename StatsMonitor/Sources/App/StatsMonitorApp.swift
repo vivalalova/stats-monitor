@@ -6,7 +6,35 @@ struct StatsMonitorApp: App {
 
     var body: some Scene {
         Settings {
+            EmptyView()
+        }
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
+
+        Window("Settings", id: AppSceneID.settingsWindow) {
             SettingsView(settings: appDelegate.viewModel.settings, viewModel: appDelegate.viewModel)
+        }
+        .defaultSize(
+            width: SettingsWindowLayout.defaultWidth,
+            height: SettingsWindowLayout.defaultHeight
+        )
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
+        .commands {
+            SettingsCommands()
+        }
+    }
+}
+
+private struct SettingsCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") {
+                openWindow(id: AppSceneID.settingsWindow)
+            }
+            .keyboardShortcut(",", modifiers: .command)
         }
     }
 }

@@ -356,6 +356,19 @@ struct StatsViewModelTests {
     }
 }
 
+@Suite("Settings Window")
+struct SettingsWindowTests {
+
+    @Test("settings window uses a stable scene identifier and size contract")
+    func stableWindowConfiguration() {
+        #expect(AppSceneID.settingsWindow == "settings-window")
+        #expect(SettingsWindowLayout.defaultWidth == 820)
+        #expect(SettingsWindowLayout.defaultHeight == 520)
+        #expect(SettingsWindowLayout.sidebarWidth == 130)
+        #expect(SettingsWindowLayout.defaultWidth > SettingsWindowLayout.sidebarWidth)
+    }
+}
+
 // MARK: - Service Integration Tests
 
 @Suite("MemoryMonitor Integration")
