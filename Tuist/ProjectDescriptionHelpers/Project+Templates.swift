@@ -14,6 +14,10 @@ extension Project {
             ),
             packages: [
                 .local(path: "Packages/Util"),
+                .remote(
+                    url: "https://github.com/pointfreeco/swift-snapshot-testing",
+                    requirement: .upToNextMajor(from: "1.19.2")
+                ),
             ],
             settings: .settings(
                 base: [
@@ -53,6 +57,7 @@ extension Project {
                     ],
                     dependencies: [
                         .target(name: name),
+                        .package(product: "SnapshotTesting"),
                     ]
                 ),
             ]

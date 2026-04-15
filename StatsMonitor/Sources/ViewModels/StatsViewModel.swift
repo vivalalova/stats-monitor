@@ -9,12 +9,17 @@ final class StatsViewModel {
     let monitor: SystemMonitor
 
     init() {
-        let s = AppSettings()
-        self.settings = s
-        self.monitor = SystemMonitor(settings: s)
-        monitor.start()
-        observePollInterval()
-        observeHistoryCapacity()
+        let settings = AppSettings()
+        self.settings = settings
+        self.monitor = SystemMonitor(settings: settings)
+        startMonitoringIfNeeded()
+    }
+
+    init(settings: AppSettings, monitor: SystemMonitor, startMonitoring: Bool) {
+        self.settings = settings
+        self.monitor = monitor
+        guard startMonitoring else { return }
+        startMonitoringIfNeeded()
     }
 
     // MARK: - Settings observation
@@ -196,6 +201,12 @@ final class StatsViewModel {
     func stop()  { monitor.stop() }
 
     // MARK: - Private Helpers
+
+    private func startMonitoringIfNeeded() {
+        monitor.start()
+        observePollInterval()
+        observeHistoryCapacity()
+    }
 
     /// Pads the history to full capacity by prepending the first known value.
     /// Ensures charts always render at full width from the first data point.
