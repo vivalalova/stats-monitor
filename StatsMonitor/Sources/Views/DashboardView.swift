@@ -360,7 +360,7 @@ private extension Array where Element == ProcInfo {
 
 #Preview(traits: .sizeThatFitsLayout) {
     let settings = AppSettings()
-    let monitor = SystemMonitor(settings: settings)
+    let monitor = SystemMonitor(settings: settings).start()
     DashboardView(settings: settings, monitor: monitor)
         .frame(width: 820, height: 520)
 }

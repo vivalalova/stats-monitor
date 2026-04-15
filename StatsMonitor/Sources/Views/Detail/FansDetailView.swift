@@ -32,5 +32,5 @@ struct FansDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    FansDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    FansDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }

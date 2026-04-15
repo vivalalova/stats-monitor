@@ -71,11 +71,13 @@ final class SystemMonitor {
         observeHistoryCapacity()
     }
 
-    func start() {
-        guard !isRunning else { return }
+    @discardableResult
+    func start() -> Self {
+        guard !isRunning else { return self }
         isRunning = true
         poll()
         scheduleTimer()
+        return self
     }
 
     func stop() {

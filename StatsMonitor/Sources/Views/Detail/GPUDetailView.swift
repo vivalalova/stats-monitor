@@ -32,7 +32,7 @@ struct GPUDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    GPUDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    GPUDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }
 
 // MARK: - Engine grid

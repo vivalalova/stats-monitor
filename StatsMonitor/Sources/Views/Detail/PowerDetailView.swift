@@ -24,5 +24,5 @@ struct PowerDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    PowerDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    PowerDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }

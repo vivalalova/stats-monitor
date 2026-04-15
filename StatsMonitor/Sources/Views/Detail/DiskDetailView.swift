@@ -47,5 +47,5 @@ struct DiskDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    DiskDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    DiskDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }

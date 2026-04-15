@@ -40,5 +40,5 @@ struct NetworkDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    NetworkDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    NetworkDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }

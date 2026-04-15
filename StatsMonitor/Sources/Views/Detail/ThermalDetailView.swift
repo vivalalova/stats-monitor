@@ -37,5 +37,5 @@ struct ThermalDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    ThermalDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    ThermalDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }

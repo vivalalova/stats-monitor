@@ -194,6 +194,14 @@ struct SystemMonitorPresentationTests {
         monitor.stop()
     }
 
+    @Test("start returns self for chaining")
+    func startReturnsSelf() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+
+        #expect(monitor.start() === monitor)
+    }
+
     // MARK: - Formatted properties with known raw sample input
 
     @Test("cpuPercent shows sum of user and system with one decimal")

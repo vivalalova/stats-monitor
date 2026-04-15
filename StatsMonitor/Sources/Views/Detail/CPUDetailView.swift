@@ -43,7 +43,7 @@ struct CPUDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    CPUDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    CPUDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }
 
 // MARK: - Core grid

@@ -177,7 +177,7 @@ private struct GeneralSettingsView: View {
 
 #Preview {
     let settings = AppSettings()
-    let monitor = SystemMonitor(settings: settings)
+    let monitor = SystemMonitor(settings: settings).start()
     SettingsView(settings: settings, monitor: monitor)
         .frame(
             width: SettingsWindowLayout.defaultWidth,

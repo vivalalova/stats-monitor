@@ -26,5 +26,5 @@ struct BatteryDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    BatteryDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    BatteryDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }

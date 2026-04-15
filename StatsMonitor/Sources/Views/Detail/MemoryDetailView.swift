@@ -32,5 +32,5 @@ struct MemoryDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    MemoryDetailView(monitor: SystemMonitor(settings: AppSettings()))
+    MemoryDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
 }
