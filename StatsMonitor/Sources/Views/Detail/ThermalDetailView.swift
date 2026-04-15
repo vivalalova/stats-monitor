@@ -15,6 +15,9 @@ struct ThermalDetailView: View {
             statRow("CPU", value: monitor.cpuTempText)
             statRow("GPU", value: monitor.gpuTempText)
             statRow("Summary", value: monitor.thermalSummaryText)
+            sectionHeader("System")
+            statRow("System Power", value: monitor.powerText)
+            statRow("Fans", value: monitor.fansSummaryText)
         }
     }
 

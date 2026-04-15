@@ -120,12 +120,24 @@ func statRow(verbatim label: String, value: String) -> some View {
     HStack {
         Text(verbatim: label)
             .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
         Spacer()
         Text(value)
             .monospacedDigit()
             .fontWeight(.medium)
     }
     .font(.system(size: 13))
+}
+
+func compactRows<Data: RandomAccessCollection, ID: Hashable, Content: View>(
+    _ data: Data,
+    id: KeyPath<Data.Element, ID>,
+    @ViewBuilder row: @escaping (Data.Element) -> Content
+) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+        ForEach(data, id: id, content: row)
+    }
 }
 
 func progressColor(_ fraction: Double) -> Color {

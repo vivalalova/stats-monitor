@@ -16,6 +16,13 @@ struct CPUDetailView: View {
             statRow("User",   value: monitor.cpuUserPercent)
             statRow("System", value: monitor.cpuSystemPercent)
             statRow("Idle",   value: monitor.cpuIdlePercent)
+            sectionHeader("System")
+            statRow("Temperature", value: monitor.cpuTempText)
+            statRow("CPU Power", value: monitor.cpuPowerText)
+            statRow("System Power", value: monitor.powerText)
+            sectionHeader("Frequency")
+            statRow("Average", value: monitor.cpuAverageFrequencyText)
+            statRow("Peak", value: monitor.cpuPeakFrequencyText)
             if !monitor.cpuPerCore.isEmpty {
                 sectionHeader("Per Core")
                 CoreGridView(cores: monitor.cpuPerCore,
@@ -24,8 +31,8 @@ struct CPUDetailView: View {
 
             if !monitor.topCPUProcesses.isEmpty {
                 sectionHeader("Top Processes")
-                ForEach(Array(monitor.topCPUProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(verbatim: proc.name, value: monitor.formatProcessCPU(proc.cpuPercent))
+                compactRows(Array(monitor.topCPUProcesses.enumerated()), id: \.offset) { entry in
+                    statRow(verbatim: entry.element.name, value: monitor.formatProcessCPU(entry.element.cpuPercent))
                 }
             }
         }

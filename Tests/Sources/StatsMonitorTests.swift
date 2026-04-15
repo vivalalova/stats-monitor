@@ -200,10 +200,21 @@ struct SystemMonitorPresentationTests {
     func cpuPercentKnownInput() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.record(cpu: CPUUsage(user: 30, system: 20, idle: 50, perCore: [], coreFrequencies: []))
+        monitor.record(cpu: CPUUsage(
+            user: 30,
+            system: 20,
+            idle: 50,
+            perCore: [],
+            coreFrequencies: [
+                CPUCoreFrequency(currentHz: 3_400_000_000, maxHz: 3_500_000_000),
+                CPUCoreFrequency(currentHz: 2_600_000_000, maxHz: 3_200_000_000),
+            ]
+        ))
         #expect(monitor.cpuPercent == "50.0%")
         #expect(monitor.cpuUserPercent == "30.0%")
         #expect(monitor.cpuSystemPercent == "20.0%")
+        #expect(monitor.cpuAverageFrequencyText == "3.0G")
+        #expect(monitor.cpuPeakFrequencyText == "3.4G")
     }
 
     @Test("memoryPercent reflects usedFraction with one decimal")
@@ -216,14 +227,29 @@ struct SystemMonitorPresentationTests {
             compressed: 1_073_741_824, total: 8_589_934_592
         ))
         #expect(monitor.memoryPercent == "50.0%")
+        #expect(monitor.memoryFreeText == "4.0 GB")
     }
 
     @Test("diskPercent reflects usedFraction with one decimal")
     func diskPercentKnownInput() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.record(disk: DiskUsage(used: 250_000_000_000, total: 500_000_000_000))
+        monitor.record(disk: DiskUsage(
+            used: 250_000_000_000,
+            total: 500_000_000_000,
+            readBPS: 1_048_576,
+            writeBPS: 524_288
+        ))
         #expect(monitor.diskPercent == "50.0%")
+        #expect(monitor.diskActivityText == "1.5 MB/s")
+    }
+
+    @Test("networkTotalText sums inbound and outbound throughput")
+    func networkTotalTextKnownInput() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(network: NetworkUsage(bytesInPerSec: 1_048_576, bytesOutPerSec: 524_288))
+        #expect(monitor.networkTotalText == "1.5 MB/s")
     }
 
     @Test("batteryPercent returns N/A when battery is nil")
@@ -329,6 +355,17 @@ struct SystemMonitorPresentationTests {
             engines: [:], vramUsed: 0, anePowerMilliWatts: 2500
         ))
         #expect(monitor.anePowerText == "2.5 W")
+    }
+
+    @Test("fanCountText uses pluralized count")
+    func fanCountText() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(fans: [
+            FanUsage(id: 0, currentRPM: 2400, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 2500, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
+        ])
+        #expect(monitor.fanCountText == "2 fans")
     }
 
     // MARK: - formatProcess helpers (known input → known output)
@@ -627,6 +664,52 @@ struct DetailPanelTests {
 
         #expect(titles == ["CPU", "GPU", "Memory", "Disk", "Network", "Battery", "Thermal", "Power", "Fans"])
         #expect(Set(titles).count == PanelID.allCases.count)
+    }
+}
+
+@Suite("Status Bar")
+@MainActor
+struct StatusBarTests {
+
+    @Test("status bar label renderer builds one segment per enabled monitor")
+    func statusBarLabelRendererBuildsExpectedSegments() {
+        let settings = AppSettings()
+        settings.showCPU = true
+        settings.showGPU = false
+        settings.showMemory = true
+        settings.showDisk = false
+        settings.showNetwork = true
+        settings.showBattery = true
+        settings.showThermal = false
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(cpu: CPUUsage(user: 20, system: 5, idle: 75, perCore: [], coreFrequencies: []))
+        monitor.record(memory: MemoryUsage(
+            active: 2_147_483_648,
+            wired: 1_073_741_824,
+            compressed: 1_073_741_824,
+            total: 8_589_934_592
+        ))
+        monitor.record(network: NetworkUsage(bytesInPerSec: 2_048, bytesOutPerSec: 1_024))
+        monitor.record(battery: BatteryUsage(
+            percentage: 80,
+            isCharging: false,
+            isPluggedIn: true,
+            timeRemaining: nil,
+            cycleCount: 100,
+            designCapacity: 5000,
+            maxCapacity: 4800,
+            health: 96
+        ))
+
+        #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings).map(\.text) == [
+            "25.0%",
+            "50.0%",
+            "2 KB/s",
+            "80%",
+        ])
     }
 }
 

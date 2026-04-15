@@ -49,6 +49,9 @@ struct CombinedMenuBarLabel: View {
                 MenuBarItemLabel(icon: "wind", text: monitor.fansSummaryText)
             }
         }
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("StatsMonitor")
         .fixedSize()
     }
 }

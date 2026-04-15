@@ -18,6 +18,9 @@ struct BatteryDetailView: View {
             statRow("Cycles", value: monitor.batteryCyclesText)
             statRow("Max Capacity", value: monitor.batteryMaxCapacityText)
             statRow("Design Capacity", value: monitor.batteryDesignCapacityText)
+            sectionHeader("System")
+            statRow("Temperature", value: monitor.cpuTempText)
+            statRow("Power Draw", value: monitor.powerText)
         }
     }
 }

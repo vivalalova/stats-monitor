@@ -19,14 +19,22 @@ struct DiskDetailView: View {
 
             statRow("↓ Read",  value: monitor.diskReadText)
             statRow("↑ Write", value: monitor.diskWriteText)
+            statRow("Total I/O", value: monitor.diskActivityText)
             Divider()
+            statRow("Percent", value: monitor.diskPercent)
             statRow("Used",  value: monitor.diskUsedText)
             statRow("Free",  value: monitor.diskFreeText)
             statRow("Total", value: monitor.diskTotalText)
+            sectionHeader("System")
+            statRow("Temperature", value: monitor.cpuTempText)
+            statRow("System Power", value: monitor.powerText)
             if !monitor.topDiskProcesses.isEmpty {
                 sectionHeader("Top Processes")
-                ForEach(Array(monitor.topDiskProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(verbatim: proc.name, value: "↓\(monitor.formatProcessDisk(proc.diskReadBPS)) ↑\(monitor.formatProcessDisk(proc.diskWriteBPS))")
+                compactRows(Array(monitor.topDiskProcesses.enumerated()), id: \.offset) { entry in
+                    statRow(
+                        verbatim: entry.element.name,
+                        value: "↓\(monitor.formatProcessDisk(entry.element.diskReadBPS)) ↑\(monitor.formatProcessDisk(entry.element.diskWriteBPS))"
+                    )
                 }
             }
         }

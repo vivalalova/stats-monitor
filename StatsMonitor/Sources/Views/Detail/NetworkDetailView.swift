@@ -19,11 +19,18 @@ struct NetworkDetailView: View {
 
             statRow("↓ In",  value: monitor.networkInText)
             statRow("↑ Out", value: monitor.networkOutText)
+            statRow("Total", value: monitor.networkTotalText)
+            sectionHeader("System")
+            statRow("Temperature", value: monitor.cpuTempText)
+            statRow("System Power", value: monitor.powerText)
 
             if !monitor.topNetworkProcesses.isEmpty {
                 sectionHeader("Top Processes")
-                ForEach(Array(monitor.topNetworkProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(verbatim: proc.name, value: "↓\(monitor.formatProcessNetwork(proc.networkInBPS)) ↑\(monitor.formatProcessNetwork(proc.networkOutBPS))")
+                compactRows(Array(monitor.topNetworkProcesses.enumerated()), id: \.offset) { entry in
+                    statRow(
+                        verbatim: entry.element.name,
+                        value: "↓\(monitor.formatProcessNetwork(entry.element.networkInBPS)) ↑\(monitor.formatProcessNetwork(entry.element.networkOutBPS))"
+                    )
                 }
             }
         }

@@ -19,6 +19,10 @@ struct GPUDetailView: View {
             if monitor.anePowerMilliWatts > 0 {
                 statRow("Neural Engine", value: monitor.anePowerText)
             }
+            sectionHeader("System")
+            statRow("Temperature", value: monitor.gpuTempText)
+            statRow("GPU Power", value: monitor.gpuPowerText)
+            statRow("System Power", value: monitor.powerText)
             if !monitor.gpuEngines.isEmpty {
                 sectionHeader("Engines")
                 EngineGridView(engines: monitor.gpuEngines)

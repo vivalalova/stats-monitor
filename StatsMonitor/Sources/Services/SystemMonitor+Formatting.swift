@@ -20,6 +20,8 @@ extension SystemMonitor {
     var cpuIdlePercent: String { formatPercent(currentCPU.idle) }
     var cpuPerCore: [Double] { currentCPU.perCore }
     var cpuCoreFrequencies: [CPUCoreFrequency] { currentCPU.coreFrequencies }
+    var cpuAverageFrequencyText: String { formatAverageFrequency(cpuCoreFrequencies) }
+    var cpuPeakFrequencyText: String { formatPeakFrequency(cpuCoreFrequencies) }
     var paddedCPUHistory: [Double] { padded(cpuSamples.values.map(\.used), capacity: cpuSamples.capacity) }
 
     var gpuPercent: String { formatPercent(currentGPU.used) }
@@ -38,6 +40,9 @@ extension SystemMonitor {
 
     var memoryUsedText: String { formatBytes(currentMemory.used) }
     var memoryTotalText: String { formatBytes(currentMemory.total) }
+    var memoryFreeText: String {
+        formatBytes(currentMemory.total > currentMemory.used ? currentMemory.total - currentMemory.used : 0)
+    }
     var memoryPercent: String { formatPercent(currentMemory.usedFraction * 100) }
     var memoryActiveText: String { formatBytes(currentMemory.active) }
     var memoryWiredText: String { formatBytes(currentMemory.wired) }
@@ -50,12 +55,14 @@ extension SystemMonitor {
     var diskPercent: String { formatPercent(currentDisk.usedFraction * 100) }
     var diskReadText: String { formatThroughput(currentDisk.readBPS) }
     var diskWriteText: String { formatThroughput(currentDisk.writeBPS) }
+    var diskActivityText: String { formatThroughput(currentDisk.readBPS + currentDisk.writeBPS) }
     var paddedDiskHistory: [Double] { padded(diskSamples.values.map { $0.usedFraction * 100 }, capacity: diskSamples.capacity) }
     var paddedDiskReadHistory: [Double] { padded(diskSamples.values.map(\.readBPS), capacity: diskSamples.capacity) }
     var paddedDiskWriteHistory: [Double] { padded(diskSamples.values.map(\.writeBPS), capacity: diskSamples.capacity) }
 
     var networkInText: String { formatThroughput(currentNetwork.bytesInPerSec) }
     var networkOutText: String { formatThroughput(currentNetwork.bytesOutPerSec) }
+    var networkTotalText: String { formatThroughput(currentNetwork.bytesInPerSec + currentNetwork.bytesOutPerSec) }
     var paddedNetworkInHistory: [Double] { padded(networkSamples.values.map(\.bytesInPerSec), capacity: networkSamples.capacity) }
     var paddedNetworkOutHistory: [Double] { padded(networkSamples.values.map(\.bytesOutPerSec), capacity: networkSamples.capacity) }
 
@@ -139,6 +146,13 @@ extension SystemMonitor {
 
     var fans: [FanUsage] { fansSamples.current ?? [] }
     var hasFans: Bool { !fans.isEmpty }
+    var fanCountText: String {
+        switch fans.count {
+        case 0: "No fans"
+        case 1: "1 fan"
+        default: "\(fans.count) fans"
+        }
+    }
     var fansSummaryText: String {
         guard !fans.isEmpty else { return "No fans" }
         if fans.count == 1 { return String(format: "%.0f RPM", fans[0].currentRPM) }
@@ -167,6 +181,18 @@ extension SystemMonitor {
 
     private func formatPercent(_ value: Double) -> String {
         String(format: "%.1f%%", value)
+    }
+
+    private func formatAverageFrequency(_ frequencies: [CPUCoreFrequency]) -> String {
+        let currentValues = frequencies.map(\.currentHz).filter { $0 > 0 }
+        guard !currentValues.isEmpty else { return "N/A" }
+        let averageHz = currentValues.reduce(0, +) / UInt64(currentValues.count)
+        return ghzString(averageHz)
+    }
+
+    private func formatPeakFrequency(_ frequencies: [CPUCoreFrequency]) -> String {
+        guard let peakHz = frequencies.map(\.currentHz).filter({ $0 > 0 }).max() else { return "N/A" }
+        return ghzString(peakHz)
     }
 
     private func padded(_ data: [Double], capacity: Int) -> [Double] {

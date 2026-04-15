@@ -14,6 +14,11 @@ struct PowerDetailView: View {
             statRow("Total", value: monitor.powerText)
             statRow("CPU", value: monitor.cpuPowerText)
             statRow("GPU", value: monitor.gpuPowerText)
+            statRow("Neural Engine", value: monitor.anePowerText)
+            sectionHeader("Thermals")
+            statRow("CPU Temp", value: monitor.cpuTempText)
+            statRow("GPU Temp", value: monitor.gpuTempText)
+            statRow("Fans", value: monitor.fansSummaryText)
         }
     }
 }

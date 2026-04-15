@@ -11,14 +11,19 @@ struct MemoryDetailView: View {
                 LineChartView(lines: [(monitor.paddedMemoryHistory, .orange)])
             }
 
+            statRow("Percent",    value: monitor.memoryPercent)
             statRow("Used",       value: "\(monitor.memoryUsedText) / \(monitor.memoryTotalText)")
+            statRow("Free",       value: monitor.memoryFreeText)
             statRow("Active",     value: monitor.memoryActiveText)
             statRow("Wired",      value: monitor.memoryWiredText)
             statRow("Compressed", value: monitor.memoryCompressedText)
+            sectionHeader("System")
+            statRow("Temperature", value: monitor.cpuTempText)
+            statRow("System Power", value: monitor.powerText)
             if !monitor.topMemoryProcesses.isEmpty {
                 sectionHeader("Top Processes")
-                ForEach(Array(monitor.topMemoryProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(verbatim: proc.name, value: monitor.formatProcessMemory(proc.memoryBytes))
+                compactRows(Array(monitor.topMemoryProcesses.enumerated()), id: \.offset) { entry in
+                    statRow(verbatim: entry.element.name, value: monitor.formatProcessMemory(entry.element.memoryBytes))
                 }
             }
         }

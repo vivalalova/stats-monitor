@@ -8,7 +8,6 @@ final class StatusBarController: NSObject {
     private let monitor: SystemMonitor
     private var popover: NSPopover?
     private var currentPanel: PanelID?
-    private var hostingView: NSHostingView<CombinedMenuBarLabel>?
 
     init(settings: AppSettings, monitor: SystemMonitor) {
         self.settings = settings
@@ -25,18 +24,9 @@ final class StatusBarController: NSObject {
         guard let button = statusItem.button else { return }
         button.title = ""
         button.image = nil
-
-        let hv = NSHostingView(rootView:
-            CombinedMenuBarLabel(monitor: monitor, settings: settings)
-        )
-        hv.translatesAutoresizingMaskIntoConstraints = false
-        button.addSubview(hv)
-        NSLayoutConstraint.activate([
-            hv.leadingAnchor.constraint(equalTo: button.leadingAnchor),
-            hv.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-        ])
-        hostingView = hv
-
+        button.isBordered = false
+        renderButtonLabel()
+        button.setAccessibilityLabel("StatsMonitor")
         button.target = self
         button.action = #selector(handleClick(_:))
     }
@@ -44,10 +34,20 @@ final class StatusBarController: NSObject {
     // MARK: - Length
 
     private func updateLength() {
-        guard let hv = hostingView else { return }
-        hv.layoutSubtreeIfNeeded()
-        let w = hv.fittingSize.width
-        if w > 0 { statusItem.length = w }
+        guard let button = statusItem.button else { return }
+        button.sizeToFit()
+        let width = ceil(button.attributedTitle.size().width) + 12
+        if width > 0 {
+            statusItem.length = width
+        }
+    }
+
+    private func renderButtonLabel() {
+        guard let button = statusItem.button else { return }
+        button.attributedTitle = StatusBarLabelRenderer.makeAttributedTitle(
+            monitor: monitor,
+            settings: settings
+        )
     }
 
     /// 觀察所有影響 label 寬度的值（指標數值 + show 設定），任一改變就重算 length
@@ -64,6 +64,7 @@ final class StatusBarController: NSObject {
             _ = m.batteryPercent; _ = m.cpuTempText; _ = m.powerText; _ = m.fansSummaryText
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
+                self?.renderButtonLabel()
                 self?.updateLength()
                 self?.observeForLength()
             }

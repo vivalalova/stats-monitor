@@ -15,6 +15,11 @@ struct FansDetailView: View {
             }
 
             statRow("Average", value: monitor.fansSummaryText)
+            statRow("Count", value: monitor.fanCountText)
+            sectionHeader("System")
+            statRow("CPU Temp", value: monitor.cpuTempText)
+            statRow("GPU Temp", value: monitor.gpuTempText)
+            statRow("System Power", value: monitor.powerText)
 
             if !monitor.fans.isEmpty {
                 sectionHeader("Per Fan")
