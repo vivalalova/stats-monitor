@@ -5,6 +5,49 @@ import SwiftUI
 // MARK: - AboutView
 
 struct AboutView: View {
+    struct SnapshotData {
+        let appName: String
+        let appVersion: String
+        let appBuild: String
+        let copyright: String
+        let macModel: String
+        let chipName: String
+        let osVersion: String
+        let totalRAM: String
+        let uptime: String
+
+        static let live = SnapshotData(
+            appName: Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
+                ?? Bundle.main.infoDictionary?["CFBundleName"] as? String
+                ?? "StatsMonitor",
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—",
+            appBuild: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—",
+            copyright: Bundle.main.infoDictionary?["NSHumanReadableCopyright"] as? String
+                ?? "© \(Calendar.current.component(.year, from: Date())) Lova Shih",
+            macModel: sysctlString("hw.model") ?? "—",
+            chipName: sysctlString("machdep.cpu.brand_string") ?? "—",
+            osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+            totalRAM: {
+                let bytes = ProcessInfo.processInfo.physicalMemory
+                let gb = Double(bytes) / 1_073_741_824
+                return String(format: "%.0f GB", gb.rounded())
+            }(),
+            uptime: {
+                let formatter = DateComponentsFormatter()
+                formatter.allowedUnits = [.day, .hour, .minute]
+                formatter.unitsStyle = .abbreviated
+                formatter.zeroFormattingBehavior = .dropAll
+                return formatter.string(from: ProcessInfo.processInfo.systemUptime) ?? "—"
+            }()
+        )
+    }
+
+    private let data: SnapshotData
+
+    init(data: SnapshotData = .live) {
+        self.data = data
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -26,12 +69,12 @@ struct AboutView: View {
                 .frame(width: 64, height: 64)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(appName)
+                Text(data.appName)
                     .font(.title2)
                     .fontWeight(.semibold)
-                Text("Version \(appVersion) (\(appBuild))")
+                Text("Version \(data.appVersion) (\(data.appBuild))")
                     .foregroundStyle(.secondary)
-                Text(copyright)
+                Text(data.copyright)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -46,62 +89,13 @@ struct AboutView: View {
                 .font(.headline)
 
             VStack(spacing: 0) {
-                statRow("Model", value: macModel)
-                statRow("Chip", value: chipName)
-                statRow("macOS", value: osVersion)
-                statRow("Memory", value: totalRAM)
-                statRow("Uptime", value: uptime)
+                statRow("Model", value: data.macModel)
+                statRow("Chip", value: data.chipName)
+                statRow("macOS", value: data.osVersion)
+                statRow("Memory", value: data.totalRAM)
+                statRow("Uptime", value: data.uptime)
             }
         }
-    }
-
-    // MARK: - App bundle values
-
-    private var appName: String {
-        Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
-            ?? Bundle.main.infoDictionary?["CFBundleName"] as? String
-            ?? "StatsMonitor"
-    }
-
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
-    }
-
-    private var appBuild: String {
-        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
-    }
-
-    private var copyright: String {
-        Bundle.main.infoDictionary?["NSHumanReadableCopyright"] as? String
-            ?? "© \(Calendar.current.component(.year, from: Date())) Lova Shih"
-    }
-
-    // MARK: - System values
-
-    private var macModel: String {
-        sysctlString("hw.model") ?? "—"
-    }
-
-    private var chipName: String {
-        sysctlString("machdep.cpu.brand_string") ?? "—"
-    }
-
-    private var osVersion: String {
-        ProcessInfo.processInfo.operatingSystemVersionString
-    }
-
-    private var totalRAM: String {
-        let bytes = ProcessInfo.processInfo.physicalMemory
-        let gb = Double(bytes) / 1_073_741_824
-        return String(format: "%.0f GB", gb.rounded())
-    }
-
-    private var uptime: String {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.day, .hour, .minute]
-        formatter.unitsStyle = .abbreviated
-        formatter.zeroFormattingBehavior = .dropAll
-        return formatter.string(from: ProcessInfo.processInfo.systemUptime) ?? "—"
     }
 }
 

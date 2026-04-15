@@ -32,6 +32,12 @@ struct BarView: View {
 struct DetailToolbar: View {
     let title: LocalizedStringKey
     @Environment(\.openWindow) private var openWindow
+    @State private var quitConfirmation = QuitConfirmationController()
+
+    init(title: LocalizedStringKey, quitConfirmation: QuitConfirmationController = QuitConfirmationController()) {
+        self.title = title
+        _quitConfirmation = State(initialValue: quitConfirmation)
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -43,14 +49,31 @@ struct DetailToolbar: View {
                 Image(systemName: "gearshape")
             }
             .help("Settings")
-            Button { NSApplication.shared.terminate(nil) } label: {
+            Button { quitConfirmation.requestQuit() } label: {
                 Image(systemName: "power")
             }
             .help("Quit StatsMonitor")
         }
+        .alert(QuitConfirmationCopy.title, isPresented: quitConfirmationBinding) {
+            Button(QuitConfirmationCopy.cancel, role: .cancel) {
+                quitConfirmation.cancel()
+            }
+            Button(QuitConfirmationCopy.confirm, role: .destructive) {
+                quitConfirmation.confirm()
+            }
+        } message: {
+            Text(QuitConfirmationCopy.message)
+        }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
         .font(.system(size: 14))
+    }
+
+    private var quitConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { quitConfirmation.isPresented },
+            set: { quitConfirmation.isPresented = $0 }
+        )
     }
 }
 

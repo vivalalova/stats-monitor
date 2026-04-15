@@ -630,6 +630,52 @@ struct DetailPanelTests {
     }
 }
 
+@Suite("Quit Confirmation")
+@MainActor
+struct QuitConfirmationTests {
+
+    @Test("requesting quit presents confirmation before termination")
+    func requestQuitPresentsConfirmation() {
+        var terminateCallCount = 0
+        let confirmation = QuitConfirmationController {
+            terminateCallCount += 1
+        }
+
+        confirmation.requestQuit()
+
+        #expect(confirmation.isPresented)
+        #expect(terminateCallCount == 0)
+    }
+
+    @Test("cancel dismisses confirmation without terminating the app")
+    func cancelDismissesWithoutTermination() {
+        var terminateCallCount = 0
+        let confirmation = QuitConfirmationController {
+            terminateCallCount += 1
+        }
+        confirmation.requestQuit()
+
+        confirmation.cancel()
+
+        #expect(!confirmation.isPresented)
+        #expect(terminateCallCount == 0)
+    }
+
+    @Test("confirm dismisses confirmation and terminates the app")
+    func confirmDismissesAndTerminates() {
+        var terminateCallCount = 0
+        let confirmation = QuitConfirmationController {
+            terminateCallCount += 1
+        }
+        confirmation.requestQuit()
+
+        confirmation.confirm()
+
+        #expect(!confirmation.isPresented)
+        #expect(terminateCallCount == 1)
+    }
+}
+
 // MARK: - Service Integration Tests
 
 @Suite("MemoryMonitor Integration")

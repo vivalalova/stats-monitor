@@ -125,6 +125,7 @@ Packages/Util/
 測試框架：**Swift Testing**（`@Suite`、`@Test`、`#expect`）
 
 - 想看目前 UI 截圖時，優先看 snapshot 測試產出的參考圖：`Tests/Sources/__Snapshots__/StatsMonitorSnapshotTests/`
+- 任何使用者看得到的畫面都必須有 screenshot test；新增或修改 UI 時，對應的 alert / sheet / panel / popover / window / empty state / error state 都要補 snapshot reference
 
 | 層 | 測試內容 |
 |---|---|

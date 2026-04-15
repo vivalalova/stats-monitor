@@ -38,7 +38,20 @@ struct SettingsView: View {
 
     let settings: AppSettings
     let monitor: SystemMonitor
+    private let aboutData: AboutView.SnapshotData
     @State private var selection: Tab = .dashboard
+
+    init(
+        settings: AppSettings,
+        monitor: SystemMonitor,
+        selection: Tab = .dashboard,
+        aboutData: AboutView.SnapshotData = .live
+    ) {
+        self.settings = settings
+        self.monitor = monitor
+        self.aboutData = aboutData
+        _selection = State(initialValue: selection)
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -60,7 +73,7 @@ struct SettingsView: View {
             switch selection {
             case .dashboard: DashboardView(settings: settings, monitor: monitor)
             case .general:   GeneralSettingsView(settings: settings)
-            case .about:     AboutView()
+            case .about:     AboutView(data: aboutData)
             }
         }
         .frame(
