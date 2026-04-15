@@ -36,6 +36,18 @@ struct CombinedMenuBarLabel: View {
             if settings.showNetwork {
                 MenuBarItemLabel(icon: "network", text: viewModel.networkIn)
             }
+            if settings.showBattery, viewModel.hasBattery {
+                MenuBarItemLabel(icon: "battery.100", text: viewModel.batteryPercent)
+            }
+            if settings.showThermal, viewModel.hasThermal {
+                MenuBarItemLabel(icon: "thermometer.medium", text: viewModel.cpuTempStr)
+            }
+            if settings.showPower, viewModel.hasPower {
+                MenuBarItemLabel(icon: "bolt.fill", text: viewModel.powerStr)
+            }
+            if settings.showFans, viewModel.hasFans {
+                MenuBarItemLabel(icon: "wind", text: viewModel.fansSummary)
+            }
         }
         .fixedSize()
     }
@@ -48,6 +60,10 @@ struct CombinedMenuBarLabel: View {
         MenuBarItemLabel(icon: "memorychip",   text: "71%")
         MenuBarItemLabel(icon: "internaldrive",text: "55%")
         MenuBarItemLabel(icon: "network",      text: "↓1.2 MB/s")
+        MenuBarItemLabel(icon: "battery.100",  text: "78%")
+        MenuBarItemLabel(icon: "thermometer.medium", text: "68.4°C")
+        MenuBarItemLabel(icon: "bolt.fill",    text: "21.3 W")
+        MenuBarItemLabel(icon: "wind",         text: "2470 RPM")
     }
     .padding()
 }

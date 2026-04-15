@@ -389,6 +389,8 @@ struct SystemMonitorTests {
         #expect(!Array(monitor.cpuHistory).isEmpty)
         #expect(!Array(monitor.gpuHistory).isEmpty)
         #expect(!Array(monitor.networkOutHistory).isEmpty)
+        #expect(monitor.gpuTempHistory.capacity == 60)
+        #expect(monitor.fanAverageHistory.capacity == 60)
 
         settings.historyCapacity = 300
         monitor.resetHistories()
@@ -396,6 +398,8 @@ struct SystemMonitorTests {
         #expect(monitor.cpuHistory.capacity == 300)
         #expect(monitor.gpuHistory.capacity == 300)
         #expect(monitor.networkOutHistory.capacity == 300)
+        #expect(monitor.gpuTempHistory.capacity == 300)
+        #expect(monitor.fanAverageHistory.capacity == 300)
         #expect(Array(monitor.cpuHistory).isEmpty)
         #expect(Array(monitor.gpuHistory).isEmpty)
         #expect(Array(monitor.networkOutHistory).isEmpty)
@@ -458,6 +462,50 @@ struct DashboardToolbarTests {
         #expect(AppSettings().dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
     }
 
+    @Test("all supported menu bar monitor items default to visible")
+    func monitorItemVisibilityDefaults() {
+        let defaults = UserDefaults.standard
+        let keys = [
+            "showCPU",
+            "showGPU",
+            "showMemory",
+            "showDisk",
+            "showNetwork",
+            "showBattery",
+            "showThermal",
+            "showPower",
+            "showFans",
+        ]
+        let originalValues = keys.reduce(into: [String: Any?]()) { values, key in
+            values[key] = defaults.object(forKey: key)
+        }
+        defer {
+            for key in keys {
+                if let value = originalValues[key] ?? nil {
+                    defaults.set(value, forKey: key)
+                } else {
+                    defaults.removeObject(forKey: key)
+                }
+            }
+        }
+
+        for key in keys {
+            defaults.removeObject(forKey: key)
+        }
+
+        let settings = AppSettings()
+
+        #expect(settings.showCPU)
+        #expect(settings.showGPU)
+        #expect(settings.showMemory)
+        #expect(settings.showDisk)
+        #expect(settings.showNetwork)
+        #expect(settings.showBattery)
+        #expect(settings.showThermal)
+        #expect(settings.showPower)
+        #expect(settings.showFans)
+    }
+
     @Test("columns slider binding reflects and rounds dashboard column count")
     func columnsSliderBindingRoundsToNearestWholeNumber() {
         let defaults = UserDefaults.standard
@@ -501,9 +549,13 @@ struct DetailPanelTests {
             MemoryDetailView.panelTitle,
             DiskDetailView.panelTitle,
             NetworkDetailView.panelTitle,
+            BatteryDetailView.panelTitle,
+            ThermalDetailView.panelTitle,
+            PowerDetailView.panelTitle,
+            FansDetailView.panelTitle,
         ]
 
-        #expect(titles == ["CPU", "GPU", "Memory", "Disk", "Network"])
+        #expect(titles == ["CPU", "GPU", "Memory", "Disk", "Network", "Battery", "Thermal", "Power", "Fans"])
         #expect(Set(titles).count == PanelID.allCases.count)
     }
 }

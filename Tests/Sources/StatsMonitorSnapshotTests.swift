@@ -52,6 +52,10 @@ struct StatsMonitorSnapshotTests {
         settings.showMemory = true
         settings.showDisk = true
         settings.showNetwork = true
+        settings.showBattery = true
+        settings.showThermal = true
+        settings.showPower = true
+        settings.showFans = true
 
         let monitor = SystemMonitor(settings: settings)
         let viewModel = StatsViewModel(settings: settings, monitor: monitor, startMonitoring: false)
@@ -65,6 +69,26 @@ struct StatsMonitorSnapshotTests {
         )
         viewModel.monitor.stats.disk = DiskUsage(used: 400_000_000_000, total: 1_000_000_000_000)
         viewModel.monitor.stats.network = NetworkUsage(bytesInPerSec: 1_572_864, bytesOutPerSec: 262_144)
+        viewModel.monitor.stats.battery = BatteryUsage(
+            percentage: 78,
+            isCharging: false,
+            isPluggedIn: false,
+            timeRemaining: 165,
+            cycleCount: 132,
+            designCapacity: 5000,
+            maxCapacity: 4630,
+            health: 92.6
+        )
+        viewModel.monitor.stats.thermal = ThermalUsage(cpuTemperature: 68.4, gpuTemperature: 57.2)
+        viewModel.monitor.stats.power = PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        )
+        viewModel.monitor.stats.fans = [
+            FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
+        ]
 
         let view = hostingView(for: snapshotSurface {
             CombinedMenuBarLabel(viewModel: viewModel, settings: settings)

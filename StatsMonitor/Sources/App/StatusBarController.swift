@@ -55,8 +55,11 @@ final class StatusBarController: NSObject {
         withObservationTracking {
             _ = s.showCPU; _ = s.showGPU; _ = s.showMemory
             _ = s.showDisk; _ = s.showNetwork
+            _ = s.showBattery; _ = s.showThermal; _ = s.showPower; _ = s.showFans
             _ = vm.cpuPercent; _ = vm.gpuPercent; _ = vm.memoryPercent
             _ = vm.diskPercent; _ = vm.networkIn
+            _ = vm.hasBattery; _ = vm.hasThermal; _ = vm.hasPower; _ = vm.hasFans
+            _ = vm.batteryPercent; _ = vm.cpuTempStr; _ = vm.powerStr; _ = vm.fansSummary
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.updateLength()
@@ -78,6 +81,10 @@ final class StatusBarController: NSObject {
         let enabled: [PanelID] = [
             s.showCPU ? .cpu : nil, s.showGPU ? .gpu : nil, s.showMemory ? .memory : nil,
             s.showDisk ? .disk : nil, s.showNetwork ? .network : nil,
+            s.showBattery && viewModel.hasBattery ? .battery : nil,
+            s.showThermal && viewModel.hasThermal ? .thermal : nil,
+            s.showPower && viewModel.hasPower ? .power : nil,
+            s.showFans && viewModel.hasFans ? .fans : nil,
         ].compactMap { $0 }
         guard !enabled.isEmpty else { return .cpu }
         let slotWidth = statusItem.length / CGFloat(enabled.count)
@@ -120,6 +127,10 @@ final class StatusBarController: NSObject {
         case .memory:  MemoryDetailView(viewModel: viewModel)
         case .disk:    DiskDetailView(viewModel: viewModel)
         case .network: NetworkDetailView(viewModel: viewModel)
+        case .battery: BatteryDetailView(viewModel: viewModel)
+        case .thermal: ThermalDetailView(viewModel: viewModel)
+        case .power:   PowerDetailView(viewModel: viewModel)
+        case .fans:    FansDetailView(viewModel: viewModel)
         }
     }
 }

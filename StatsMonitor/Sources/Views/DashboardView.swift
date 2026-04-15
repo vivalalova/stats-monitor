@@ -73,10 +73,8 @@ struct DashboardView: View {
                             title: "Thermal",
                             value: "CPU \(viewModel.cpuTempStr)",
                             statusColor: thermalStatusColor(viewModel.thermal?.cpuTemperature ?? 0),
-                            lines: viewModel.cpuTempHistory.count >= 2
-                                ? [(history: viewModel.cpuTempHistory, color: .orange)]
-                                : [],
-                            maxValue: histMax(viewModel.cpuTempHistory)
+                            lines: thermalCardLines(viewModel: viewModel),
+                            maxValue: histMax(viewModel.cpuTempHistory + viewModel.gpuTempHistory)
                         )
                     }
                     MetricCard(
@@ -103,8 +101,10 @@ struct DashboardView: View {
                             title: "Fans",
                             value: viewModel.fansSummary,
                             statusColor: .blue,
-                            lines: [],
-                            maxValue: 100
+                            lines: viewModel.fanAverageHistory.count >= 2
+                                ? [(history: viewModel.fanAverageHistory, color: .blue)]
+                                : [],
+                            maxValue: viewModel.fanChartMaxRPM
                         )
                     }
                 }
@@ -166,6 +166,18 @@ private func thermalStatusColor(_ celsius: Double) -> Color {
     case ..<80:  .orange
     default:     .red
     }
+}
+
+@MainActor
+private func thermalCardLines(viewModel: StatsViewModel) -> [(history: [Double], color: Color)] {
+    var lines: [(history: [Double], color: Color)] = []
+    if viewModel.cpuTempHistory.count >= 2 {
+        lines.append((history: viewModel.cpuTempHistory, color: .orange))
+    }
+    if viewModel.gpuTempHistory.count >= 2 {
+        lines.append((history: viewModel.gpuTempHistory, color: .purple))
+    }
+    return lines
 }
 
 // MARK: - MetricCard

@@ -133,6 +133,10 @@ private struct GeneralSettingsView: View {
                         Toggle("Memory", isOn: $settings.showMemory)
                         Toggle("Disk", isOn: $settings.showDisk)
                         Toggle("Network", isOn: $settings.showNetwork)
+                        Toggle("Battery", isOn: $settings.showBattery)
+                        Toggle("Thermal", isOn: $settings.showThermal)
+                        Toggle("Power", isOn: $settings.showPower)
+                        Toggle("Fans", isOn: $settings.showFans)
                     }
                     Text("Keep at least one item to avoid hiding the app completely.")
                         .font(.caption)

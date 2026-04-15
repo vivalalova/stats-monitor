@@ -131,6 +131,14 @@ final class StatsViewModel {
         guard let p = monitor.stats.power else { return "N/A" }
         return String(format: "%.1f W", p.totalWatts)
     }
+    var cpuPowerStr: String {
+        guard let p = monitor.stats.power else { return "N/A" }
+        return String(format: "%.1f W", p.cpuWatts)
+    }
+    var gpuPowerStr: String {
+        guard let p = monitor.stats.power else { return "N/A" }
+        return String(format: "%.1f W", p.gpuWatts)
+    }
 
     // MARK: - Battery
 
@@ -163,6 +171,22 @@ final class StatsViewModel {
         guard let b = monitor.stats.battery else { return "" }
         return "\(b.cycleCount) cycles"
     }
+    var batteryTimeRemaining: String {
+        guard let b = monitor.stats.battery else { return "" }
+        guard !b.isCharging, !b.isPluggedIn else { return batteryStatus }
+        guard let mins = b.timeRemaining else { return "Estimating" }
+        let h = mins / 60
+        let m = mins % 60
+        return h > 0 ? "\(h)h \(m)m" : "\(m)m"
+    }
+    var batteryMaxCapacity: String {
+        guard let b = monitor.stats.battery else { return "" }
+        return "\(b.maxCapacity) mAh"
+    }
+    var batteryDesignCapacity: String {
+        guard let b = monitor.stats.battery else { return "" }
+        return "\(b.designCapacity) mAh"
+    }
 
     // MARK: - Thermal
 
@@ -178,6 +202,14 @@ final class StatsViewModel {
         return String(format: "%.1f°C", temp)
     }
     var cpuTempHistory: [Double] { padded(monitor.cpuTempHistory) }
+    var gpuTempHistory: [Double] { padded(monitor.gpuTempHistory) }
+    var thermalStatusSummary: String {
+        guard let thermal = monitor.stats.thermal else { return "N/A" }
+        if let gpuTemp = thermal.gpuTemperature {
+            return "CPU \(cpuTempStr) GPU \(String(format: "%.1f°C", gpuTemp))"
+        }
+        return "CPU \(cpuTempStr)"
+    }
 
     // MARK: - Fan
 
@@ -193,6 +225,13 @@ final class StatsViewModel {
         if f.count == 1 { return String(format: "%.0f RPM", f[0].currentRPM) }
         let avg = f.map(\.currentRPM).reduce(0, +) / Double(f.count)
         return String(format: "%.0f RPM avg", avg)
+    }
+    var fanAverageHistory: [Double] { padded(monitor.fanAverageHistory) }
+    var fanChartMaxRPM: Double {
+        max(fans.map(\.maxRPM).max() ?? 0, fanAverageHistory.max() ?? 0, 1)
+    }
+    func fanRangeStr(_ fan: FanUsage) -> String {
+        String(format: "%.0f–%.0f RPM", fan.minRPM, fan.maxRPM)
     }
 
     // MARK: - Lifecycle

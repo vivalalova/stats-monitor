@@ -25,6 +25,10 @@ final class AppSettings {
     var showMemory:  Bool = true { didSet { persist("showMemory",  showMemory) } }
     var showDisk:    Bool = true { didSet { persist("showDisk",    showDisk) } }
     var showNetwork: Bool = true { didSet { persist("showNetwork", showNetwork) } }
+    var showBattery: Bool = true { didSet { persist("showBattery", showBattery) } }
+    var showThermal: Bool = true { didSet { persist("showThermal", showThermal) } }
+    var showPower:   Bool = true { didSet { persist("showPower",   showPower) } }
+    var showFans:    Bool = true { didSet { persist("showFans",    showFans) } }
 
     var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled {
         didSet {
@@ -37,7 +41,8 @@ final class AppSettings {
         let ud = UserDefaults.standard
         ud.register(defaults: [
             "pollInterval": 2.0,  "historyCapacity": 120, "processCount": 10, "dashboardColumns": Self.defaultDashboardColumns,
-            "showCPU": true, "showGPU": true, "showMemory": true, "showDisk": true, "showNetwork": true
+            "showCPU": true, "showGPU": true, "showMemory": true, "showDisk": true, "showNetwork": true,
+            "showBattery": true, "showThermal": true, "showPower": true, "showFans": true
         ])
         pollInterval     = ud.double (forKey: "pollInterval")
         historyCapacity  = ud.integer(forKey: "historyCapacity")
@@ -48,6 +53,10 @@ final class AppSettings {
         showMemory  = ud.bool(forKey: "showMemory")
         showDisk    = ud.bool(forKey: "showDisk")
         showNetwork = ud.bool(forKey: "showNetwork")
+        showBattery = ud.bool(forKey: "showBattery")
+        showThermal = ud.bool(forKey: "showThermal")
+        showPower   = ud.bool(forKey: "showPower")
+        showFans    = ud.bool(forKey: "showFans")
     }
 
     private func persist(_ key: String, _ value: Any) {

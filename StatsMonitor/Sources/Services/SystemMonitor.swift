@@ -16,6 +16,8 @@ final class SystemMonitor {
         networkOut: RingBuffer<Double>,
         battery: RingBuffer<Double>,
         cpuTemp: RingBuffer<Double>,
+        gpuTemp: RingBuffer<Double>,
+        fanAverage: RingBuffer<Double>,
         power: RingBuffer<Double>
     )
 
@@ -31,6 +33,8 @@ final class SystemMonitor {
     private(set) var networkOutHistory: RingBuffer<Double>
     private(set) var batteryHistory:    RingBuffer<Double>
     private(set) var cpuTempHistory:    RingBuffer<Double>
+    private(set) var gpuTempHistory:    RingBuffer<Double>
+    private(set) var fanAverageHistory: RingBuffer<Double>
     private(set) var powerHistory:      RingBuffer<Double>
 
     private var cpuMonitor      = CPUMonitor()
@@ -66,6 +70,8 @@ final class SystemMonitor {
         networkOutHistory = historyBuffers.networkOut
         batteryHistory    = historyBuffers.battery
         cpuTempHistory    = historyBuffers.cpuTemp
+        gpuTempHistory    = historyBuffers.gpuTemp
+        fanAverageHistory = historyBuffers.fanAverage
         powerHistory      = historyBuffers.power
         // SMC-dependent monitors share the same connection
         thermalMonitor = ThermalMonitor(smc: smcClient)
@@ -141,6 +147,13 @@ final class SystemMonitor {
         if let temp = thermal?.cpuTemperature {
             cpuTempHistory.append(temp)
         }
+        if let gpuTemp = thermal?.gpuTemperature {
+            gpuTempHistory.append(gpuTemp)
+        }
+        if !fans.isEmpty {
+            let averageRPM = fans.map(\.currentRPM).reduce(0, +) / Double(fans.count)
+            fanAverageHistory.append(averageRPM)
+        }
         if let pwr = power {
             powerHistory.append(pwr.totalMilliWatts / 1000)   // store as Watts
         }
@@ -199,6 +212,8 @@ final class SystemMonitor {
         networkOutHistory = historyBuffers.networkOut
         batteryHistory    = historyBuffers.battery
         cpuTempHistory    = historyBuffers.cpuTemp
+        gpuTempHistory    = historyBuffers.gpuTemp
+        fanAverageHistory = historyBuffers.fanAverage
         powerHistory      = historyBuffers.power
     }
 
@@ -214,6 +229,8 @@ final class SystemMonitor {
             networkOut: RingBuffer<Double>(capacity: capacity),
             battery: RingBuffer<Double>(capacity: capacity),
             cpuTemp: RingBuffer<Double>(capacity: capacity),
+            gpuTemp: RingBuffer<Double>(capacity: capacity),
+            fanAverage: RingBuffer<Double>(capacity: capacity),
             power: RingBuffer<Double>(capacity: capacity)
         )
     }

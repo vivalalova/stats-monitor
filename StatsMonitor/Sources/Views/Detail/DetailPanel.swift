@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum PanelID: String, CaseIterable {
-    case cpu, gpu, memory, disk, network
+    case cpu, gpu, memory, disk, network, battery, thermal, power, fans
 }
 
 struct PanelView<Content: View>: View {
