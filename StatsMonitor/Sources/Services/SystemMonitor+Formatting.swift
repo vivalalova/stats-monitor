@@ -3,66 +3,68 @@ import Util
 
 @MainActor
 extension SystemMonitor {
-    var cpuFraction: Double { cpuLatest / 100 }
-    var gpuFraction: Double { gpuLatest / 100 }
-    var memoryFraction: Double { memoryLatest / 100 }
-    var diskFraction: Double { diskLatest / 100 }
+    private var currentCPU: CPUUsage { cpuSamples.current ?? .zero }
+    private var currentGPU: GPUUsage { gpuSamples.current ?? .zero }
+    private var currentMemory: MemoryUsage { memorySamples.current ?? .zero }
+    private var currentDisk: DiskUsage { diskSamples.current ?? .zero }
+    private var currentNetwork: NetworkUsage { networkSamples.current ?? .zero }
 
-    var cpuPercent: String { formatPercent(cpuLatest) }
-    var cpuUserPercent: String { formatPercent(stats.cpu.user) }
-    var cpuSystemPercent: String { formatPercent(stats.cpu.system) }
-    var cpuPerCore: [Double] { stats.cpu.perCore }
-    var cpuCoreFrequencies: [CPUCoreFrequency] { stats.cpu.coreFrequencies }
-    var paddedCPUHistory: [Double] { padded(cpuHistory) }
+    var cpuFraction: Double { currentCPU.used / 100 }
+    var gpuFraction: Double { currentGPU.used / 100 }
+    var memoryFraction: Double { currentMemory.usedFraction }
+    var diskFraction: Double { currentDisk.usedFraction }
 
-    var gpuPercent: String { formatPercent(gpuLatest) }
-    var gpuRenderPercent: String { formatPercent(stats.gpu.renderUtilization) }
-    var gpuEngines: [String: Double] { stats.gpu.engines }
-    var paddedGPUHistory: [Double] { padded(gpuHistory) }
-    var gpuVramUsed: UInt64 { stats.gpu.vramUsed }
-    var gpuVramUsedText: String { formatBytes(stats.gpu.vramUsed) }
-    var anePowerMilliWatts: Double { stats.gpu.anePowerMilliWatts }
+    var cpuPercent: String { formatPercent(currentCPU.used) }
+    var cpuUserPercent: String { formatPercent(currentCPU.user) }
+    var cpuSystemPercent: String { formatPercent(currentCPU.system) }
+    var cpuIdlePercent: String { formatPercent(currentCPU.idle) }
+    var cpuPerCore: [Double] { currentCPU.perCore }
+    var cpuCoreFrequencies: [CPUCoreFrequency] { currentCPU.coreFrequencies }
+    var paddedCPUHistory: [Double] { padded(cpuSamples.values.map(\.used), capacity: cpuSamples.capacity) }
+
+    var gpuPercent: String { formatPercent(currentGPU.used) }
+    var gpuRenderPercent: String { formatPercent(currentGPU.renderUtilization) }
+    var gpuEngines: [String: Double] { currentGPU.engines }
+    var paddedGPUHistory: [Double] { padded(gpuSamples.values.map(\.used), capacity: gpuSamples.capacity) }
+    var gpuVramUsed: UInt64 { currentGPU.vramUsed }
+    var gpuVramUsedText: String { formatBytes(currentGPU.vramUsed) }
+    var anePowerMilliWatts: Double { currentGPU.anePowerMilliWatts }
     var anePowerText: String {
-        let milliWatts = stats.gpu.anePowerMilliWatts
+        let milliWatts = currentGPU.anePowerMilliWatts
         return milliWatts >= 1000
             ? String(format: "%.1f W", milliWatts / 1000)
             : String(format: "%.0f mW", milliWatts)
     }
 
-    var memoryUsedText: String { formatBytes(stats.memory.used) }
-    var memoryTotalText: String { formatBytes(stats.memory.total) }
-    var memoryPercent: String { formatPercent(memoryLatest) }
-    var memoryActiveText: String { formatBytes(stats.memory.active) }
-    var memoryWiredText: String { formatBytes(stats.memory.wired) }
-    var memoryCompressedText: String { formatBytes(stats.memory.compressed) }
-    var paddedMemoryHistory: [Double] { padded(memoryHistory) }
+    var memoryUsedText: String { formatBytes(currentMemory.used) }
+    var memoryTotalText: String { formatBytes(currentMemory.total) }
+    var memoryPercent: String { formatPercent(currentMemory.usedFraction * 100) }
+    var memoryActiveText: String { formatBytes(currentMemory.active) }
+    var memoryWiredText: String { formatBytes(currentMemory.wired) }
+    var memoryCompressedText: String { formatBytes(currentMemory.compressed) }
+    var paddedMemoryHistory: [Double] { padded(memorySamples.values.map { $0.usedFraction * 100 }, capacity: memorySamples.capacity) }
 
-    var diskUsedText: String { formatBytes(stats.disk.used) }
-    var diskFreeText: String { formatBytes(stats.disk.total - stats.disk.used) }
-    var diskTotalText: String { formatBytes(stats.disk.total) }
-    var diskPercent: String { formatPercent(diskLatest) }
-    var diskReadText: String { formatThroughput(diskReadLatest) }
-    var diskWriteText: String { formatThroughput(diskWriteLatest) }
-    var paddedDiskHistory: [Double] { padded(diskHistory) }
-    var paddedDiskReadHistory: [Double] { padded(diskReadHistory) }
-    var paddedDiskWriteHistory: [Double] { padded(diskWriteHistory) }
+    var diskUsedText: String { formatBytes(currentDisk.used) }
+    var diskFreeText: String { formatBytes(currentDisk.total - currentDisk.used) }
+    var diskTotalText: String { formatBytes(currentDisk.total) }
+    var diskPercent: String { formatPercent(currentDisk.usedFraction * 100) }
+    var diskReadText: String { formatThroughput(currentDisk.readBPS) }
+    var diskWriteText: String { formatThroughput(currentDisk.writeBPS) }
+    var paddedDiskHistory: [Double] { padded(diskSamples.values.map { $0.usedFraction * 100 }, capacity: diskSamples.capacity) }
+    var paddedDiskReadHistory: [Double] { padded(diskSamples.values.map(\.readBPS), capacity: diskSamples.capacity) }
+    var paddedDiskWriteHistory: [Double] { padded(diskSamples.values.map(\.writeBPS), capacity: diskSamples.capacity) }
 
-    var networkInText: String { formatThroughput(networkInLatest) }
-    var networkOutText: String { formatThroughput(networkOutLatest) }
-    var paddedNetworkInHistory: [Double] { padded(networkInHistory) }
-    var paddedNetworkOutHistory: [Double] { padded(networkOutHistory) }
+    var networkInText: String { formatThroughput(currentNetwork.bytesInPerSec) }
+    var networkOutText: String { formatThroughput(currentNetwork.bytesOutPerSec) }
+    var paddedNetworkInHistory: [Double] { padded(networkSamples.values.map(\.bytesInPerSec), capacity: networkSamples.capacity) }
+    var paddedNetworkOutHistory: [Double] { padded(networkSamples.values.map(\.bytesOutPerSec), capacity: networkSamples.capacity) }
 
-    var topCPUProcesses: [ProcInfo] { stats.topCPUProcesses }
-    var topMemoryProcesses: [ProcInfo] { stats.topMemoryProcesses }
-    var topDiskProcesses: [ProcInfo] { stats.topDiskProcesses }
-    var topNetworkProcesses: [ProcInfo] { stats.topNetworkProcesses }
-
-    var power: PowerUsage? { stats.power }
-    var hasPower: Bool { stats.power != nil }
-    var paddedPowerHistory: [Double] { padded(powerHistory) }
+    var power: PowerUsage? { powerSamples.current }
+    var hasPower: Bool { power != nil }
+    var paddedPowerHistory: [Double] { padded(powerSamples.values.map(\.totalWatts), capacity: powerSamples.capacity) }
     var powerText: String {
-        guard let watts = powerLatest else { return "N/A" }
-        return String(format: "%.1f W", watts)
+        guard let power else { return "N/A" }
+        return String(format: "%.1f W", power.totalWatts)
     }
     var cpuPowerText: String {
         guard let power else { return "N/A" }
@@ -73,14 +75,14 @@ extension SystemMonitor {
         return String(format: "%.1f W", power.gpuWatts)
     }
 
-    var battery: BatteryUsage? { stats.battery }
-    var hasBattery: Bool { stats.battery != nil }
-    var paddedBatteryHistory: [Double] { padded(batteryHistory) }
+    var battery: BatteryUsage? { batterySamples.current }
+    var hasBattery: Bool { battery != nil }
+    var paddedBatteryHistory: [Double] { padded(batterySamples.values.map(\.percentage), capacity: batterySamples.capacity) }
     var batteryPercent: String {
-        guard let batteryLatest else { return "N/A" }
-        return String(format: "%.0f%%", batteryLatest)
+        guard let battery else { return "N/A" }
+        return String(format: "%.0f%%", battery.percentage)
     }
-    var batteryFraction: Double { (batteryLatest ?? 0) / 100.0 }
+    var batteryFraction: Double { (battery?.percentage ?? 0) / 100.0 }
     var batteryStatusText: String {
         guard let battery else { return "" }
         if battery.isCharging { return "Charging" }
@@ -117,33 +119,41 @@ extension SystemMonitor {
         return "\(battery.designCapacity) mAh"
     }
 
-    var thermal: ThermalUsage? { stats.thermal }
-    var hasThermal: Bool { stats.thermal != nil }
+    var thermal: ThermalUsage? { thermalSamples.current }
+    var hasThermal: Bool { thermal != nil }
     var cpuTempText: String {
-        guard let cpuTempLatest else { return "N/A" }
-        return String(format: "%.1f°C", cpuTempLatest)
+        guard let thermal else { return "N/A" }
+        return String(format: "%.1f°C", thermal.cpuTemperature)
     }
     var gpuTempText: String {
-        guard let gpuTempLatest else { return "—" }
-        return String(format: "%.1f°C", gpuTempLatest)
+        guard let gpuTemp = thermal?.gpuTemperature else { return "—" }
+        return String(format: "%.1f°C", gpuTemp)
     }
-    var paddedCPUTempHistory: [Double] { padded(cpuTempHistory) }
-    var paddedGPUTempHistory: [Double] { padded(gpuTempHistory) }
+    var paddedCPUTempHistory: [Double] { padded(thermalSamples.values.map(\.cpuTemperature), capacity: thermalSamples.capacity) }
+    var paddedGPUTempHistory: [Double] { padded(thermalSamples.values.compactMap(\.gpuTemperature), capacity: thermalSamples.capacity) }
     var thermalSummaryText: String {
         guard thermal != nil else { return "N/A" }
-        guard let gpuTempLatest else { return "CPU \(cpuTempText)" }
-        return "CPU \(cpuTempText) GPU \(String(format: "%.1f°C", gpuTempLatest))"
+        guard let gpuTemp = thermal?.gpuTemperature else { return "CPU \(cpuTempText)" }
+        return "CPU \(cpuTempText) GPU \(String(format: "%.1f°C", gpuTemp))"
     }
 
-    var fans: [FanUsage] { stats.fans }
-    var hasFans: Bool { !stats.fans.isEmpty }
+    var fans: [FanUsage] { fansSamples.current ?? [] }
+    var hasFans: Bool { !fans.isEmpty }
     var fansSummaryText: String {
         guard !fans.isEmpty else { return "No fans" }
         if fans.count == 1 { return String(format: "%.0f RPM", fans[0].currentRPM) }
         let averageRPM = fans.map(\.currentRPM).reduce(0, +) / Double(fans.count)
         return String(format: "%.0f RPM avg", averageRPM)
     }
-    var paddedFanAverageHistory: [Double] { padded(fanAverageHistory) }
+    var paddedFanAverageHistory: [Double] {
+        padded(
+            fansSamples.values.map { sample in
+                guard !sample.isEmpty else { return 0 }
+                return sample.map(\.currentRPM).reduce(0, +) / Double(sample.count)
+            },
+            capacity: fansSamples.capacity
+        )
+    }
     var fanChartMaxRPM: Double {
         max(fans.map(\.maxRPM).max() ?? 0, paddedFanAverageHistory.max() ?? 0, 1)
     }
@@ -159,9 +169,8 @@ extension SystemMonitor {
         String(format: "%.1f%%", value)
     }
 
-    private func padded(_ buffer: RingBuffer<Double>) -> [Double] {
-        let data = Array(buffer)
-        guard !data.isEmpty, data.count < buffer.capacity else { return data }
-        return Array(repeating: data[0], count: buffer.capacity - data.count) + data
+    private func padded(_ data: [Double], capacity: Int) -> [Double] {
+        guard !data.isEmpty, data.count < capacity else { return data }
+        return Array(repeating: 0, count: capacity - data.count) + data
     }
 }

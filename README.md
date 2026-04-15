@@ -49,4 +49,4 @@ Views/          MenuBarLabel / LineChartView / DashboardView /
 Packages/Util/  formatBytes / formatThroughput / ghzString / RingBuffer
 ```
 
-系統資料透過 Darwin C API（`host_processor_info`、`host_statistics64`、`getifaddrs`）與 IOKit（SMC、AppleSmartBattery、IOAccelerator）取得。`SystemMonitor` 是單一 `@Observable` store：保留原始 `stats`，並為每個圖表/即時指標集中管理 `latest` + `history`，由 polling service 寫入、view 直接訂閱；共用格式化則放在 extension。
+系統資料透過 Darwin C API（`host_processor_info`、`host_statistics64`、`getifaddrs`）與 IOKit（SMC、AppleSmartBattery、IOAccelerator）取得。`SystemMonitor` 是單一 `@Observable` store：以 `MetricHistory<T>` 集中管理各指標 raw sample history，目前值直接由 `history.last` 推導；polling service 與其他 monitor 透過 typed `record(...)` 寫入，view 直接訂閱；共用格式化則放在 extension。

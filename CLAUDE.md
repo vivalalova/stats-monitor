@@ -31,7 +31,7 @@ StatsMonitor/Sources/
   Models/
     SystemStats.swift         # 所有資料結構（CPUUsage/MemoryUsage/DiskUsage/…）
   Services/
-    SystemMonitor.swift       # 單一 @Observable store，集中管理 stats 與 latest/history pairs
+    SystemMonitor.swift       # 單一 @Observable store，集中管理 raw sample histories，current 由 history.last 推導
     CPUMonitor.swift          # host_processor_info
     CPUFrequencyMonitor.swift # sysctl cpu frequency
     GPUMonitor.swift          # IOAccelerator（Metal GPU stats）
@@ -129,7 +129,7 @@ Packages/Util/
 | 層 | 測試內容 |
 |---|---|
 | Model | CPUUsage.used、MemoryUsage.usedFraction/used、DiskUsage.usedFraction、GPUUsage、BatteryUsage、FanUsage.fraction、ThermalUsage、PowerUsage、ProcInfo |
-| SystemMonitor presentation extension | formatted properties（cpuPercent、memoryPercent 等）with known SystemStats input、batteryStatus 所有分支、anePowerText 分支、lifecycle（start/stop）、formatProcess helpers |
+| SystemMonitor presentation extension | formatted properties（cpuPercent、memoryPercent 等）with known raw sample input、batteryStatus 所有分支、anePowerText 分支、lifecycle（start/stop）、formatProcess helpers |
 | Service 整合 | MemoryMonitor.sample()（total > 0、usedFraction in 0…1）、DiskMonitor.sample()（total > 0、used ≤ total）、NetworkMonitor.sample()（bytesIn/Out ≥ 0） |
 | Util | formatBytes / formatBytesCompact / formatThroughput / ghzString / RingBuffer |
 
@@ -139,8 +139,9 @@ Packages/Util/
 - `MenuBarExtra` 使用 `.window` style，非 `.menu` style
 - 系統 stats 透過 Darwin C API（`host_processor_info`、`host_statistics64`、`getifaddrs`）+ IOKit SMC
 - Poll interval 由 `AppSettings.pollInterval` 控制（預設 2 秒），可即時調整
-- `SystemMonitor` 內每個圖表/即時指標集中持有 `latest` + `history`
-- History 使用 `RingBuffer<Double>`，容量由 `AppSettings.historyCapacity` 決定
+- `SystemMonitor` 內每個圖表/即時指標集中持有 raw sample `history`，目前值由 `history.last` 推導
+- Polling service 與其他 monitor 透過 typed `record(...)` 寫入對應 raw sample history
+- History 透過 `MetricHistory<T>` 包裝 `RingBuffer<T>`，容量由 `AppSettings.historyCapacity` 決定
 - `ProcessMonitor` 與 `NetworkProcessMonitor` 背景非同步執行（`Task.detached`）
 - Battery/Thermal/Fan monitor 在不支援硬體時回傳 nil / 空陣列，UI graceful 隱藏
 - ThermalMonitor 與 FanMonitor 共用 `SMCClient` 連線

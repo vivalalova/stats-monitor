@@ -194,13 +194,13 @@ struct SystemMonitorPresentationTests {
         monitor.stop()
     }
 
-    // MARK: - Formatted properties with known SystemStats input
+    // MARK: - Formatted properties with known raw sample input
 
     @Test("cpuPercent shows sum of user and system with one decimal")
     func cpuPercentKnownInput() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.cpu = CPUUsage(user: 30, system: 20, idle: 50, perCore: [], coreFrequencies: [])
+        monitor.record(cpu: CPUUsage(user: 30, system: 20, idle: 50, perCore: [], coreFrequencies: []))
         #expect(monitor.cpuPercent == "50.0%")
         #expect(monitor.cpuUserPercent == "30.0%")
         #expect(monitor.cpuSystemPercent == "20.0%")
@@ -211,10 +211,10 @@ struct SystemMonitorPresentationTests {
         let monitor = makeMonitor()
         defer { monitor.stop() }
         // active(2GB) + wired(1GB) + compressed(1GB) = 4GB used; total = 8GB → 50%
-        monitor.stats.memory = MemoryUsage(
+        monitor.record(memory: MemoryUsage(
             active: 2_147_483_648, wired: 1_073_741_824,
             compressed: 1_073_741_824, total: 8_589_934_592
-        )
+        ))
         #expect(monitor.memoryPercent == "50.0%")
     }
 
@@ -222,7 +222,7 @@ struct SystemMonitorPresentationTests {
     func diskPercentKnownInput() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.disk = DiskUsage(used: 250_000_000_000, total: 500_000_000_000)
+        monitor.record(disk: DiskUsage(used: 250_000_000_000, total: 500_000_000_000))
         #expect(monitor.diskPercent == "50.0%")
     }
 
@@ -230,7 +230,6 @@ struct SystemMonitorPresentationTests {
     func batteryPercentNoBattery() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.battery = nil
         #expect(monitor.batteryPercent == "N/A")
     }
 
@@ -238,11 +237,11 @@ struct SystemMonitorPresentationTests {
     func batteryPercentWithBattery() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.battery = BatteryUsage(
+        monitor.record(battery: BatteryUsage(
             percentage: 80, isCharging: false, isPluggedIn: false,
             timeRemaining: nil, cycleCount: 100,
             designCapacity: 5000, maxCapacity: 4800, health: 96
-        )
+        ))
         #expect(monitor.batteryPercent == "80%")
     }
 
@@ -252,11 +251,11 @@ struct SystemMonitorPresentationTests {
     func batteryStatusCharging() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.battery = BatteryUsage(
+        monitor.record(battery: BatteryUsage(
             percentage: 60, isCharging: true, isPluggedIn: true,
             timeRemaining: nil, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
-        )
+        ))
         #expect(monitor.batteryStatusText == "Charging")
     }
 
@@ -264,11 +263,11 @@ struct SystemMonitorPresentationTests {
     func batteryStatusPluggedIn() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.battery = BatteryUsage(
+        monitor.record(battery: BatteryUsage(
             percentage: 100, isCharging: false, isPluggedIn: true,
             timeRemaining: nil, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
-        )
+        ))
         #expect(monitor.batteryStatusText == "Plugged In")
     }
 
@@ -276,11 +275,11 @@ struct SystemMonitorPresentationTests {
     func batteryStatusTimeRemainingHoursAndMinutes() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.battery = BatteryUsage(
+        monitor.record(battery: BatteryUsage(
             percentage: 60, isCharging: false, isPluggedIn: false,
             timeRemaining: 90, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
-        )
+        ))
         #expect(monitor.batteryStatusText == "1h 30m")
     }
 
@@ -288,11 +287,11 @@ struct SystemMonitorPresentationTests {
     func batteryStatusTimeRemainingMinutesOnly() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.battery = BatteryUsage(
+        monitor.record(battery: BatteryUsage(
             percentage: 10, isCharging: false, isPluggedIn: false,
             timeRemaining: 45, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
-        )
+        ))
         #expect(monitor.batteryStatusText == "45m")
     }
 
@@ -300,11 +299,11 @@ struct SystemMonitorPresentationTests {
     func batteryStatusOnBattery() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.battery = BatteryUsage(
+        monitor.record(battery: BatteryUsage(
             percentage: 60, isCharging: false, isPluggedIn: false,
             timeRemaining: nil, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
-        )
+        ))
         #expect(monitor.batteryStatusText == "On Battery")
     }
 
@@ -314,10 +313,10 @@ struct SystemMonitorPresentationTests {
     func anePowerMW() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.gpu = GPUUsage(
+        monitor.record(gpu: GPUUsage(
             deviceUtilization: 0, renderUtilization: 0,
             engines: [:], vramUsed: 0, anePowerMilliWatts: 500
-        )
+        ))
         #expect(monitor.anePowerText == "500 mW")
     }
 
@@ -325,10 +324,10 @@ struct SystemMonitorPresentationTests {
     func anePowerW() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.stats.gpu = GPUUsage(
+        monitor.record(gpu: GPUUsage(
             deviceUtilization: 0, renderUtilization: 0,
             engines: [:], vramUsed: 0, anePowerMilliWatts: 2500
-        )
+        ))
         #expect(monitor.anePowerText == "2.5 W")
     }
 
@@ -365,33 +364,55 @@ struct SystemMonitorPresentationTests {
 @MainActor
 struct SystemMonitorTests {
 
-    @Test("latest metric writes append matching history")
-    func latestMetricWritesAppendHistory() {
+    @Test("record appends raw samples and latest display reads from history")
+    func recordAppendsRawSamplesAndDisplaysLatest() {
         let monitor = SystemMonitor(settings: AppSettings())
 
-        monitor.cpuLatest = 12.5
-        monitor.cpuLatest = 18.0
-        monitor.batteryLatest = nil
-        monitor.batteryLatest = 77.0
-        monitor.cpuTempLatest = 64.2
+        monitor.record(cpu: CPUUsage(user: 8.5, system: 4.0, idle: 87.5, perCore: [], coreFrequencies: []))
+        monitor.record(cpu: CPUUsage(user: 10.0, system: 8.0, idle: 82.0, perCore: [], coreFrequencies: []))
+        monitor.record(battery: BatteryUsage(
+            percentage: 77,
+            isCharging: false,
+            isPluggedIn: false,
+            timeRemaining: nil,
+            cycleCount: 10,
+            designCapacity: 5000,
+            maxCapacity: 4800,
+            health: 96
+        ))
+        monitor.record(thermal: ThermalUsage(cpuTemperature: 64.2, gpuTemperature: nil))
 
-        #expect(Array(monitor.cpuHistory) == [12.5, 18.0])
-        #expect(Array(monitor.batteryHistory) == [77.0])
-        #expect(Array(monitor.cpuTempHistory) == [64.2])
+        #expect(monitor.cpuSamples.values.map(\.used) == [12.5, 18.0])
+        #expect(monitor.batterySamples.values.map(\.percentage) == [77.0])
+        #expect(monitor.thermalSamples.values.map(\.cpuTemperature) == [64.2])
+        #expect(monitor.cpuPercent == "18.0%")
+        #expect(monitor.batteryPercent == "77%")
+        #expect(monitor.cpuTempText == "64.2°C")
     }
 
-    @Test("stats mutations sync latest values without appending history")
-    func statsMutationsSyncLatestValues() {
+    @Test("history-derived values stay at defaults until a history sample is recorded")
+    func historyDerivedValuesStayAtDefaultsWithoutHistorySample() {
         let monitor = SystemMonitor(settings: AppSettings())
 
-        monitor.stats.cpu = CPUUsage(user: 22, system: 8, idle: 70, perCore: [], coreFrequencies: [])
-        monitor.stats.network = NetworkUsage(bytesInPerSec: 1_024, bytesOutPerSec: 2_048)
+        #expect(monitor.cpuPercent == "0.0%")
+        #expect(monitor.networkInText == "0 KB/s")
+        #expect(monitor.networkOutText == "0 KB/s")
+        #expect(monitor.cpuSamples.values.isEmpty)
+        #expect(monitor.networkSamples.values.isEmpty)
+    }
 
-        #expect(monitor.cpuLatest == 30)
-        #expect(monitor.networkInLatest == 1_024)
-        #expect(monitor.networkOutLatest == 2_048)
-        #expect(Array(monitor.cpuHistory).isEmpty)
-        #expect(Array(monitor.networkInHistory).isEmpty)
+    @Test("padded history zero-fills until enough raw samples arrive")
+    func paddedHistoryZeroFillsBeforeCapacityIsReached() {
+        let settings = AppSettings()
+        settings.historyCapacity = 4
+        let monitor = SystemMonitor(settings: settings)
+
+        monitor.record(cpu: CPUUsage(user: 8, system: 4, idle: 88, perCore: [], coreFrequencies: []))
+        monitor.record(network: NetworkUsage(bytesInPerSec: 2_048, bytesOutPerSec: 4_096))
+
+        #expect(monitor.paddedCPUHistory == [0, 0, 0, 12])
+        #expect(monitor.paddedNetworkInHistory == [0, 0, 0, 2_048])
+        #expect(monitor.paddedNetworkOutHistory == [0, 0, 0, 4_096])
     }
 
     @Test("historyCapacity changes recreate buffers without a view-model adapter")
@@ -400,14 +421,14 @@ struct SystemMonitorTests {
         settings.historyCapacity = 60
         let monitor = SystemMonitor(settings: settings)
 
-        monitor.cpuLatest = 42
-        #expect(Array(monitor.cpuHistory) == [42])
+        monitor.record(cpu: CPUUsage(user: 30, system: 12, idle: 58, perCore: [], coreFrequencies: []))
+        #expect(monitor.cpuSamples.values.map(\.used) == [42])
 
         settings.historyCapacity = 300
         try await Task.sleep(for: .milliseconds(50))
 
-        #expect(monitor.cpuHistory.capacity == 300)
-        #expect(Array(monitor.cpuHistory).isEmpty)
+        #expect(monitor.cpuSamples.capacity == 300)
+        #expect(monitor.cpuSamples.values.isEmpty)
     }
 
     @Test("resetHistories keeps current buffers until historyCapacity changes, then recreates them")
@@ -429,29 +450,29 @@ struct SystemMonitorTests {
         monitor.start()
         defer { monitor.stop() }
 
-        #expect(!Array(monitor.cpuHistory).isEmpty)
-        #expect(!Array(monitor.gpuHistory).isEmpty)
-        #expect(!Array(monitor.networkOutHistory).isEmpty)
+        #expect(!monitor.cpuSamples.values.isEmpty)
+        #expect(!monitor.gpuSamples.values.isEmpty)
+        #expect(!monitor.networkSamples.values.isEmpty)
 
         monitor.resetHistories()
-        #expect(monitor.cpuHistory.capacity == 60)
-        #expect(!Array(monitor.cpuHistory).isEmpty)
-        #expect(!Array(monitor.gpuHistory).isEmpty)
-        #expect(!Array(monitor.networkOutHistory).isEmpty)
-        #expect(monitor.gpuTempHistory.capacity == 60)
-        #expect(monitor.fanAverageHistory.capacity == 60)
+        #expect(monitor.cpuSamples.capacity == 60)
+        #expect(!monitor.cpuSamples.values.isEmpty)
+        #expect(!monitor.gpuSamples.values.isEmpty)
+        #expect(!monitor.networkSamples.values.isEmpty)
+        #expect(monitor.thermalSamples.capacity == 60)
+        #expect(monitor.fansSamples.capacity == 60)
 
         settings.historyCapacity = 300
         monitor.resetHistories()
 
-        #expect(monitor.cpuHistory.capacity == 300)
-        #expect(monitor.gpuHistory.capacity == 300)
-        #expect(monitor.networkOutHistory.capacity == 300)
-        #expect(monitor.gpuTempHistory.capacity == 300)
-        #expect(monitor.fanAverageHistory.capacity == 300)
-        #expect(Array(monitor.cpuHistory).isEmpty)
-        #expect(Array(monitor.gpuHistory).isEmpty)
-        #expect(Array(monitor.networkOutHistory).isEmpty)
+        #expect(monitor.cpuSamples.capacity == 300)
+        #expect(monitor.gpuSamples.capacity == 300)
+        #expect(monitor.networkSamples.capacity == 300)
+        #expect(monitor.thermalSamples.capacity == 300)
+        #expect(monitor.fansSamples.capacity == 300)
+        #expect(monitor.cpuSamples.values.isEmpty)
+        #expect(monitor.gpuSamples.values.isEmpty)
+        #expect(monitor.networkSamples.values.isEmpty)
     }
 }
 

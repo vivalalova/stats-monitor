@@ -1,86 +1,35 @@
 import Foundation
 import Observation
-import Util
 
 @Observable
 @MainActor
 final class SystemMonitor {
-    private typealias HistoryBuffers = (
-        cpu: RingBuffer<Double>,
-        gpu: RingBuffer<Double>,
-        memory: RingBuffer<Double>,
-        disk: RingBuffer<Double>,
-        diskRead: RingBuffer<Double>,
-        diskWrite: RingBuffer<Double>,
-        networkIn: RingBuffer<Double>,
-        networkOut: RingBuffer<Double>,
-        battery: RingBuffer<Double>,
-        cpuTemp: RingBuffer<Double>,
-        gpuTemp: RingBuffer<Double>,
-        fanAverage: RingBuffer<Double>,
-        power: RingBuffer<Double>
+    private typealias SampleStores = (
+        cpu: MetricHistory<CPUUsage>,
+        gpu: MetricHistory<GPUUsage>,
+        memory: MetricHistory<MemoryUsage>,
+        disk: MetricHistory<DiskUsage>,
+        network: MetricHistory<NetworkUsage>,
+        battery: MetricHistory<BatteryUsage>,
+        thermal: MetricHistory<ThermalUsage>,
+        power: MetricHistory<PowerUsage>,
+        fans: MetricHistory<[FanUsage]>
     )
 
-    var stats = SystemStats() {
-        didSet {
-            guard !isSkippingStatsSync else { return }
-            syncLatestValues(from: stats)
-        }
-    }
+    private(set) var cpuSamples: MetricHistory<CPUUsage>
+    private(set) var gpuSamples: MetricHistory<GPUUsage>
+    private(set) var memorySamples: MetricHistory<MemoryUsage>
+    private(set) var diskSamples: MetricHistory<DiskUsage>
+    private(set) var networkSamples: MetricHistory<NetworkUsage>
+    private(set) var batterySamples: MetricHistory<BatteryUsage>
+    private(set) var thermalSamples: MetricHistory<ThermalUsage>
+    private(set) var powerSamples: MetricHistory<PowerUsage>
+    private(set) var fansSamples: MetricHistory<[FanUsage]>
 
-    var cpuLatest = 0.0 {
-        didSet { appendLatest(cpuLatest, to: &cpuHistory) }
-    }
-    var gpuLatest = 0.0 {
-        didSet { appendLatest(gpuLatest, to: &gpuHistory) }
-    }
-    var memoryLatest = 0.0 {
-        didSet { appendLatest(memoryLatest, to: &memoryHistory) }
-    }
-    var diskLatest = 0.0 {
-        didSet { appendLatest(diskLatest, to: &diskHistory) }
-    }
-    var diskReadLatest = 0.0 {
-        didSet { appendLatest(diskReadLatest, to: &diskReadHistory) }
-    }
-    var diskWriteLatest = 0.0 {
-        didSet { appendLatest(diskWriteLatest, to: &diskWriteHistory) }
-    }
-    var networkInLatest = 0.0 {
-        didSet { appendLatest(networkInLatest, to: &networkInHistory) }
-    }
-    var networkOutLatest = 0.0 {
-        didSet { appendLatest(networkOutLatest, to: &networkOutHistory) }
-    }
-    var batteryLatest: Double? = nil {
-        didSet { appendLatest(batteryLatest, to: &batteryHistory) }
-    }
-    var cpuTempLatest: Double? = nil {
-        didSet { appendLatest(cpuTempLatest, to: &cpuTempHistory) }
-    }
-    var gpuTempLatest: Double? = nil {
-        didSet { appendLatest(gpuTempLatest, to: &gpuTempHistory) }
-    }
-    var fanAverageLatest: Double? = nil {
-        didSet { appendLatest(fanAverageLatest, to: &fanAverageHistory) }
-    }
-    var powerLatest: Double? = nil {
-        didSet { appendLatest(powerLatest, to: &powerHistory) }
-    }
-
-    private(set) var cpuHistory:        RingBuffer<Double>
-    private(set) var gpuHistory:        RingBuffer<Double>
-    private(set) var memoryHistory:     RingBuffer<Double>
-    private(set) var diskHistory:       RingBuffer<Double>
-    private(set) var diskReadHistory:   RingBuffer<Double>
-    private(set) var diskWriteHistory:  RingBuffer<Double>
-    private(set) var networkInHistory:  RingBuffer<Double>
-    private(set) var networkOutHistory: RingBuffer<Double>
-    private(set) var batteryHistory:    RingBuffer<Double>
-    private(set) var cpuTempHistory:    RingBuffer<Double>
-    private(set) var gpuTempHistory:    RingBuffer<Double>
-    private(set) var fanAverageHistory: RingBuffer<Double>
-    private(set) var powerHistory:      RingBuffer<Double>
+    var topCPUProcesses: [ProcInfo] = []
+    var topMemoryProcesses: [ProcInfo] = []
+    var topDiskProcesses: [ProcInfo] = []
+    var topNetworkProcesses: [ProcInfo] = []
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()
@@ -98,8 +47,6 @@ final class SystemMonitor {
 
     private var networkProcPrev: [String: NetworkProcessMonitor.Snapshot] = [:]
     private var isProcessPollInFlight = false
-    private var isSyncingLatestValues = false
-    private var isSkippingStatsSync = false
     private var isRunning = false
 
     private var timer: Timer?
@@ -107,24 +54,19 @@ final class SystemMonitor {
 
     init(settings: AppSettings) {
         self.settings = settings
-        let historyBuffers = Self.makeHistoryBuffers(capacity: settings.historyCapacity)
-        cpuHistory        = historyBuffers.cpu
-        gpuHistory        = historyBuffers.gpu
-        memoryHistory     = historyBuffers.memory
-        diskHistory       = historyBuffers.disk
-        diskReadHistory   = historyBuffers.diskRead
-        diskWriteHistory  = historyBuffers.diskWrite
-        networkInHistory  = historyBuffers.networkIn
-        networkOutHistory = historyBuffers.networkOut
-        batteryHistory    = historyBuffers.battery
-        cpuTempHistory    = historyBuffers.cpuTemp
-        gpuTempHistory    = historyBuffers.gpuTemp
-        fanAverageHistory = historyBuffers.fanAverage
-        powerHistory      = historyBuffers.power
+        let sampleStores = Self.makeSampleStores(capacity: settings.historyCapacity)
+        cpuSamples = sampleStores.cpu
+        gpuSamples = sampleStores.gpu
+        memorySamples = sampleStores.memory
+        diskSamples = sampleStores.disk
+        networkSamples = sampleStores.network
+        batterySamples = sampleStores.battery
+        thermalSamples = sampleStores.thermal
+        powerSamples = sampleStores.power
+        fansSamples = sampleStores.fans
         // SMC-dependent monitors share the same connection
         thermalMonitor = ThermalMonitor(smc: smcClient)
         fanMonitor     = FanMonitor(smc: smcClient)
-        syncLatestValues(from: stats)
         observePollInterval()
         observeHistoryCapacity()
     }
@@ -172,25 +114,15 @@ final class SystemMonitor {
         let power   = powerMonitor.sample(intervalSeconds: settings.pollInterval)
         let count   = settings.processCount
 
-        let newStats = SystemStats(
-            cpu:                 cpu,
-            gpu:                 gpu,
-            memory:              memory,
-            disk:                disk,
-            network:             network,
-            battery:             battery,
-            thermal:             thermal,
-            power:               power,
-            fans:                fans,
-            topCPUProcesses:     stats.topCPUProcesses,
-            topMemoryProcesses:  stats.topMemoryProcesses,
-            topDiskProcesses:    stats.topDiskProcesses,
-            topNetworkProcesses: stats.topNetworkProcesses
-        )
-        isSkippingStatsSync = true
-        stats = newStats
-        isSkippingStatsSync = false
-        recordLatestValues(from: newStats)
+        record(cpu: cpu)
+        record(gpu: gpu)
+        record(memory: memory)
+        record(disk: disk)
+        record(network: network)
+        record(battery: battery)
+        record(thermal: thermal)
+        record(power: power)
+        record(fans: fans)
 
         pollNetworkProcesses(processCount: count)
         pollProcesses(processCount: count)
@@ -228,7 +160,7 @@ final class SystemMonitor {
                 NetworkProcessMonitor.run(previous: prev, processCount: processCount)
             }.value
             self.networkProcPrev = updated
-            self.stats.topNetworkProcesses = procs
+            self.topNetworkProcesses = procs
         }
     }
 
@@ -245,9 +177,9 @@ final class SystemMonitor {
             }.value
             self.isProcessPollInFlight = false
             self.processMonitor = updated
-            self.stats.topCPUProcesses    = result.cpuTop
-            self.stats.topMemoryProcesses = result.memoryTop
-            self.stats.topDiskProcesses   = result.diskTop
+            self.topCPUProcesses    = result.cpuTop
+            self.topMemoryProcesses = result.memoryTop
+            self.topDiskProcesses   = result.diskTop
         }
     }
 
@@ -255,79 +187,72 @@ final class SystemMonitor {
     /// Call when settings.historyCapacity changes.
     func resetHistories() {
         let cap = settings.historyCapacity
-        guard cap != cpuHistory.capacity else { return }
-        applyHistoryBuffers(Self.makeHistoryBuffers(capacity: cap))
+        guard cap != cpuSamples.capacity else { return }
+        applySampleStores(Self.makeSampleStores(capacity: cap))
     }
 
-    private func applyHistoryBuffers(_ historyBuffers: HistoryBuffers) {
-        cpuHistory        = historyBuffers.cpu
-        gpuHistory        = historyBuffers.gpu
-        memoryHistory     = historyBuffers.memory
-        diskHistory       = historyBuffers.disk
-        diskReadHistory   = historyBuffers.diskRead
-        diskWriteHistory  = historyBuffers.diskWrite
-        networkInHistory  = historyBuffers.networkIn
-        networkOutHistory = historyBuffers.networkOut
-        batteryHistory    = historyBuffers.battery
-        cpuTempHistory    = historyBuffers.cpuTemp
-        gpuTempHistory    = historyBuffers.gpuTemp
-        fanAverageHistory = historyBuffers.fanAverage
-        powerHistory      = historyBuffers.power
+    func record(cpu sample: CPUUsage) {
+        cpuSamples.record(sample)
     }
 
-    private func syncLatestValues(from stats: SystemStats) {
-        isSyncingLatestValues = true
-        defer { isSyncingLatestValues = false }
-        assignLatestValues(from: stats)
+    func record(gpu sample: GPUUsage) {
+        gpuSamples.record(sample)
     }
 
-    private func recordLatestValues(from stats: SystemStats) {
-        assignLatestValues(from: stats)
+    func record(memory sample: MemoryUsage) {
+        memorySamples.record(sample)
     }
 
-    private func assignLatestValues(from stats: SystemStats) {
-        cpuLatest = stats.cpu.used
-        gpuLatest = stats.gpu.used
-        memoryLatest = stats.memory.usedFraction * 100
-        diskLatest = stats.disk.usedFraction * 100
-        diskReadLatest = stats.disk.readBPS
-        diskWriteLatest = stats.disk.writeBPS
-        networkInLatest = stats.network.bytesInPerSec
-        networkOutLatest = stats.network.bytesOutPerSec
-        batteryLatest = stats.battery?.percentage
-        cpuTempLatest = stats.thermal?.cpuTemperature
-        gpuTempLatest = stats.thermal?.gpuTemperature
-        fanAverageLatest = stats.fans.isEmpty
-            ? nil
-            : stats.fans.map(\.currentRPM).reduce(0, +) / Double(stats.fans.count)
-        powerLatest = stats.power.map { $0.totalMilliWatts / 1000 }
+    func record(disk sample: DiskUsage) {
+        diskSamples.record(sample)
     }
 
-    private func appendLatest(_ value: Double, to history: inout RingBuffer<Double>) {
-        guard !isSyncingLatestValues else { return }
-        history.append(value)
+    func record(network sample: NetworkUsage) {
+        networkSamples.record(sample)
     }
 
-    private func appendLatest(_ value: Double?, to history: inout RingBuffer<Double>) {
-        guard !isSyncingLatestValues, let value else { return }
-        history.append(value)
+    func record(battery sample: BatteryUsage?) {
+        guard let sample else { return }
+        batterySamples.record(sample)
     }
 
-    private static func makeHistoryBuffers(capacity: Int) -> HistoryBuffers {
+    func record(thermal sample: ThermalUsage?) {
+        guard let sample else { return }
+        thermalSamples.record(sample)
+    }
+
+    func record(power sample: PowerUsage?) {
+        guard let sample else { return }
+        powerSamples.record(sample)
+    }
+
+    func record(fans sample: [FanUsage]) {
+        fansSamples.record(sample)
+    }
+
+    private func applySampleStores(_ sampleStores: SampleStores) {
+        cpuSamples = sampleStores.cpu
+        gpuSamples = sampleStores.gpu
+        memorySamples = sampleStores.memory
+        diskSamples = sampleStores.disk
+        networkSamples = sampleStores.network
+        batterySamples = sampleStores.battery
+        thermalSamples = sampleStores.thermal
+        powerSamples = sampleStores.power
+        fansSamples = sampleStores.fans
+    }
+
+    private static func makeSampleStores(capacity: Int) -> SampleStores {
         (
-            cpu: RingBuffer<Double>(capacity: capacity),
-            gpu: RingBuffer<Double>(capacity: capacity),
-            memory: RingBuffer<Double>(capacity: capacity),
-            disk: RingBuffer<Double>(capacity: capacity),
-            diskRead: RingBuffer<Double>(capacity: capacity),
-            diskWrite: RingBuffer<Double>(capacity: capacity),
-            networkIn: RingBuffer<Double>(capacity: capacity),
-            networkOut: RingBuffer<Double>(capacity: capacity),
-            battery: RingBuffer<Double>(capacity: capacity),
-            cpuTemp: RingBuffer<Double>(capacity: capacity),
-            gpuTemp: RingBuffer<Double>(capacity: capacity),
-            fanAverage: RingBuffer<Double>(capacity: capacity),
-            power: RingBuffer<Double>(capacity: capacity)
+            cpu: MetricHistory(capacity: capacity),
+            gpu: MetricHistory(capacity: capacity),
+            memory: MetricHistory(capacity: capacity),
+            disk: MetricHistory(capacity: capacity),
+            network: MetricHistory(capacity: capacity),
+            battery: MetricHistory(capacity: capacity),
+            thermal: MetricHistory(capacity: capacity),
+            power: MetricHistory(capacity: capacity),
+            fans: MetricHistory(capacity: capacity)
         )
     }
 }

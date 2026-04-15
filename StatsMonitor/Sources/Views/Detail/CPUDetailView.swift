@@ -15,7 +15,7 @@ struct CPUDetailView: View {
             statRow("Used",   value: monitor.cpuPercent)
             statRow("User",   value: monitor.cpuUserPercent)
             statRow("System", value: monitor.cpuSystemPercent)
-            statRow("Idle",   value: String(format: "%.1f%%", monitor.stats.cpu.idle))
+            statRow("Idle",   value: monitor.cpuIdlePercent)
             if !monitor.cpuPerCore.isEmpty {
                 sectionHeader("Per Core")
                 CoreGridView(cores: monitor.cpuPerCore,
