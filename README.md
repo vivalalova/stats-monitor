@@ -44,10 +44,9 @@ Services/       CPUMonitor / GPUMonitor / ANEMonitor / MemoryMonitor /
                 DiskMonitor / NetworkMonitor / NetworkProcessMonitor /
                 ProcessMonitor / BatteryMonitor / ThermalMonitor / FanMonitor /
                 SMCClient / SystemMonitor（協調層）
-ViewModels/     StatsViewModel — @Observable，聚合所有 monitor 格式化屬性
 Views/          MenuBarLabel / LineChartView / DashboardView /
                 SettingsView / AboutView / Detail/*
 Packages/Util/  formatBytes / formatThroughput / ghzString / RingBuffer
 ```
 
-系統資料透過 Darwin C API（`host_processor_info`、`host_statistics64`、`getifaddrs`）與 IOKit（SMC、AppleSmartBattery、IOAccelerator）取得。`SystemMonitor` 依設定 interval 輪詢並以 `RingBuffer` 維護 history。
+系統資料透過 Darwin C API（`host_processor_info`、`host_statistics64`、`getifaddrs`）與 IOKit（SMC、AppleSmartBattery、IOAccelerator）取得。`SystemMonitor` 是單一 `@Observable` store：保留原始 `stats`，並為每個圖表/即時指標集中管理 `latest` + `history`，由 polling service 寫入、view 直接訂閱；共用格式化則放在 extension。

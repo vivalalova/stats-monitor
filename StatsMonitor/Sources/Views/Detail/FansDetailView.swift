@@ -3,25 +3,25 @@ import SwiftUI
 struct FansDetailView: View {
     static let panelTitle = "Fans"
 
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if viewModel.fanAverageHistory.count >= 2 {
+            if monitor.paddedFanAverageHistory.count >= 2 {
                 LineChartView(
-                    lines: [(viewModel.fanAverageHistory, .blue)],
-                    maxValue: viewModel.fanChartMaxRPM
+                    lines: [(monitor.paddedFanAverageHistory, .blue)],
+                    maxValue: monitor.fanChartMaxRPM
                 )
             }
 
-            statRow("Average", value: viewModel.fansSummary)
+            statRow("Average", value: monitor.fansSummaryText)
 
-            if !viewModel.fans.isEmpty {
+            if !monitor.fans.isEmpty {
                 sectionHeader("Per Fan")
-                ForEach(Array(viewModel.fans.enumerated()), id: \.element.id) { _, fan in
+                ForEach(Array(monitor.fans.enumerated()), id: \.element.id) { _, fan in
                     statRow(
                         verbatim: fan.name,
-                        value: "\(viewModel.fanRPMStr(fan))  \(viewModel.fanRangeStr(fan))"
+                        value: "\(monitor.fanRPMText(fan))  \(monitor.fanRangeText(fan))"
                     )
                 }
             }
@@ -30,5 +30,5 @@ struct FansDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    FansDetailView(viewModel: StatsViewModel())
+    FansDetailView(monitor: SystemMonitor(settings: AppSettings()))
 }

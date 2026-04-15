@@ -9,8 +9,9 @@ import Testing
 struct StatsMonitorSnapshotTests {
     @Test("CPU detail panel renders a stable screenshot")
     func cpuDetailPanelScreenshot() {
-        let viewModel = makeSnapshotViewModel()
-        viewModel.monitor.stats.cpu = CPUUsage(
+        let snapshotContext = makeSnapshotContext()
+        let monitor = snapshotContext.monitor
+        monitor.stats.cpu = CPUUsage(
             user: 31.2,
             system: 18.4,
             idle: 50.4,
@@ -24,7 +25,7 @@ struct StatsMonitorSnapshotTests {
                 CPUCoreFrequency(currentHz: 2_000_000_000, maxHz: 2_420_000_000),
             ]
         )
-        viewModel.monitor.stats.topCPUProcesses = [
+        monitor.stats.topCPUProcesses = [
             ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_610_612_736),
             ProcInfo(name: "StatsMonitor", cpuPercent: 12.7, memoryBytes: 92_274_688),
             ProcInfo(name: "WindowServer", cpuPercent: 7.4, memoryBytes: 421_527_552),
@@ -32,7 +33,7 @@ struct StatsMonitorSnapshotTests {
 
         let view = hostingView(for: snapshotSurface {
             PanelView {
-                CPUDetailView(viewModel: viewModel)
+                CPUDetailView(monitor: monitor)
             }
         })
 
@@ -58,18 +59,17 @@ struct StatsMonitorSnapshotTests {
         settings.showFans = true
 
         let monitor = SystemMonitor(settings: settings)
-        let viewModel = StatsViewModel(settings: settings, monitor: monitor, startMonitoring: false)
-        viewModel.monitor.stats.cpu = CPUUsage(user: 24, system: 18, idle: 58, perCore: [], coreFrequencies: [])
-        viewModel.monitor.stats.gpu = GPUUsage(deviceUtilization: 37, renderUtilization: 25, engines: [:], vramUsed: 0)
-        viewModel.monitor.stats.memory = MemoryUsage(
+        monitor.stats.cpu = CPUUsage(user: 24, system: 18, idle: 58, perCore: [], coreFrequencies: [])
+        monitor.stats.gpu = GPUUsage(deviceUtilization: 37, renderUtilization: 25, engines: [:], vramUsed: 0)
+        monitor.stats.memory = MemoryUsage(
             active: 8_589_934_592,
             wired: 2_147_483_648,
             compressed: 1_073_741_824,
             total: 17_179_869_184
         )
-        viewModel.monitor.stats.disk = DiskUsage(used: 400_000_000_000, total: 1_000_000_000_000)
-        viewModel.monitor.stats.network = NetworkUsage(bytesInPerSec: 1_572_864, bytesOutPerSec: 262_144)
-        viewModel.monitor.stats.battery = BatteryUsage(
+        monitor.stats.disk = DiskUsage(used: 400_000_000_000, total: 1_000_000_000_000)
+        monitor.stats.network = NetworkUsage(bytesInPerSec: 1_572_864, bytesOutPerSec: 262_144)
+        monitor.stats.battery = BatteryUsage(
             percentage: 78,
             isCharging: false,
             isPluggedIn: false,
@@ -79,19 +79,19 @@ struct StatsMonitorSnapshotTests {
             maxCapacity: 4630,
             health: 92.6
         )
-        viewModel.monitor.stats.thermal = ThermalUsage(cpuTemperature: 68.4, gpuTemperature: 57.2)
-        viewModel.monitor.stats.power = PowerUsage(
+        monitor.stats.thermal = ThermalUsage(cpuTemperature: 68.4, gpuTemperature: 57.2)
+        monitor.stats.power = PowerUsage(
             cpuMilliWatts: 12_400,
             gpuMilliWatts: 4_200,
             totalMilliWatts: 21_300
         )
-        viewModel.monitor.stats.fans = [
+        monitor.stats.fans = [
             FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
             FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
         ]
 
         let view = hostingView(for: snapshotSurface {
-            CombinedMenuBarLabel(viewModel: viewModel, settings: settings)
+            CombinedMenuBarLabel(monitor: monitor, settings: settings)
                 .padding(8)
         })
 
@@ -105,11 +105,11 @@ struct StatsMonitorSnapshotTests {
 
     @Test("Settings window renders a stable screenshot")
     func settingsWindowScreenshot() {
-        let viewModel = makeSnapshotViewModel()
-        seedSettingsWindowData(into: viewModel)
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsWindowData(into: snapshotContext.monitor)
 
         let view = windowFrameView(
-            for: SettingsView(settings: viewModel.settings, viewModel: viewModel),
+            for: SettingsView(settings: snapshotContext.settings, monitor: snapshotContext.monitor),
             title: "Settings",
             contentSize: CGSize(
                 width: SettingsWindowLayout.defaultWidth,
@@ -127,12 +127,12 @@ struct StatsMonitorSnapshotTests {
 }
 
 @MainActor
-private func makeSnapshotViewModel() -> StatsViewModel {
+private func makeSnapshotContext() -> (settings: AppSettings, monitor: SystemMonitor) {
     let settings = AppSettings()
     settings.dashboardColumns = AppSettings.dashboardColumnRange.lowerBound
     settings.processCount = 5
     let monitor = SystemMonitor(settings: settings)
-    return StatsViewModel(settings: settings, monitor: monitor, startMonitoring: false)
+    return (settings, monitor)
 }
 
 private var snapshotRecordMode: SnapshotTestingConfiguration.Record {
@@ -140,37 +140,37 @@ private var snapshotRecordMode: SnapshotTestingConfiguration.Record {
 }
 
 @MainActor
-private func seedSettingsWindowData(into viewModel: StatsViewModel) {
-    viewModel.monitor.stats.cpu = CPUUsage(
+private func seedSettingsWindowData(into monitor: SystemMonitor) {
+    monitor.stats.cpu = CPUUsage(
         user: 28,
         system: 14,
         idle: 58,
         perCore: [],
         coreFrequencies: []
     )
-    viewModel.monitor.stats.gpu = GPUUsage(
+    monitor.stats.gpu = GPUUsage(
         deviceUtilization: 22,
         renderUtilization: 12,
         engines: [:],
         vramUsed: 4_294_967_296
     )
-    viewModel.monitor.stats.memory = MemoryUsage(
+    monitor.stats.memory = MemoryUsage(
         active: 9_663_676_416,
         wired: 2_147_483_648,
         compressed: 1_073_741_824,
         total: 18_253_611_008
     )
-    viewModel.monitor.stats.disk = DiskUsage(
+    monitor.stats.disk = DiskUsage(
         used: 512_000_000_000,
         total: 1_000_000_000_000,
         readBPS: 8_388_608,
         writeBPS: 2_097_152
     )
-    viewModel.monitor.stats.network = NetworkUsage(
+    monitor.stats.network = NetworkUsage(
         bytesInPerSec: 2_621_440,
         bytesOutPerSec: 524_288
     )
-    viewModel.monitor.stats.battery = BatteryUsage(
+    monitor.stats.battery = BatteryUsage(
         percentage: 78,
         isCharging: false,
         isPluggedIn: false,
@@ -180,30 +180,30 @@ private func seedSettingsWindowData(into viewModel: StatsViewModel) {
         maxCapacity: 4630,
         health: 92.6
     )
-    viewModel.monitor.stats.thermal = ThermalUsage(
+    monitor.stats.thermal = ThermalUsage(
         cpuTemperature: 68.4,
         gpuTemperature: 57.2
     )
-    viewModel.monitor.stats.power = PowerUsage(
+    monitor.stats.power = PowerUsage(
         cpuMilliWatts: 12_400,
         gpuMilliWatts: 4_200,
         totalMilliWatts: 21_300
     )
-    viewModel.monitor.stats.fans = [
+    monitor.stats.fans = [
         FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
         FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
     ]
-    viewModel.monitor.stats.topCPUProcesses = [
+    monitor.stats.topCPUProcesses = [
         ProcInfo(name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000),
         ProcInfo(name: "Simulator", cpuPercent: 16.2, memoryBytes: 734_000_000),
         ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000),
     ]
-    viewModel.monitor.stats.topMemoryProcesses = viewModel.monitor.stats.topCPUProcesses
-    viewModel.monitor.stats.topDiskProcesses = [
+    monitor.stats.topMemoryProcesses = monitor.stats.topCPUProcesses
+    monitor.stats.topDiskProcesses = [
         ProcInfo(name: "mdworker", cpuPercent: 1.2, memoryBytes: 120_000_000, diskReadBPS: 4_194_304, diskWriteBPS: 524_288),
         ProcInfo(name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000, diskReadBPS: 2_097_152, diskWriteBPS: 1_048_576),
     ]
-    viewModel.monitor.stats.topNetworkProcesses = [
+    monitor.stats.topNetworkProcesses = [
         ProcInfo(name: "Safari", cpuPercent: 3.1, memoryBytes: 640_000_000, networkInBPS: 1_572_864, networkOutBPS: 196_608),
         ProcInfo(name: "curl", cpuPercent: 0.4, memoryBytes: 18_000_000, networkInBPS: 262_144, networkOutBPS: 131_072),
     ]

@@ -3,7 +3,7 @@ import SwiftUI
 struct ThermalDetailView: View {
     static let panelTitle = "Thermal"
 
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
@@ -12,28 +12,28 @@ struct ThermalDetailView: View {
                 LineChartView(lines: lines, maxValue: thermalChartMax)
             }
 
-            statRow("CPU", value: viewModel.cpuTempStr)
-            statRow("GPU", value: viewModel.gpuTempStr)
-            statRow("Summary", value: viewModel.thermalStatusSummary)
+            statRow("CPU", value: monitor.cpuTempText)
+            statRow("GPU", value: monitor.gpuTempText)
+            statRow("Summary", value: monitor.thermalSummaryText)
         }
     }
 
     private var thermalLines: [(history: [Double], color: Color)] {
         var lines: [(history: [Double], color: Color)] = []
-        if viewModel.cpuTempHistory.count >= 2 {
-            lines.append((viewModel.cpuTempHistory, .orange))
+        if monitor.paddedCPUTempHistory.count >= 2 {
+            lines.append((monitor.paddedCPUTempHistory, .orange))
         }
-        if viewModel.gpuTempHistory.count >= 2 {
-            lines.append((viewModel.gpuTempHistory, .purple))
+        if monitor.paddedGPUTempHistory.count >= 2 {
+            lines.append((monitor.paddedGPUTempHistory, .purple))
         }
         return lines
     }
 
     private var thermalChartMax: Double {
-        max(viewModel.cpuTempHistory.max() ?? 0, viewModel.gpuTempHistory.max() ?? 0, 1)
+        max(monitor.paddedCPUTempHistory.max() ?? 0, monitor.paddedGPUTempHistory.max() ?? 0, 1)
     }
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    ThermalDetailView(viewModel: StatsViewModel())
+    ThermalDetailView(monitor: SystemMonitor(settings: AppSettings()))
 }

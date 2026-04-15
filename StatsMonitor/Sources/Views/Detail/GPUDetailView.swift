@@ -3,32 +3,32 @@ import SwiftUI
 struct GPUDetailView: View {
     static let panelTitle = "GPU"
 
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if viewModel.gpuHistory.count >= 2 {
-                LineChartView(lines: [(viewModel.gpuHistory, .purple)])
+            if monitor.paddedGPUHistory.count >= 2 {
+                LineChartView(lines: [(monitor.paddedGPUHistory, .purple)])
             }
 
-            statRow("Device",   value: viewModel.gpuPercent)
-            statRow("Renderer", value: viewModel.gpuRenderPercent)
-            if viewModel.gpuVramUsed > 0 {
-                statRow("GPU Mem", value: viewModel.gpuVramUsedStr)
+            statRow("Device",   value: monitor.gpuPercent)
+            statRow("Renderer", value: monitor.gpuRenderPercent)
+            if monitor.gpuVramUsed > 0 {
+                statRow("GPU Mem", value: monitor.gpuVramUsedText)
             }
-            if viewModel.anePowerMilliWatts > 0 {
-                statRow("Neural Engine", value: viewModel.anePowerStr)
+            if monitor.anePowerMilliWatts > 0 {
+                statRow("Neural Engine", value: monitor.anePowerText)
             }
-            if !viewModel.gpuEngines.isEmpty {
+            if !monitor.gpuEngines.isEmpty {
                 sectionHeader("Engines")
-                EngineGridView(engines: viewModel.gpuEngines)
+                EngineGridView(engines: monitor.gpuEngines)
             }
         }
     }
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    GPUDetailView(viewModel: StatsViewModel())
+    GPUDetailView(monitor: SystemMonitor(settings: AppSettings()))
 }
 
 // MARK: - Engine grid

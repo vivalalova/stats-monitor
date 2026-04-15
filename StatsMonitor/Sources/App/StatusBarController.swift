@@ -4,13 +4,15 @@ import SwiftUI
 @MainActor
 final class StatusBarController: NSObject {
     private let statusItem: NSStatusItem
-    private let viewModel: StatsViewModel
+    private let settings: AppSettings
+    private let monitor: SystemMonitor
     private var popover: NSPopover?
     private var currentPanel: PanelID?
     private var hostingView: NSHostingView<CombinedMenuBarLabel>?
 
-    init(viewModel: StatsViewModel) {
-        self.viewModel = viewModel
+    init(settings: AppSettings, monitor: SystemMonitor) {
+        self.settings = settings
+        self.monitor = monitor
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
         setupButton()
@@ -25,7 +27,7 @@ final class StatusBarController: NSObject {
         button.image = nil
 
         let hv = NSHostingView(rootView:
-            CombinedMenuBarLabel(viewModel: viewModel, settings: viewModel.settings)
+            CombinedMenuBarLabel(monitor: monitor, settings: settings)
         )
         hv.translatesAutoresizingMaskIntoConstraints = false
         button.addSubview(hv)
@@ -50,16 +52,16 @@ final class StatusBarController: NSObject {
 
     /// 觀察所有影響 label 寬度的值（指標數值 + show 設定），任一改變就重算 length
     private func observeForLength() {
-        let vm = viewModel
-        let s = vm.settings
+        let s = settings
+        let m = monitor
         withObservationTracking {
             _ = s.showCPU; _ = s.showGPU; _ = s.showMemory
             _ = s.showDisk; _ = s.showNetwork
             _ = s.showBattery; _ = s.showThermal; _ = s.showPower; _ = s.showFans
-            _ = vm.cpuPercent; _ = vm.gpuPercent; _ = vm.memoryPercent
-            _ = vm.diskPercent; _ = vm.networkIn
-            _ = vm.hasBattery; _ = vm.hasThermal; _ = vm.hasPower; _ = vm.hasFans
-            _ = vm.batteryPercent; _ = vm.cpuTempStr; _ = vm.powerStr; _ = vm.fansSummary
+            _ = m.cpuPercent; _ = m.gpuPercent; _ = m.memoryPercent
+            _ = m.diskPercent; _ = m.networkInText
+            _ = m.hasBattery; _ = m.hasThermal; _ = m.hasPower; _ = m.hasFans
+            _ = m.batteryPercent; _ = m.cpuTempText; _ = m.powerText; _ = m.fansSummaryText
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.updateLength()
@@ -77,14 +79,14 @@ final class StatusBarController: NSObject {
     }
 
     private func panelAt(x: CGFloat) -> PanelID {
-        let s = viewModel.settings
+        let s = settings
         let enabled: [PanelID] = [
             s.showCPU ? .cpu : nil, s.showGPU ? .gpu : nil, s.showMemory ? .memory : nil,
             s.showDisk ? .disk : nil, s.showNetwork ? .network : nil,
-            s.showBattery && viewModel.hasBattery ? .battery : nil,
-            s.showThermal && viewModel.hasThermal ? .thermal : nil,
-            s.showPower && viewModel.hasPower ? .power : nil,
-            s.showFans && viewModel.hasFans ? .fans : nil,
+            s.showBattery && monitor.hasBattery ? .battery : nil,
+            s.showThermal && monitor.hasThermal ? .thermal : nil,
+            s.showPower && monitor.hasPower ? .power : nil,
+            s.showFans && monitor.hasFans ? .fans : nil,
         ].compactMap { $0 }
         guard !enabled.isEmpty else { return .cpu }
         let slotWidth = statusItem.length / CGFloat(enabled.count)
@@ -104,8 +106,8 @@ final class StatusBarController: NSObject {
         let content = PanelView {
             detailView(for: panel)
         }
-            .environment(viewModel.settings)
-            .environment(viewModel)
+            .environment(settings)
+            .environment(monitor)
 
         let pop = NSPopover()
         pop.behavior = .transient
@@ -122,15 +124,15 @@ final class StatusBarController: NSObject {
     @ViewBuilder
     private func detailView(for panel: PanelID) -> some View {
         switch panel {
-        case .cpu:     CPUDetailView(viewModel: viewModel)
-        case .gpu:     GPUDetailView(viewModel: viewModel)
-        case .memory:  MemoryDetailView(viewModel: viewModel)
-        case .disk:    DiskDetailView(viewModel: viewModel)
-        case .network: NetworkDetailView(viewModel: viewModel)
-        case .battery: BatteryDetailView(viewModel: viewModel)
-        case .thermal: ThermalDetailView(viewModel: viewModel)
-        case .power:   PowerDetailView(viewModel: viewModel)
-        case .fans:    FansDetailView(viewModel: viewModel)
+        case .cpu:     CPUDetailView(monitor: monitor)
+        case .gpu:     GPUDetailView(monitor: monitor)
+        case .memory:  MemoryDetailView(monitor: monitor)
+        case .disk:    DiskDetailView(monitor: monitor)
+        case .network: NetworkDetailView(monitor: monitor)
+        case .battery: BatteryDetailView(monitor: monitor)
+        case .thermal: ThermalDetailView(monitor: monitor)
+        case .power:   PowerDetailView(monitor: monitor)
+        case .fans:    FansDetailView(monitor: monitor)
         }
     }
 }

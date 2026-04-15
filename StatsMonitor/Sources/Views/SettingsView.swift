@@ -37,7 +37,7 @@ struct SettingsView: View {
     }
 
     let settings: AppSettings
-    let viewModel: StatsViewModel
+    let monitor: SystemMonitor
     @State private var selection: Tab = .dashboard
 
     var body: some View {
@@ -58,7 +58,7 @@ struct SettingsView: View {
             .toolbar(removing: .sidebarToggle)
         } detail: {
             switch selection {
-            case .dashboard: DashboardView(viewModel: viewModel)
+            case .dashboard: DashboardView(settings: settings, monitor: monitor)
             case .general:   GeneralSettingsView(settings: settings)
             case .about:     AboutView()
             }
@@ -163,7 +163,9 @@ private struct GeneralSettingsView: View {
 // MARK: - Preview
 
 #Preview {
-    SettingsView(settings: AppSettings(), viewModel: StatsViewModel())
+    let settings = AppSettings()
+    let monitor = SystemMonitor(settings: settings)
+    SettingsView(settings: settings, monitor: monitor)
         .frame(
             width: SettingsWindowLayout.defaultWidth,
             height: SettingsWindowLayout.defaultHeight

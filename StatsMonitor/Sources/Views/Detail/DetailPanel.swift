@@ -25,5 +25,5 @@ struct PanelView<Content: View>: View {
         Text("CPU content")
     }
         .environment(AppSettings())
-        .environment(StatsViewModel())
+        .environment(SystemMonitor(settings: AppSettings()))
 }

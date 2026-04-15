@@ -21,7 +21,52 @@ final class SystemMonitor {
         power: RingBuffer<Double>
     )
 
-    var stats = SystemStats()
+    var stats = SystemStats() {
+        didSet {
+            guard !isSkippingStatsSync else { return }
+            syncLatestValues(from: stats)
+        }
+    }
+
+    var cpuLatest = 0.0 {
+        didSet { appendLatest(cpuLatest, to: &cpuHistory) }
+    }
+    var gpuLatest = 0.0 {
+        didSet { appendLatest(gpuLatest, to: &gpuHistory) }
+    }
+    var memoryLatest = 0.0 {
+        didSet { appendLatest(memoryLatest, to: &memoryHistory) }
+    }
+    var diskLatest = 0.0 {
+        didSet { appendLatest(diskLatest, to: &diskHistory) }
+    }
+    var diskReadLatest = 0.0 {
+        didSet { appendLatest(diskReadLatest, to: &diskReadHistory) }
+    }
+    var diskWriteLatest = 0.0 {
+        didSet { appendLatest(diskWriteLatest, to: &diskWriteHistory) }
+    }
+    var networkInLatest = 0.0 {
+        didSet { appendLatest(networkInLatest, to: &networkInHistory) }
+    }
+    var networkOutLatest = 0.0 {
+        didSet { appendLatest(networkOutLatest, to: &networkOutHistory) }
+    }
+    var batteryLatest: Double? = nil {
+        didSet { appendLatest(batteryLatest, to: &batteryHistory) }
+    }
+    var cpuTempLatest: Double? = nil {
+        didSet { appendLatest(cpuTempLatest, to: &cpuTempHistory) }
+    }
+    var gpuTempLatest: Double? = nil {
+        didSet { appendLatest(gpuTempLatest, to: &gpuTempHistory) }
+    }
+    var fanAverageLatest: Double? = nil {
+        didSet { appendLatest(fanAverageLatest, to: &fanAverageHistory) }
+    }
+    var powerLatest: Double? = nil {
+        didSet { appendLatest(powerLatest, to: &powerHistory) }
+    }
 
     private(set) var cpuHistory:        RingBuffer<Double>
     private(set) var gpuHistory:        RingBuffer<Double>
@@ -53,6 +98,9 @@ final class SystemMonitor {
 
     private var networkProcPrev: [String: NetworkProcessMonitor.Snapshot] = [:]
     private var isProcessPollInFlight = false
+    private var isSyncingLatestValues = false
+    private var isSkippingStatsSync = false
+    private var isRunning = false
 
     private var timer: Timer?
     private let settings: AppSettings
@@ -76,20 +124,27 @@ final class SystemMonitor {
         // SMC-dependent monitors share the same connection
         thermalMonitor = ThermalMonitor(smc: smcClient)
         fanMonitor     = FanMonitor(smc: smcClient)
+        syncLatestValues(from: stats)
+        observePollInterval()
+        observeHistoryCapacity()
     }
 
     func start() {
+        guard !isRunning else { return }
+        isRunning = true
         poll()
         scheduleTimer()
     }
 
     func stop() {
+        isRunning = false
         timer?.invalidate()
         timer = nil
     }
 
     /// pollInterval 變更時呼叫：invalidate 現有 timer 並以新 interval 重建。
     func restartTimer() {
+        guard isRunning else { return }
         timer?.invalidate()
         timer = nil
         scheduleTimer()
@@ -117,7 +172,7 @@ final class SystemMonitor {
         let power   = powerMonitor.sample(intervalSeconds: settings.pollInterval)
         let count   = settings.processCount
 
-        stats = SystemStats(
+        let newStats = SystemStats(
             cpu:                 cpu,
             gpu:                 gpu,
             memory:              memory,
@@ -132,34 +187,37 @@ final class SystemMonitor {
             topDiskProcesses:    stats.topDiskProcesses,
             topNetworkProcesses: stats.topNetworkProcesses
         )
-
-        cpuHistory.append(cpu.used)
-        gpuHistory.append(gpu.used)
-        memoryHistory.append(memory.usedFraction * 100)
-        diskHistory.append(disk.usedFraction * 100)
-        diskReadHistory.append(disk.readBPS)
-        diskWriteHistory.append(disk.writeBPS)
-        networkInHistory.append(network.bytesInPerSec)
-        networkOutHistory.append(network.bytesOutPerSec)
-        if let pct = battery?.percentage {
-            batteryHistory.append(pct)
-        }
-        if let temp = thermal?.cpuTemperature {
-            cpuTempHistory.append(temp)
-        }
-        if let gpuTemp = thermal?.gpuTemperature {
-            gpuTempHistory.append(gpuTemp)
-        }
-        if !fans.isEmpty {
-            let averageRPM = fans.map(\.currentRPM).reduce(0, +) / Double(fans.count)
-            fanAverageHistory.append(averageRPM)
-        }
-        if let pwr = power {
-            powerHistory.append(pwr.totalMilliWatts / 1000)   // store as Watts
-        }
+        isSkippingStatsSync = true
+        stats = newStats
+        isSkippingStatsSync = false
+        recordLatestValues(from: newStats)
 
         pollNetworkProcesses(processCount: count)
         pollProcesses(processCount: count)
+    }
+
+    private func observePollInterval() {
+        withObservationTracking {
+            _ = settings.pollInterval
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.restartTimer()
+                self.observePollInterval()
+            }
+        }
+    }
+
+    private func observeHistoryCapacity() {
+        withObservationTracking {
+            _ = settings.historyCapacity
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.resetHistories()
+                self.observeHistoryCapacity()
+            }
+        }
     }
 
     private func pollNetworkProcesses(processCount: Int) {
@@ -215,6 +273,44 @@ final class SystemMonitor {
         gpuTempHistory    = historyBuffers.gpuTemp
         fanAverageHistory = historyBuffers.fanAverage
         powerHistory      = historyBuffers.power
+    }
+
+    private func syncLatestValues(from stats: SystemStats) {
+        isSyncingLatestValues = true
+        defer { isSyncingLatestValues = false }
+        assignLatestValues(from: stats)
+    }
+
+    private func recordLatestValues(from stats: SystemStats) {
+        assignLatestValues(from: stats)
+    }
+
+    private func assignLatestValues(from stats: SystemStats) {
+        cpuLatest = stats.cpu.used
+        gpuLatest = stats.gpu.used
+        memoryLatest = stats.memory.usedFraction * 100
+        diskLatest = stats.disk.usedFraction * 100
+        diskReadLatest = stats.disk.readBPS
+        diskWriteLatest = stats.disk.writeBPS
+        networkInLatest = stats.network.bytesInPerSec
+        networkOutLatest = stats.network.bytesOutPerSec
+        batteryLatest = stats.battery?.percentage
+        cpuTempLatest = stats.thermal?.cpuTemperature
+        gpuTempLatest = stats.thermal?.gpuTemperature
+        fanAverageLatest = stats.fans.isEmpty
+            ? nil
+            : stats.fans.map(\.currentRPM).reduce(0, +) / Double(stats.fans.count)
+        powerLatest = stats.power.map { $0.totalMilliWatts / 1000 }
+    }
+
+    private func appendLatest(_ value: Double, to history: inout RingBuffer<Double>) {
+        guard !isSyncingLatestValues else { return }
+        history.append(value)
+    }
+
+    private func appendLatest(_ value: Double?, to history: inout RingBuffer<Double>) {
+        guard !isSyncingLatestValues, let value else { return }
+        history.append(value)
     }
 
     private static func makeHistoryBuffers(capacity: Int) -> HistoryBuffers {

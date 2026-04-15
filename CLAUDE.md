@@ -31,7 +31,7 @@ StatsMonitor/Sources/
   Models/
     SystemStats.swift         # 所有資料結構（CPUUsage/MemoryUsage/DiskUsage/…）
   Services/
-    SystemMonitor.swift       # 協調層，polling loop + RingBuffer history
+    SystemMonitor.swift       # 單一 @Observable store，集中管理 stats 與 latest/history pairs
     CPUMonitor.swift          # host_processor_info
     CPUFrequencyMonitor.swift # sysctl cpu frequency
     GPUMonitor.swift          # IOAccelerator（Metal GPU stats）
@@ -46,8 +46,6 @@ StatsMonitor/Sources/
     FanMonitor.swift          # IOKit SMC（風扇 RPM；無風扇機型回傳空陣列）
     SMCClient.swift           # SMC 連線管理，ThermalMonitor/FanMonitor 共用
     PowerMonitor.swift        # IOReport Energy Model（CPU/GPU/整機功率 mW；非 Apple Silicon 回傳 nil）
-  ViewModels/
-    StatsViewModel.swift      # @Observable，聚合所有 monitor 格式化屬性
   Views/
     MenuBarLabel.swift        # Menu bar 文字顯示
     LineChartView.swift       # 共用折線圖元件
@@ -120,7 +118,7 @@ Packages/Util/
 - 共用 helper（`statRow`、`sectionHeader` 等）接受 `LocalizedStringKey`，字串字面量自動轉型
 - **Process name** 顯示用 `statRow(verbatim: proc.name, ...)` 避免誤查本地化表
 - `AboutView.uptime` 使用 `DateComponentsFormatter` 自動跟隨系統語言
-- **未本地化字串在 ViewModel 層**：`StatsViewModel` 中的狀態字串（"Charging"/"Plugged In"/"On Battery"/"N/A"/"No fans" 及 "RPM"/"W"/"mW"/"cycles" 等單位）為硬編碼英文，不在 xcstrings 中
+- **未本地化字串在 monitor extension 層**：`SystemMonitor` 的格式化 extension 中狀態字串（"Charging"/"Plugged In"/"On Battery"/"N/A"/"No fans" 及 "RPM"/"W"/"mW"/"cycles" 等單位）為硬編碼英文，不在 xcstrings 中
 
 ## 測試覆蓋
 
@@ -131,7 +129,7 @@ Packages/Util/
 | 層 | 測試內容 |
 |---|---|
 | Model | CPUUsage.used、MemoryUsage.usedFraction/used、DiskUsage.usedFraction、GPUUsage、BatteryUsage、FanUsage.fraction、ThermalUsage、PowerUsage、ProcInfo |
-| ViewModel | formatted properties（cpuPercent、memoryPercent 等）with known SystemStats input、batteryStatus 所有分支、anePowerStr 分支、lifecycle（start/stop）、formatProcess helpers |
+| SystemMonitor presentation extension | formatted properties（cpuPercent、memoryPercent 等）with known SystemStats input、batteryStatus 所有分支、anePowerText 分支、lifecycle（start/stop）、formatProcess helpers |
 | Service 整合 | MemoryMonitor.sample()（total > 0、usedFraction in 0…1）、DiskMonitor.sample()（total > 0、used ≤ total）、NetworkMonitor.sample()（bytesIn/Out ≥ 0） |
 | Util | formatBytes / formatBytesCompact / formatThroughput / ghzString / RingBuffer |
 
@@ -141,6 +139,7 @@ Packages/Util/
 - `MenuBarExtra` 使用 `.window` style，非 `.menu` style
 - 系統 stats 透過 Darwin C API（`host_processor_info`、`host_statistics64`、`getifaddrs`）+ IOKit SMC
 - Poll interval 由 `AppSettings.pollInterval` 控制（預設 2 秒），可即時調整
+- `SystemMonitor` 內每個圖表/即時指標集中持有 `latest` + `history`
 - History 使用 `RingBuffer<Double>`，容量由 `AppSettings.historyCapacity` 決定
 - `ProcessMonitor` 與 `NetworkProcessMonitor` 背景非同步執行（`Task.detached`）
 - Battery/Thermal/Fan monitor 在不支援硬體時回傳 nil / 空陣列，UI graceful 隱藏

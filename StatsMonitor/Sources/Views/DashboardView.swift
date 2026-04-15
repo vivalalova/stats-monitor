@@ -3,9 +3,8 @@ import SwiftUI
 // MARK: - DashboardView
 
 struct DashboardView: View {
-    var viewModel: StatsViewModel
-
-    private var settings: AppSettings { viewModel.settings }
+    let settings: AppSettings
+    var monitor: SystemMonitor
 
     private var columns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 4), count: settings.dashboardColumns)
@@ -21,95 +20,95 @@ struct DashboardView: View {
                 LazyVGrid(columns: columns, spacing: 4) {
                     MetricCard(
                         title: "CPU",
-                        value: viewModel.cpuPercent,
-                        statusColor: progressColor(viewModel.cpuFraction),
-                        lines: [(history: viewModel.cpuHistory, color: .blue)],
-                        maxValue: histMax(viewModel.cpuHistory)
+                        value: monitor.cpuPercent,
+                        statusColor: progressColor(monitor.cpuFraction),
+                        lines: [(history: monitor.paddedCPUHistory, color: .blue)],
+                        maxValue: histMax(monitor.paddedCPUHistory)
                     )
                     MetricCard(
                         title: "GPU",
-                        value: viewModel.gpuPercent,
-                        statusColor: progressColor(viewModel.gpuFraction),
-                        lines: [(history: viewModel.gpuHistory, color: .purple)],
-                        maxValue: histMax(viewModel.gpuHistory)
+                        value: monitor.gpuPercent,
+                        statusColor: progressColor(monitor.gpuFraction),
+                        lines: [(history: monitor.paddedGPUHistory, color: .purple)],
+                        maxValue: histMax(monitor.paddedGPUHistory)
                     )
                     MetricCard(
                         title: "Memory",
-                        value: viewModel.memoryPercent,
-                        statusColor: progressColor(viewModel.memoryFraction),
-                        lines: [(history: viewModel.memoryHistory, color: .cyan)],
-                        maxValue: histMax(viewModel.memoryHistory)
+                        value: monitor.memoryPercent,
+                        statusColor: progressColor(monitor.memoryFraction),
+                        lines: [(history: monitor.paddedMemoryHistory, color: .cyan)],
+                        maxValue: histMax(monitor.paddedMemoryHistory)
                     )
                     MetricCard(
                         title: "Disk",
-                        value: viewModel.diskPercent,
-                        statusColor: progressColor(viewModel.diskFraction),
+                        value: monitor.diskPercent,
+                        statusColor: progressColor(monitor.diskFraction),
                         lines: [],
                         maxValue: 100
                     )
                     MetricCard(
                         title: "Network",
-                        value: "↓\(viewModel.networkIn)  ↑\(viewModel.networkOut)",
+                        value: "↓\(monitor.networkInText)  ↑\(monitor.networkOutText)",
                         statusColor: .blue,
                         lines: [
-                            (history: viewModel.networkInHistory,  color: .blue),
-                            (history: viewModel.networkOutHistory, color: .green),
+                            (history: monitor.paddedNetworkInHistory,  color: .blue),
+                            (history: monitor.paddedNetworkOutHistory, color: .green),
                         ],
-                        maxValue: histMax(viewModel.networkInHistory + viewModel.networkOutHistory)
+                        maxValue: histMax(monitor.paddedNetworkInHistory + monitor.paddedNetworkOutHistory)
                     )
-                    if viewModel.hasBattery {
+                    if monitor.hasBattery {
                         MetricCard(
                             title: "Battery",
-                            value: "\(viewModel.batteryPercent)  \(viewModel.batteryStatus)",
-                            statusColor: batteryStatusColor(viewModel.battery),
-                            lines: viewModel.batteryHistory.count >= 2
-                                ? [(history: viewModel.batteryHistory, color: .green)]
+                            value: "\(monitor.batteryPercent)  \(monitor.batteryStatusText)",
+                            statusColor: batteryStatusColor(monitor.battery),
+                            lines: monitor.paddedBatteryHistory.count >= 2
+                                ? [(history: monitor.paddedBatteryHistory, color: .green)]
                                 : [],
-                            maxValue: histMax(viewModel.batteryHistory)
+                            maxValue: histMax(monitor.paddedBatteryHistory)
                         )
                     }
-                    if viewModel.hasThermal {
+                    if monitor.hasThermal {
                         MetricCard(
                             title: "Thermal",
-                            value: "CPU \(viewModel.cpuTempStr)",
-                            statusColor: thermalStatusColor(viewModel.thermal?.cpuTemperature ?? 0),
-                            lines: thermalCardLines(viewModel: viewModel),
-                            maxValue: histMax(viewModel.cpuTempHistory + viewModel.gpuTempHistory)
+                            value: "CPU \(monitor.cpuTempText)",
+                            statusColor: thermalStatusColor(monitor.thermal?.cpuTemperature ?? 0),
+                            lines: thermalCardLines(monitor: monitor),
+                            maxValue: histMax(monitor.paddedCPUTempHistory + monitor.paddedGPUTempHistory)
                         )
                     }
                     MetricCard(
                         title: "Disk I/O",
-                        value: "↓\(viewModel.diskRead)  ↑\(viewModel.diskWrite)",
+                        value: "↓\(monitor.diskReadText)  ↑\(monitor.diskWriteText)",
                         statusColor: .blue,
                         lines: [
-                            (history: viewModel.diskReadHistory,  color: .teal),
-                            (history: viewModel.diskWriteHistory, color: .orange),
+                            (history: monitor.paddedDiskReadHistory,  color: .teal),
+                            (history: monitor.paddedDiskWriteHistory, color: .orange),
                         ],
-                        maxValue: histMax(viewModel.diskReadHistory + viewModel.diskWriteHistory)
+                        maxValue: histMax(monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory)
                     )
-                    if viewModel.hasPower {
+                    if monitor.hasPower {
                         MetricCard(
                             title: "Power",
-                            value: viewModel.powerStr,
-                            statusColor: powerStatusColor(viewModel.power?.totalWatts ?? 0),
-                            lines: [(history: viewModel.powerHistory, color: .red)],
-                            maxValue: histMax(viewModel.powerHistory)
+                            value: monitor.powerText,
+                            statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
+                            lines: [(history: monitor.paddedPowerHistory, color: .red)],
+                            maxValue: histMax(monitor.paddedPowerHistory)
                         )
                     }
-                    if viewModel.hasFans {
+                    if monitor.hasFans {
                         MetricCard(
                             title: "Fans",
-                            value: viewModel.fansSummary,
+                            value: monitor.fansSummaryText,
                             statusColor: .blue,
-                            lines: viewModel.fanAverageHistory.count >= 2
-                                ? [(history: viewModel.fanAverageHistory, color: .blue)]
+                            lines: monitor.paddedFanAverageHistory.count >= 2
+                                ? [(history: monitor.paddedFanAverageHistory, color: .blue)]
                                 : [],
-                            maxValue: viewModel.fanChartMaxRPM
+                            maxValue: monitor.fanChartMaxRPM
                         )
                     }
                 }
 
-                DashboardProcessTable(viewModel: viewModel)
+                DashboardProcessTable(settings: settings, monitor: monitor)
             }
             .padding(8)
         }
@@ -169,13 +168,13 @@ private func thermalStatusColor(_ celsius: Double) -> Color {
 }
 
 @MainActor
-private func thermalCardLines(viewModel: StatsViewModel) -> [(history: [Double], color: Color)] {
+private func thermalCardLines(monitor: SystemMonitor) -> [(history: [Double], color: Color)] {
     var lines: [(history: [Double], color: Color)] = []
-    if viewModel.cpuTempHistory.count >= 2 {
-        lines.append((history: viewModel.cpuTempHistory, color: .orange))
+    if monitor.paddedCPUTempHistory.count >= 2 {
+        lines.append((history: monitor.paddedCPUTempHistory, color: .orange))
     }
-    if viewModel.gpuTempHistory.count >= 2 {
-        lines.append((history: viewModel.gpuTempHistory, color: .purple))
+    if monitor.paddedGPUTempHistory.count >= 2 {
+        lines.append((history: monitor.paddedGPUTempHistory, color: .purple))
     }
     return lines
 }
@@ -226,7 +225,8 @@ private struct MetricCard: View {
 // MARK: - DashboardProcessTable
 
 private struct DashboardProcessTable: View {
-    var viewModel: StatsViewModel
+    let settings: AppSettings
+    var monitor: SystemMonitor
 
     enum SortColumn { case name, cpu, memory, disk, network }
 
@@ -235,10 +235,10 @@ private struct DashboardProcessTable: View {
 
     private var mergedProcesses: [ProcInfo] {
         var byName: [String: ProcInfo] = [:]
-        let all = viewModel.topCPUProcesses
-            + viewModel.topMemoryProcesses
-            + viewModel.topDiskProcesses
-            + viewModel.topNetworkProcesses
+        let all = monitor.topCPUProcesses
+            + monitor.topMemoryProcesses
+            + monitor.topDiskProcesses
+            + monitor.topNetworkProcesses
         for proc in all {
             if let existing = byName[proc.name] {
                 byName[proc.name] = ProcInfo(
@@ -308,7 +308,7 @@ private struct DashboardProcessTable: View {
                 Divider()
 
                 ForEach(
-                    Array(mergedProcesses.prefix(viewModel.settings.processCount)),
+                    Array(mergedProcesses.prefix(settings.processCount)),
                     id: \.name
                 ) { proc in
                     HStack {
@@ -316,15 +316,15 @@ private struct DashboardProcessTable: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Spacer()
-                        Text(viewModel.formatProcessCPU(proc.cpuPercent))
+                        Text(monitor.formatProcessCPU(proc.cpuPercent))
                             .frame(width: 60, alignment: .trailing)
-                        Text(viewModel.formatProcessMemory(proc.memoryBytes))
+                        Text(monitor.formatProcessMemory(proc.memoryBytes))
                             .frame(width: 72, alignment: .trailing)
                         Text(proc.diskTotalBPS > 0
-                             ? viewModel.formatProcessDisk(proc.diskTotalBPS) : "—")
+                             ? monitor.formatProcessDisk(proc.diskTotalBPS) : "—")
                             .frame(width: 72, alignment: .trailing)
                         Text(proc.networkTotalBPS > 0
-                             ? viewModel.formatProcessNetwork(proc.networkTotalBPS) : "—")
+                             ? monitor.formatProcessNetwork(proc.networkTotalBPS) : "—")
                             .frame(width: 80, alignment: .trailing)
                     }
                     .font(.system(size: 12))
@@ -359,6 +359,8 @@ private extension Array where Element == ProcInfo {
 // MARK: - Preview
 
 #Preview(traits: .sizeThatFitsLayout) {
-    DashboardView(viewModel: StatsViewModel())
+    let settings = AppSettings()
+    let monitor = SystemMonitor(settings: settings)
+    DashboardView(settings: settings, monitor: monitor)
         .frame(width: 820, height: 520)
 }

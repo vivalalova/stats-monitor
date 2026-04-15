@@ -3,25 +3,25 @@ import SwiftUI
 struct BatteryDetailView: View {
     static let panelTitle = "Battery"
 
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if viewModel.batteryHistory.count >= 2 {
-                LineChartView(lines: [(viewModel.batteryHistory, .green)], maxValue: 100)
+            if monitor.paddedBatteryHistory.count >= 2 {
+                LineChartView(lines: [(monitor.paddedBatteryHistory, .green)], maxValue: 100)
             }
 
-            statRow("Charge", value: viewModel.batteryPercent)
-            statRow("Status", value: viewModel.batteryStatus)
-            statRow("Time", value: viewModel.batteryTimeRemaining)
-            statRow("Health", value: viewModel.batteryHealth)
-            statRow("Cycles", value: viewModel.batteryCycles)
-            statRow("Max Capacity", value: viewModel.batteryMaxCapacity)
-            statRow("Design Capacity", value: viewModel.batteryDesignCapacity)
+            statRow("Charge", value: monitor.batteryPercent)
+            statRow("Status", value: monitor.batteryStatusText)
+            statRow("Time", value: monitor.batteryTimeRemainingText)
+            statRow("Health", value: monitor.batteryHealthText)
+            statRow("Cycles", value: monitor.batteryCyclesText)
+            statRow("Max Capacity", value: monitor.batteryMaxCapacityText)
+            statRow("Design Capacity", value: monitor.batteryDesignCapacityText)
         }
     }
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    BatteryDetailView(viewModel: StatsViewModel())
+    BatteryDetailView(monitor: SystemMonitor(settings: AppSettings()))
 }

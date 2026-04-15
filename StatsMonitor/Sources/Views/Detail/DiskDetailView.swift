@@ -3,30 +3,30 @@ import SwiftUI
 struct DiskDetailView: View {
     static let panelTitle = "Disk"
 
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
             let maxIO = max(
-                (viewModel.diskReadHistory + viewModel.diskWriteHistory).max() ?? 1,
+                (monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory).max() ?? 1,
                 1_048_576
             )
 
             LineChartView(
-                lines: [(viewModel.diskReadHistory, .yellow), (viewModel.diskWriteHistory, .orange)],
+                lines: [(monitor.paddedDiskReadHistory, .yellow), (monitor.paddedDiskWriteHistory, .orange)],
                 maxValue: maxIO
             )
 
-            statRow("↓ Read",  value: viewModel.diskRead)
-            statRow("↑ Write", value: viewModel.diskWrite)
+            statRow("↓ Read",  value: monitor.diskReadText)
+            statRow("↑ Write", value: monitor.diskWriteText)
             Divider()
-            statRow("Used",  value: viewModel.diskUsed)
-            statRow("Free",  value: viewModel.diskFree)
-            statRow("Total", value: viewModel.diskTotal)
-            if !viewModel.topDiskProcesses.isEmpty {
+            statRow("Used",  value: monitor.diskUsedText)
+            statRow("Free",  value: monitor.diskFreeText)
+            statRow("Total", value: monitor.diskTotalText)
+            if !monitor.topDiskProcesses.isEmpty {
                 sectionHeader("Top Processes")
-                ForEach(Array(viewModel.topDiskProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(verbatim: proc.name, value: "↓\(viewModel.formatProcessDisk(proc.diskReadBPS)) ↑\(viewModel.formatProcessDisk(proc.diskWriteBPS))")
+                ForEach(Array(monitor.topDiskProcesses.enumerated()), id: \.offset) { _, proc in
+                    statRow(verbatim: proc.name, value: "↓\(monitor.formatProcessDisk(proc.diskReadBPS)) ↑\(monitor.formatProcessDisk(proc.diskWriteBPS))")
                 }
             }
         }
@@ -34,5 +34,5 @@ struct DiskDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    DiskDetailView(viewModel: StatsViewModel())
+    DiskDetailView(monitor: SystemMonitor(settings: AppSettings()))
 }

@@ -168,198 +168,247 @@ struct StatsMonitorTests {
     }
 }
 
-// MARK: - StatsViewModel Tests
+// MARK: - SystemMonitor Presentation Tests
 
-@Suite("StatsViewModel")
+@Suite("SystemMonitor Presentation")
 @MainActor
-struct StatsViewModelTests {
+struct SystemMonitorPresentationTests {
+
+    private func makeMonitor() -> SystemMonitor {
+        SystemMonitor(settings: AppSettings())
+    }
 
     // MARK: - Lifecycle
 
     @Test("init and stop do not crash")
     func lifecycle() {
-        let vm = StatsViewModel()
-        vm.stop()
+        let monitor = makeMonitor()
+        monitor.stop()
     }
 
     @Test("start and stop do not crash")
     func startStop() {
-        let vm = StatsViewModel()
-        vm.stop()
-        vm.start()
-        vm.stop()
+        let monitor = makeMonitor()
+        monitor.stop()
+        monitor.start()
+        monitor.stop()
     }
 
     // MARK: - Formatted properties with known SystemStats input
 
     @Test("cpuPercent shows sum of user and system with one decimal")
     func cpuPercentKnownInput() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.cpu = CPUUsage(user: 30, system: 20, idle: 50, perCore: [], coreFrequencies: [])
-        #expect(vm.cpuPercent == "50.0%")
-        #expect(vm.cpuUserPercent == "30.0%")
-        #expect(vm.cpuSystemPercent == "20.0%")
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.cpu = CPUUsage(user: 30, system: 20, idle: 50, perCore: [], coreFrequencies: [])
+        #expect(monitor.cpuPercent == "50.0%")
+        #expect(monitor.cpuUserPercent == "30.0%")
+        #expect(monitor.cpuSystemPercent == "20.0%")
     }
 
     @Test("memoryPercent reflects usedFraction with one decimal")
     func memoryPercentKnownInput() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
         // active(2GB) + wired(1GB) + compressed(1GB) = 4GB used; total = 8GB → 50%
-        vm.monitor.stats.memory = MemoryUsage(
+        monitor.stats.memory = MemoryUsage(
             active: 2_147_483_648, wired: 1_073_741_824,
             compressed: 1_073_741_824, total: 8_589_934_592
         )
-        #expect(vm.memoryPercent == "50.0%")
+        #expect(monitor.memoryPercent == "50.0%")
     }
 
     @Test("diskPercent reflects usedFraction with one decimal")
     func diskPercentKnownInput() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.disk = DiskUsage(used: 250_000_000_000, total: 500_000_000_000)
-        #expect(vm.diskPercent == "50.0%")
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.disk = DiskUsage(used: 250_000_000_000, total: 500_000_000_000)
+        #expect(monitor.diskPercent == "50.0%")
     }
 
     @Test("batteryPercent returns N/A when battery is nil")
     func batteryPercentNoBattery() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.battery = nil
-        #expect(vm.batteryPercent == "N/A")
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.battery = nil
+        #expect(monitor.batteryPercent == "N/A")
     }
 
     @Test("batteryPercent returns formatted value when battery present")
     func batteryPercentWithBattery() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.battery = BatteryUsage(
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.battery = BatteryUsage(
             percentage: 80, isCharging: false, isPluggedIn: false,
             timeRemaining: nil, cycleCount: 100,
             designCapacity: 5000, maxCapacity: 4800, health: 96
         )
-        #expect(vm.batteryPercent == "80%")
+        #expect(monitor.batteryPercent == "80%")
     }
 
     // MARK: - batteryStatus branching
 
     @Test("batteryStatus is Charging when isCharging")
     func batteryStatusCharging() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.battery = BatteryUsage(
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.battery = BatteryUsage(
             percentage: 60, isCharging: true, isPluggedIn: true,
             timeRemaining: nil, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
         )
-        #expect(vm.batteryStatus == "Charging")
+        #expect(monitor.batteryStatusText == "Charging")
     }
 
     @Test("batteryStatus is Plugged In when plugged in but not charging")
     func batteryStatusPluggedIn() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.battery = BatteryUsage(
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.battery = BatteryUsage(
             percentage: 100, isCharging: false, isPluggedIn: true,
             timeRemaining: nil, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
         )
-        #expect(vm.batteryStatus == "Plugged In")
+        #expect(monitor.batteryStatusText == "Plugged In")
     }
 
     @Test("batteryStatus shows hours and minutes when on battery with estimate ≥ 60m")
     func batteryStatusTimeRemainingHoursAndMinutes() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.battery = BatteryUsage(
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.battery = BatteryUsage(
             percentage: 60, isCharging: false, isPluggedIn: false,
             timeRemaining: 90, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
         )
-        #expect(vm.batteryStatus == "1h 30m")
+        #expect(monitor.batteryStatusText == "1h 30m")
     }
 
     @Test("batteryStatus shows minutes only when less than 1 hour remaining")
     func batteryStatusTimeRemainingMinutesOnly() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.battery = BatteryUsage(
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.battery = BatteryUsage(
             percentage: 10, isCharging: false, isPluggedIn: false,
             timeRemaining: 45, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
         )
-        #expect(vm.batteryStatus == "45m")
+        #expect(monitor.batteryStatusText == "45m")
     }
 
     @Test("batteryStatus is On Battery when no charging and no time estimate")
     func batteryStatusOnBattery() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.battery = BatteryUsage(
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.battery = BatteryUsage(
             percentage: 60, isCharging: false, isPluggedIn: false,
             timeRemaining: nil, cycleCount: 50,
             designCapacity: 5000, maxCapacity: 5000, health: 100
         )
-        #expect(vm.batteryStatus == "On Battery")
+        #expect(monitor.batteryStatusText == "On Battery")
     }
 
     // MARK: - anePowerStr branching
 
     @Test("anePowerStr shows mW when below 1000 mW")
     func anePowerMW() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.gpu = GPUUsage(
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.gpu = GPUUsage(
             deviceUtilization: 0, renderUtilization: 0,
             engines: [:], vramUsed: 0, anePowerMilliWatts: 500
         )
-        #expect(vm.anePowerStr == "500 mW")
+        #expect(monitor.anePowerText == "500 mW")
     }
 
     @Test("anePowerStr shows W when 1000 mW or more")
     func anePowerW() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        vm.monitor.stats.gpu = GPUUsage(
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.stats.gpu = GPUUsage(
             deviceUtilization: 0, renderUtilization: 0,
             engines: [:], vramUsed: 0, anePowerMilliWatts: 2500
         )
-        #expect(vm.anePowerStr == "2.5 W")
+        #expect(monitor.anePowerText == "2.5 W")
     }
 
     // MARK: - formatProcess helpers (known input → known output)
 
     @Test("formatProcessCPU formats one decimal percent")
     func formatProcessCPU() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        #expect(vm.formatProcessCPU(50.0)  == "50.0%")
-        #expect(vm.formatProcessCPU(0.0)   == "0.0%")
-        #expect(vm.formatProcessCPU(100.0) == "100.0%")
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        #expect(monitor.formatProcessCPU(50.0)  == "50.0%")
+        #expect(monitor.formatProcessCPU(0.0)   == "0.0%")
+        #expect(monitor.formatProcessCPU(100.0) == "100.0%")
     }
 
     @Test("formatProcessMemory formats bytes to human-readable")
     func formatProcessMemory() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        #expect(vm.formatProcessMemory(1_073_741_824) == "1.0 GB")
-        #expect(vm.formatProcessMemory(1_048_576)     == "1 MB")
-        #expect(vm.formatProcessMemory(0)             == "0 B")
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        #expect(monitor.formatProcessMemory(1_073_741_824) == "1.0 GB")
+        #expect(monitor.formatProcessMemory(1_048_576)     == "1 MB")
+        #expect(monitor.formatProcessMemory(0)             == "0 B")
     }
 
     @Test("formatProcessDisk formats throughput")
     func formatProcessDisk() {
-        let vm = StatsViewModel()
-        defer { vm.stop() }
-        #expect(vm.formatProcessDisk(1_048_576) == "1.0 MB/s")
-        #expect(vm.formatProcessDisk(0)         == "0 KB/s")
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        #expect(monitor.formatProcessDisk(1_048_576) == "1.0 MB/s")
+        #expect(monitor.formatProcessDisk(0)         == "0 KB/s")
     }
 }
 
 @Suite("SystemMonitor")
 @MainActor
 struct SystemMonitorTests {
+
+    @Test("latest metric writes append matching history")
+    func latestMetricWritesAppendHistory() {
+        let monitor = SystemMonitor(settings: AppSettings())
+
+        monitor.cpuLatest = 12.5
+        monitor.cpuLatest = 18.0
+        monitor.batteryLatest = nil
+        monitor.batteryLatest = 77.0
+        monitor.cpuTempLatest = 64.2
+
+        #expect(Array(monitor.cpuHistory) == [12.5, 18.0])
+        #expect(Array(monitor.batteryHistory) == [77.0])
+        #expect(Array(monitor.cpuTempHistory) == [64.2])
+    }
+
+    @Test("stats mutations sync latest values without appending history")
+    func statsMutationsSyncLatestValues() {
+        let monitor = SystemMonitor(settings: AppSettings())
+
+        monitor.stats.cpu = CPUUsage(user: 22, system: 8, idle: 70, perCore: [], coreFrequencies: [])
+        monitor.stats.network = NetworkUsage(bytesInPerSec: 1_024, bytesOutPerSec: 2_048)
+
+        #expect(monitor.cpuLatest == 30)
+        #expect(monitor.networkInLatest == 1_024)
+        #expect(monitor.networkOutLatest == 2_048)
+        #expect(Array(monitor.cpuHistory).isEmpty)
+        #expect(Array(monitor.networkInHistory).isEmpty)
+    }
+
+    @Test("historyCapacity changes recreate buffers without a view-model adapter")
+    func historyCapacityChangeRecreatesBuffersViaSettingsObservation() async throws {
+        let settings = AppSettings()
+        settings.historyCapacity = 60
+        let monitor = SystemMonitor(settings: settings)
+
+        monitor.cpuLatest = 42
+        #expect(Array(monitor.cpuHistory) == [42])
+
+        settings.historyCapacity = 300
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(monitor.cpuHistory.capacity == 300)
+        #expect(Array(monitor.cpuHistory).isEmpty)
+    }
 
     @Test("resetHistories keeps current buffers until historyCapacity changes, then recreates them")
     func resetHistoriesRecreatesBuffersOnCapacityChange() {

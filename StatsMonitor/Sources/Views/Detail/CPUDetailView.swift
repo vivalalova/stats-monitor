@@ -4,28 +4,28 @@ import Util
 struct CPUDetailView: View {
     static let panelTitle = "CPU"
 
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if viewModel.cpuHistory.count >= 2 {
-                LineChartView(lines: [(viewModel.cpuHistory, .blue)])
+            if monitor.paddedCPUHistory.count >= 2 {
+                LineChartView(lines: [(monitor.paddedCPUHistory, .blue)])
             }
 
-            statRow("Used",   value: viewModel.cpuPercent)
-            statRow("User",   value: viewModel.cpuUserPercent)
-            statRow("System", value: viewModel.cpuSystemPercent)
-            statRow("Idle",   value: String(format: "%.1f%%", viewModel.monitor.stats.cpu.idle))
-            if !viewModel.cpuPerCore.isEmpty {
+            statRow("Used",   value: monitor.cpuPercent)
+            statRow("User",   value: monitor.cpuUserPercent)
+            statRow("System", value: monitor.cpuSystemPercent)
+            statRow("Idle",   value: String(format: "%.1f%%", monitor.stats.cpu.idle))
+            if !monitor.cpuPerCore.isEmpty {
                 sectionHeader("Per Core")
-                CoreGridView(cores: viewModel.cpuPerCore,
-                             frequencies: viewModel.cpuCoreFrequencies)
+                CoreGridView(cores: monitor.cpuPerCore,
+                             frequencies: monitor.cpuCoreFrequencies)
             }
 
-            if !viewModel.topCPUProcesses.isEmpty {
+            if !monitor.topCPUProcesses.isEmpty {
                 sectionHeader("Top Processes")
-                ForEach(Array(viewModel.topCPUProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(verbatim: proc.name, value: viewModel.formatProcessCPU(proc.cpuPercent))
+                ForEach(Array(monitor.topCPUProcesses.enumerated()), id: \.offset) { _, proc in
+                    statRow(verbatim: proc.name, value: monitor.formatProcessCPU(proc.cpuPercent))
                 }
             }
         }
@@ -33,7 +33,7 @@ struct CPUDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    CPUDetailView(viewModel: StatsViewModel())
+    CPUDetailView(monitor: SystemMonitor(settings: AppSettings()))
 }
 
 // MARK: - Core grid

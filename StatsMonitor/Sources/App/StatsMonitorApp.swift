@@ -6,7 +6,7 @@ struct StatsMonitorApp: App {
 
     var body: some Scene {
         Window("Settings", id: AppSceneID.settingsWindow) {
-            SettingsView(settings: appDelegate.viewModel.settings, viewModel: appDelegate.viewModel)
+            SettingsView(settings: appDelegate.settings, monitor: appDelegate.monitor)
         }
         .defaultSize(
             width: SettingsWindowLayout.defaultWidth,
@@ -35,10 +35,12 @@ private struct SettingsCommands: Commands {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let viewModel = StatsViewModel()
+    let settings = AppSettings()
+    lazy var monitor = SystemMonitor(settings: settings)
     private var controller: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        controller = StatusBarController(viewModel: viewModel)
+        monitor.start()
+        controller = StatusBarController(settings: settings, monitor: monitor)
     }
 }

@@ -3,21 +3,21 @@ import SwiftUI
 struct PowerDetailView: View {
     static let panelTitle = "Power"
 
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if viewModel.powerHistory.count >= 2 {
-                LineChartView(lines: [(viewModel.powerHistory, .red)])
+            if monitor.paddedPowerHistory.count >= 2 {
+                LineChartView(lines: [(monitor.paddedPowerHistory, .red)])
             }
 
-            statRow("Total", value: viewModel.powerStr)
-            statRow("CPU", value: viewModel.cpuPowerStr)
-            statRow("GPU", value: viewModel.gpuPowerStr)
+            statRow("Total", value: monitor.powerText)
+            statRow("CPU", value: monitor.cpuPowerText)
+            statRow("GPU", value: monitor.gpuPowerText)
         }
     }
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    PowerDetailView(viewModel: StatsViewModel())
+    PowerDetailView(monitor: SystemMonitor(settings: AppSettings()))
 }

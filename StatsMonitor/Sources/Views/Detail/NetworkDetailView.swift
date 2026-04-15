@@ -3,27 +3,27 @@ import SwiftUI
 struct NetworkDetailView: View {
     static let panelTitle = "Network"
 
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
             let maxVal = max(
-                (viewModel.networkInHistory + viewModel.networkOutHistory).max() ?? 1,
+                (monitor.paddedNetworkInHistory + monitor.paddedNetworkOutHistory).max() ?? 1,
                 1_048_576
             )
 
             LineChartView(
-                lines: [(viewModel.networkInHistory, .green), (viewModel.networkOutHistory, .red)],
+                lines: [(monitor.paddedNetworkInHistory, .green), (monitor.paddedNetworkOutHistory, .red)],
                 maxValue: maxVal
             )
 
-            statRow("↓ In",  value: viewModel.networkIn)
-            statRow("↑ Out", value: viewModel.networkOut)
+            statRow("↓ In",  value: monitor.networkInText)
+            statRow("↑ Out", value: monitor.networkOutText)
 
-            if !viewModel.topNetworkProcesses.isEmpty {
+            if !monitor.topNetworkProcesses.isEmpty {
                 sectionHeader("Top Processes")
-                ForEach(Array(viewModel.topNetworkProcesses.enumerated()), id: \.offset) { _, proc in
-                    statRow(verbatim: proc.name, value: "↓\(viewModel.formatProcessNetwork(proc.networkInBPS)) ↑\(viewModel.formatProcessNetwork(proc.networkOutBPS))")
+                ForEach(Array(monitor.topNetworkProcesses.enumerated()), id: \.offset) { _, proc in
+                    statRow(verbatim: proc.name, value: "↓\(monitor.formatProcessNetwork(proc.networkInBPS)) ↑\(monitor.formatProcessNetwork(proc.networkOutBPS))")
                 }
             }
         }
@@ -31,5 +31,5 @@ struct NetworkDetailView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    NetworkDetailView(viewModel: StatsViewModel())
+    NetworkDetailView(monitor: SystemMonitor(settings: AppSettings()))
 }

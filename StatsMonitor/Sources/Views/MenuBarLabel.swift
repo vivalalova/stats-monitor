@@ -16,37 +16,37 @@ struct MenuBarItemLabel: View {
 }
 
 struct CombinedMenuBarLabel: View {
-    var viewModel: StatsViewModel
+    var monitor: SystemMonitor
     var settings: AppSettings
 
     var body: some View {
         HStack(spacing: 0) {
             if settings.showCPU {
-                MenuBarItemLabel(icon: "cpu", text: viewModel.cpuPercent)
+                MenuBarItemLabel(icon: "cpu", text: monitor.cpuPercent)
             }
             if settings.showGPU {
-                MenuBarItemLabel(icon: "display", text: viewModel.gpuPercent)
+                MenuBarItemLabel(icon: "display", text: monitor.gpuPercent)
             }
             if settings.showMemory {
-                MenuBarItemLabel(icon: "memorychip", text: viewModel.memoryPercent)
+                MenuBarItemLabel(icon: "memorychip", text: monitor.memoryPercent)
             }
             if settings.showDisk {
-                MenuBarItemLabel(icon: "internaldrive", text: viewModel.diskPercent)
+                MenuBarItemLabel(icon: "internaldrive", text: monitor.diskPercent)
             }
             if settings.showNetwork {
-                MenuBarItemLabel(icon: "network", text: viewModel.networkIn)
+                MenuBarItemLabel(icon: "network", text: monitor.networkInText)
             }
-            if settings.showBattery, viewModel.hasBattery {
-                MenuBarItemLabel(icon: "battery.100", text: viewModel.batteryPercent)
+            if settings.showBattery, monitor.hasBattery {
+                MenuBarItemLabel(icon: "battery.100", text: monitor.batteryPercent)
             }
-            if settings.showThermal, viewModel.hasThermal {
-                MenuBarItemLabel(icon: "thermometer.medium", text: viewModel.cpuTempStr)
+            if settings.showThermal, monitor.hasThermal {
+                MenuBarItemLabel(icon: "thermometer.medium", text: monitor.cpuTempText)
             }
-            if settings.showPower, viewModel.hasPower {
-                MenuBarItemLabel(icon: "bolt.fill", text: viewModel.powerStr)
+            if settings.showPower, monitor.hasPower {
+                MenuBarItemLabel(icon: "bolt.fill", text: monitor.powerText)
             }
-            if settings.showFans, viewModel.hasFans {
-                MenuBarItemLabel(icon: "wind", text: viewModel.fansSummary)
+            if settings.showFans, monitor.hasFans {
+                MenuBarItemLabel(icon: "wind", text: monitor.fansSummaryText)
             }
         }
         .fixedSize()
