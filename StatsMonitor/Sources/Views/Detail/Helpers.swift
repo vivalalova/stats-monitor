@@ -40,19 +40,24 @@ struct DetailToolbar: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .center, spacing: 12) {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.primary)
+
             Spacer()
-            Button { openWindow(id: AppSceneID.settingsWindow) } label: {
-                Image(systemName: "gearshape")
+
+            HStack(spacing: 8) {
+                Button { openWindow(id: AppSceneID.settingsWindow) } label: {
+                    Image(systemName: "gearshape")
+                }
+                .help("Settings")
+
+                Button { quitConfirmation.requestQuit() } label: {
+                    Image(systemName: "power")
+                }
+                .help("Quit StatsMonitor")
             }
-            .help("Settings")
-            Button { quitConfirmation.requestQuit() } label: {
-                Image(systemName: "power")
-            }
-            .help("Quit StatsMonitor")
         }
         .alert(QuitConfirmationCopy.title, isPresented: quitConfirmationBinding) {
             Button(QuitConfirmationCopy.cancel, role: .cancel) {

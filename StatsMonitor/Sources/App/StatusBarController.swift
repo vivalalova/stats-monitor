@@ -3,6 +3,8 @@ import SwiftUI
 
 @MainActor
 final class StatusBarController: NSObject {
+    static let clickActionMask: NSEvent.EventTypeMask = [.leftMouseDown]
+
     private let statusItem: NSStatusItem
     private let settings: AppSettings
     private let monitor: SystemMonitor
@@ -29,10 +31,15 @@ final class StatusBarController: NSObject {
         button.title = ""
         button.image = nil
         button.isBordered = false
+        Self.configureClickBehavior(for: button)
         renderButtonLabel()
         button.setAccessibilityLabel("StatsMonitor")
         button.target = self
         button.action = #selector(handleClick(_:))
+    }
+ 
+    static func configureClickBehavior(for button: NSStatusBarButton) {
+        button.sendAction(on: clickActionMask)
     }
 
     // MARK: - Length

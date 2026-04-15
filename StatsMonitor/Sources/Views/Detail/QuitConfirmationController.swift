@@ -9,6 +9,22 @@ enum QuitConfirmationCopy {
 }
 
 @MainActor
+final class AppTerminationGate {
+    static let shared = AppTerminationGate()
+
+    private var isAuthorized = false
+
+    func authorizeNextTermination() {
+        isAuthorized = true
+    }
+
+    func consumeAuthorization() -> Bool {
+        defer { isAuthorized = false }
+        return isAuthorized
+    }
+}
+
+@MainActor
 @Observable
 final class QuitConfirmationController {
     var isPresented = false
@@ -17,6 +33,7 @@ final class QuitConfirmationController {
     private let terminate: () -> Void
 
     init(terminate: @escaping () -> Void = {
+        AppTerminationGate.shared.authorizeNextTermination()
         NSApplication.shared.terminate(nil)
     }) {
         self.terminate = terminate

@@ -43,4 +43,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor.start()
         controller = StatusBarController(settings: settings, monitor: monitor)
     }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if AppTerminationGate.shared.consumeAuthorization() {
+            return .terminateNow
+        }
+
+        return quitConfirmationReply()
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    private func quitConfirmationReply() -> NSApplication.TerminateReply {
+        let alert = NSAlert()
+        alert.messageText = QuitConfirmationCopy.title
+        alert.informativeText = QuitConfirmationCopy.message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: QuitConfirmationCopy.confirm)
+        alert.addButton(withTitle: QuitConfirmationCopy.cancel)
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
 }

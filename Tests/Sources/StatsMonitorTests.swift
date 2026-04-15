@@ -757,6 +757,15 @@ struct StatusBarTests {
         #expect(StatusBarLabelRenderer.panel(at: (firstBoundary + secondBoundary) / 2 + 6, in: segments) == .network)
         #expect(StatusBarLabelRenderer.panel(at: secondBoundary + 12, in: segments) == .battery)
     }
+
+    @Test("status bar button handles click on mouse down to avoid popover click-through")
+    func statusBarButtonHandlesClickOnMouseDown() {
+        let button = NSStatusBarButton(frame: .init(x: 0, y: 0, width: 120, height: 22))
+
+        StatusBarController.configureClickBehavior(for: button)
+
+        #expect(button.sendAction(on: []) == StatusBarController.clickActionMask.rawValue)
+    }
 }
 
 @Suite("Quit Confirmation")
@@ -802,6 +811,25 @@ struct QuitConfirmationTests {
 
         #expect(!confirmation.isPresented)
         #expect(terminateCallCount == 1)
+    }
+
+    @Test("termination gate authorizes only the next terminate request")
+    func terminationGateConsumesAuthorizationOnce() {
+        let gate = AppTerminationGate()
+
+        #expect(gate.consumeAuthorization() == false)
+
+        gate.authorizeNextTermination()
+
+        #expect(gate.consumeAuthorization() == true)
+        #expect(gate.consumeAuthorization() == false)
+    }
+
+    @Test("closing the last transient window does not terminate the app")
+    func appDoesNotTerminateAfterLastWindowClosed() {
+        let delegate = AppDelegate()
+
+        #expect(delegate.applicationShouldTerminateAfterLastWindowClosed(NSApplication.shared) == false)
     }
 }
 
