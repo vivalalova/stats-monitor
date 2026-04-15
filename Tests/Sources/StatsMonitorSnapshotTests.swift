@@ -105,7 +105,7 @@ struct StatsMonitorSnapshotTests {
 @MainActor
 private func makeSnapshotViewModel() -> StatsViewModel {
     let settings = AppSettings()
-    settings.dashboardColumns = 2
+    settings.dashboardColumns = AppSettings.dashboardColumnRange.lowerBound
     settings.processCount = 5
     let monitor = SystemMonitor(settings: settings)
     return StatsViewModel(settings: settings, monitor: monitor, startMonitoring: false)

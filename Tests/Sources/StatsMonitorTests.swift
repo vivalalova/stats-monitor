@@ -357,6 +357,51 @@ struct StatsViewModelTests {
     }
 }
 
+@Suite("SystemMonitor")
+@MainActor
+struct SystemMonitorTests {
+
+    @Test("resetHistories keeps current buffers until historyCapacity changes, then recreates them")
+    func resetHistoriesRecreatesBuffersOnCapacityChange() {
+        let defaults = UserDefaults.standard
+        let key = "historyCapacity"
+        let originalValue = defaults.object(forKey: key)
+        defer {
+            if let originalValue {
+                defaults.set(originalValue, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        defaults.set(60, forKey: key)
+        let settings = AppSettings()
+        let monitor = SystemMonitor(settings: settings)
+        monitor.start()
+        defer { monitor.stop() }
+
+        #expect(!Array(monitor.cpuHistory).isEmpty)
+        #expect(!Array(monitor.gpuHistory).isEmpty)
+        #expect(!Array(monitor.networkOutHistory).isEmpty)
+
+        monitor.resetHistories()
+        #expect(monitor.cpuHistory.capacity == 60)
+        #expect(!Array(monitor.cpuHistory).isEmpty)
+        #expect(!Array(monitor.gpuHistory).isEmpty)
+        #expect(!Array(monitor.networkOutHistory).isEmpty)
+
+        settings.historyCapacity = 300
+        monitor.resetHistories()
+
+        #expect(monitor.cpuHistory.capacity == 300)
+        #expect(monitor.gpuHistory.capacity == 300)
+        #expect(monitor.networkOutHistory.capacity == 300)
+        #expect(Array(monitor.cpuHistory).isEmpty)
+        #expect(Array(monitor.gpuHistory).isEmpty)
+        #expect(Array(monitor.networkOutHistory).isEmpty)
+    }
+}
+
 @Suite("Settings Window")
 struct SettingsWindowTests {
 
@@ -373,6 +418,45 @@ struct SettingsWindowTests {
 @Suite("Dashboard Toolbar")
 @MainActor
 struct DashboardToolbarTests {
+    @Test("dashboard column default comes from app settings contract")
+    func dashboardColumnDefault() {
+        let defaults = UserDefaults.standard
+        let key = "dashboardColumns"
+        let originalValue = defaults.object(forKey: key)
+        defer {
+            if let originalValue {
+                defaults.set(originalValue, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        defaults.removeObject(forKey: key)
+
+        let settings = AppSettings()
+
+        #expect(settings.dashboardColumns == AppSettings.defaultDashboardColumns)
+    }
+
+    @Test("dashboard column restores persisted values within supported range")
+    func dashboardColumnRestoreClampsOutOfRangeValues() {
+        let defaults = UserDefaults.standard
+        let key = "dashboardColumns"
+        let originalValue = defaults.object(forKey: key)
+        defer {
+            if let originalValue {
+                defaults.set(originalValue, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        defaults.set(2, forKey: key)
+        #expect(AppSettings().dashboardColumns == AppSettings.dashboardColumnRange.lowerBound)
+
+        defaults.set(7, forKey: key)
+        #expect(AppSettings().dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
+    }
 
     @Test("columns slider binding reflects and rounds dashboard column count")
     func columnsSliderBindingRoundsToNearestWholeNumber() {
@@ -388,17 +472,20 @@ struct DashboardToolbarTests {
         }
 
         let settings = AppSettings()
-        settings.dashboardColumns = 3
+        settings.dashboardColumns = AppSettings.dashboardColumnRange.lowerBound
 
         let binding = DashboardColumnsSlider.binding(for: settings)
 
-        #expect(binding.wrappedValue == 3)
+        #expect(binding.wrappedValue == Double(AppSettings.dashboardColumnRange.lowerBound))
 
         binding.wrappedValue = 4.6
         #expect(settings.dashboardColumns == 5)
 
         binding.wrappedValue = 1.2
-        #expect(settings.dashboardColumns == 1)
+        #expect(settings.dashboardColumns == AppSettings.dashboardColumnRange.lowerBound)
+
+        binding.wrappedValue = 7.2
+        #expect(settings.dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
     }
 }
 

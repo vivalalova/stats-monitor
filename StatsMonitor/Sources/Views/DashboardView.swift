@@ -124,20 +124,22 @@ struct DashboardView: View {
 
 struct DashboardColumnsSlider: View {
     let settings: AppSettings
+    private static let valueRange = Double(AppSettings.dashboardColumnRange.lowerBound)...Double(AppSettings.dashboardColumnRange.upperBound)
 
     static func binding(for settings: AppSettings) -> Binding<Double> {
         Binding(
             get: { Double(settings.dashboardColumns) },
             set: { newValue in
+                let clampedValue = min(max(newValue, valueRange.lowerBound), valueRange.upperBound)
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    settings.dashboardColumns = Int(newValue.rounded())
+                    settings.dashboardColumns = Int(clampedValue.rounded())
                 }
             }
         )
     }
 
     var body: some View {
-        Slider(value: Self.binding(for: settings), in: 1...5, step: 1)
+        Slider(value: Self.binding(for: settings), in: Self.valueRange, step: 1)
             .frame(width: 110)
     }
 }

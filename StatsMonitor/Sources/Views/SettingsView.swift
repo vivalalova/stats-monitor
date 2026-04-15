@@ -14,10 +14,10 @@ enum SettingsWindowLayout {
 // MARK: - View
 
 struct SettingsView: View {
-    enum Tab: String, CaseIterable, Hashable {
-        case dashboard = "Dashboard"
-        case general   = "General"
-        case about     = "About"
+    enum Tab: CaseIterable, Hashable {
+        case dashboard
+        case general
+        case about
 
         var localizedTitle: LocalizedStringKey {
             switch self {

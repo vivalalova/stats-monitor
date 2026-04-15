@@ -5,6 +5,20 @@ import Util
 @Observable
 @MainActor
 final class SystemMonitor {
+    private typealias HistoryBuffers = (
+        cpu: RingBuffer<Double>,
+        gpu: RingBuffer<Double>,
+        memory: RingBuffer<Double>,
+        disk: RingBuffer<Double>,
+        diskRead: RingBuffer<Double>,
+        diskWrite: RingBuffer<Double>,
+        networkIn: RingBuffer<Double>,
+        networkOut: RingBuffer<Double>,
+        battery: RingBuffer<Double>,
+        cpuTemp: RingBuffer<Double>,
+        power: RingBuffer<Double>
+    )
+
     var stats = SystemStats()
 
     private(set) var cpuHistory:        RingBuffer<Double>
@@ -41,18 +55,18 @@ final class SystemMonitor {
 
     init(settings: AppSettings) {
         self.settings = settings
-        let cap = settings.historyCapacity
-        cpuHistory        = RingBuffer<Double>(capacity: cap)
-        gpuHistory        = RingBuffer<Double>(capacity: cap)
-        memoryHistory     = RingBuffer<Double>(capacity: cap)
-        diskHistory       = RingBuffer<Double>(capacity: cap)
-        diskReadHistory   = RingBuffer<Double>(capacity: cap)
-        diskWriteHistory  = RingBuffer<Double>(capacity: cap)
-        networkInHistory  = RingBuffer<Double>(capacity: cap)
-        networkOutHistory = RingBuffer<Double>(capacity: cap)
-        batteryHistory    = RingBuffer<Double>(capacity: cap)
-        cpuTempHistory    = RingBuffer<Double>(capacity: cap)
-        powerHistory      = RingBuffer<Double>(capacity: cap)
+        let historyBuffers = Self.makeHistoryBuffers(capacity: settings.historyCapacity)
+        cpuHistory        = historyBuffers.cpu
+        gpuHistory        = historyBuffers.gpu
+        memoryHistory     = historyBuffers.memory
+        diskHistory       = historyBuffers.disk
+        diskReadHistory   = historyBuffers.diskRead
+        diskWriteHistory  = historyBuffers.diskWrite
+        networkInHistory  = historyBuffers.networkIn
+        networkOutHistory = historyBuffers.networkOut
+        batteryHistory    = historyBuffers.battery
+        cpuTempHistory    = historyBuffers.cpuTemp
+        powerHistory      = historyBuffers.power
         // SMC-dependent monitors share the same connection
         thermalMonitor = ThermalMonitor(smc: smcClient)
         fanMonitor     = FanMonitor(smc: smcClient)
@@ -171,16 +185,36 @@ final class SystemMonitor {
     func resetHistories() {
         let cap = settings.historyCapacity
         guard cap != cpuHistory.capacity else { return }
-        cpuHistory        = RingBuffer<Double>(capacity: cap)
-        gpuHistory        = RingBuffer<Double>(capacity: cap)
-        memoryHistory     = RingBuffer<Double>(capacity: cap)
-        diskHistory       = RingBuffer<Double>(capacity: cap)
-        diskReadHistory   = RingBuffer<Double>(capacity: cap)
-        diskWriteHistory  = RingBuffer<Double>(capacity: cap)
-        networkInHistory  = RingBuffer<Double>(capacity: cap)
-        networkOutHistory = RingBuffer<Double>(capacity: cap)
-        batteryHistory    = RingBuffer<Double>(capacity: cap)
-        cpuTempHistory    = RingBuffer<Double>(capacity: cap)
-        powerHistory      = RingBuffer<Double>(capacity: cap)
+        applyHistoryBuffers(Self.makeHistoryBuffers(capacity: cap))
+    }
+
+    private func applyHistoryBuffers(_ historyBuffers: HistoryBuffers) {
+        cpuHistory        = historyBuffers.cpu
+        gpuHistory        = historyBuffers.gpu
+        memoryHistory     = historyBuffers.memory
+        diskHistory       = historyBuffers.disk
+        diskReadHistory   = historyBuffers.diskRead
+        diskWriteHistory  = historyBuffers.diskWrite
+        networkInHistory  = historyBuffers.networkIn
+        networkOutHistory = historyBuffers.networkOut
+        batteryHistory    = historyBuffers.battery
+        cpuTempHistory    = historyBuffers.cpuTemp
+        powerHistory      = historyBuffers.power
+    }
+
+    private static func makeHistoryBuffers(capacity: Int) -> HistoryBuffers {
+        (
+            cpu: RingBuffer<Double>(capacity: capacity),
+            gpu: RingBuffer<Double>(capacity: capacity),
+            memory: RingBuffer<Double>(capacity: capacity),
+            disk: RingBuffer<Double>(capacity: capacity),
+            diskRead: RingBuffer<Double>(capacity: capacity),
+            diskWrite: RingBuffer<Double>(capacity: capacity),
+            networkIn: RingBuffer<Double>(capacity: capacity),
+            networkOut: RingBuffer<Double>(capacity: capacity),
+            battery: RingBuffer<Double>(capacity: capacity),
+            cpuTemp: RingBuffer<Double>(capacity: capacity),
+            power: RingBuffer<Double>(capacity: capacity)
+        )
     }
 }

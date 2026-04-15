@@ -81,7 +81,7 @@ Packages/Util/
 | `pollInterval` | `pollInterval` | `2.0` 秒 | 感測器輪詢間隔（1/2/5/10 秒） |
 | `historyCapacity` | `historyCapacity` | `120` | RingBuffer 容量（60/120/300 筆） |
 | `processCount` | `processCount` | `10` | 熱門行程顯示數量（5/10/15/20 Picker） |
-| `dashboardColumns` | `dashboardColumns` | `3` | Dashboard 格式欄數（1–5 滑桿，toolbar 控制） |
+| `dashboardColumns` | `dashboardColumns` | `4` | Dashboard 格式欄數（3–6 滑桿，toolbar 控制） |
 | `showCPU` | `showCPU` | `true` | Menu bar 顯示 CPU |
 | `showGPU` | `showGPU` | `true` | Menu bar 顯示 GPU |
 | `showMemory` | `showMemory` | `true` | Menu bar 顯示 Memory |
@@ -91,7 +91,7 @@ Packages/Util/
 
 ## Settings 視窗分頁
 
-- **Dashboard**：總覽卡片（CPU/GPU/Memory/Disk/Network/Disk I/O/Battery/Thermal/Power/Fans 折線圖 + 數值）+ 合併熱門行程表；toolbar slider 控制欄數（1–5）
+- **Dashboard**：總覽卡片（CPU/GPU/Memory/Disk/Network/Disk I/O/Battery/Thermal/Power/Fans 折線圖 + 數值）+ 合併熱門行程表；toolbar slider 控制欄數（3–6）
 - **General**：AppSettings 所有可調選項
 - **About**：版本資訊、系統規格（型號/晶片/macOS/RAM/開機時間）
 
@@ -125,6 +125,8 @@ Packages/Util/
 ## 測試覆蓋
 
 測試框架：**Swift Testing**（`@Suite`、`@Test`、`#expect`）
+
+- 想看目前 UI 截圖時，優先看 snapshot 測試產出的參考圖：`Tests/Sources/__Snapshots__/StatsMonitorSnapshotTests/`
 
 | 層 | 測試內容 |
 |---|---|

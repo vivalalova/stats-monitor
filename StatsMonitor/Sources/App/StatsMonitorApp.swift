@@ -5,12 +5,6 @@ struct StatsMonitorApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        Settings {
-            EmptyView()
-        }
-        .defaultLaunchBehavior(.suppressed)
-        .restorationBehavior(.disabled)
-
         Window("Settings", id: AppSceneID.settingsWindow) {
             SettingsView(settings: appDelegate.viewModel.settings, viewModel: appDelegate.viewModel)
         }
@@ -40,7 +34,7 @@ private struct SettingsCommands: Commands {
 }
 
 @MainActor
-class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     let viewModel = StatsViewModel()
     private var controller: StatusBarController?
 
