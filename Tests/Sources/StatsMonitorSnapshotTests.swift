@@ -111,11 +111,13 @@ struct StatsMonitorSnapshotTests {
 
     @Test("Quit confirmation alert renders a stable screenshot")
     func quitConfirmationAlertScreenshot() {
-        let view = alertWindowFrameView(for: quitConfirmationAlert())
+        let view = hostingView(for: snapshotSurface {
+            QuitConfirmationAlertSnapshotView()
+        })
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: .image(size: view.fittingSize),
             named: "quit-confirmation-alert",
             record: snapshotRecordMode
         )
@@ -417,17 +419,6 @@ private func assertDetailPanelSnapshot<Content: View>(
 }
 
 @MainActor
-private func quitConfirmationAlert() -> NSAlert {
-    let alert = NSAlert()
-    alert.messageText = QuitConfirmationCopy.title
-    alert.informativeText = QuitConfirmationCopy.message
-    alert.alertStyle = .warning
-    alert.addButton(withTitle: QuitConfirmationCopy.confirm)
-    alert.addButton(withTitle: QuitConfirmationCopy.cancel)
-    return alert
-}
-
-@MainActor
 private func hostingView<Content: View>(for rootView: Content) -> NSHostingView<Content> {
     let view = NSHostingView(rootView: rootView)
     let size = view.fittingSize
@@ -441,39 +432,125 @@ private func windowFrameView<Content: View>(
     title: String,
     contentSize: CGSize
 ) -> NSView {
-    let hostingController = NSHostingController(rootView: rootView)
-    let contentRect = CGRect(origin: .zero, size: contentSize)
-    let window = NSWindow(
-        contentRect: contentRect,
-        styleMask: [.titled, .closable, .miniaturizable, .resizable],
-        backing: .buffered,
-        defer: false
-    )
-    window.title = title
-    window.backgroundColor = .windowBackgroundColor
-    window.isOpaque = true
-    window.contentViewController = hostingController
-    window.layoutIfNeeded()
-    window.displayIfNeeded()
-
-    guard let frameView = window.contentView?.superview else {
-        fatalError("NSWindow frame view unavailable for snapshot")
-    }
-
-    frameView.frame = CGRect(origin: .zero, size: window.frame.size)
-    return frameView
+    hostingView(for: WindowSnapshotFrame(title: title, contentSize: contentSize) {
+        rootView
+    })
 }
 
-@MainActor
-private func alertWindowFrameView(for alert: NSAlert) -> NSView {
-    let window = alert.window
-    window.layoutIfNeeded()
-    window.displayIfNeeded()
+private struct QuitConfirmationAlertSnapshotView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.yellow)
 
-    guard let frameView = window.contentView?.superview else {
-        fatalError("NSAlert frame view unavailable for snapshot")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(QuitConfirmationCopy.title)
+                        .font(.system(size: 15, weight: .semibold))
+                    Text(QuitConfirmationCopy.message)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Spacer()
+                alertButton(QuitConfirmationCopy.cancel, emphasized: false)
+                alertButton(QuitConfirmationCopy.confirm, emphasized: true)
+            }
+        }
+        .padding(20)
+        .frame(width: 320)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    frameView.frame = CGRect(origin: .zero, size: window.frame.size)
-    return frameView
+    private func alertButton(_ title: String, emphasized: Bool) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(emphasized ? .white : .primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(emphasized ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
+            )
+    }
+}
+
+private struct WindowSnapshotFrame<Content: View>: View {
+    let title: String
+    let contentSize: CGSize
+    let content: Content
+
+    init(
+        title: String,
+        contentSize: CGSize,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.contentSize = contentSize
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            titleBar
+            content
+                .frame(width: contentSize.width, height: contentSize.height)
+                .background(Color(nsColor: .windowBackgroundColor))
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: WindowSnapshotLayout.cornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: WindowSnapshotLayout.cornerRadius, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: WindowSnapshotLayout.outerBorderWidth)
+        )
+        .frame(
+            width: contentSize.width,
+            height: contentSize.height + WindowSnapshotLayout.titleBarHeight
+        )
+    }
+
+    private var titleBar: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: WindowSnapshotLayout.cornerRadius, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: WindowSnapshotLayout.trafficLightSpacing) {
+                trafficLight(.systemRed)
+                trafficLight(.systemYellow)
+                trafficLight(.systemGreen)
+                Spacer()
+            }
+            .padding(.horizontal, WindowSnapshotLayout.horizontalPadding)
+        }
+        .frame(height: WindowSnapshotLayout.titleBarHeight)
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+    }
+
+    private func trafficLight(_ color: NSColor) -> some View {
+        Circle()
+            .fill(Color(nsColor: color))
+            .frame(
+                width: WindowSnapshotLayout.trafficLightSize,
+                height: WindowSnapshotLayout.trafficLightSize
+            )
+    }
+}
+
+private enum WindowSnapshotLayout {
+    static let titleBarHeight: CGFloat = 52
+    static let cornerRadius: CGFloat = 10
+    static let outerBorderWidth: CGFloat = 1
+    static let trafficLightSize: CGFloat = 12
+    static let trafficLightSpacing: CGFloat = 8
+    static let horizontalPadding: CGFloat = 14
 }

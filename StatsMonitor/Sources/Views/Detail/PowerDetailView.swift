@@ -7,18 +7,18 @@ struct PowerDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if monitor.paddedPowerHistory.count >= 2 {
-                LineChartView(lines: [(monitor.paddedPowerHistory, .red)])
-            }
-
-            statRow("Total", value: monitor.powerText)
-            statRow("CPU", value: monitor.cpuPowerText)
-            statRow("GPU", value: monitor.gpuPowerText)
-            statRow("Neural Engine", value: monitor.anePowerText)
-            sectionHeader("Thermals")
-            statRow("CPU Temp", value: monitor.cpuTempText)
-            statRow("GPU Temp", value: monitor.gpuTempText)
-            statRow("Fans", value: monitor.fansSummaryText)
+            DetailChart(lines: [(monitor.paddedPowerHistory, .red)])
+            DetailMetricSection(rows: [
+                ("Total", monitor.powerText),
+                ("CPU", monitor.cpuPowerText),
+                ("GPU", monitor.gpuPowerText),
+                ("Neural Engine", monitor.anePowerText),
+            ])
+            DetailMetricSection(title: "Thermals", rows: [
+                ("CPU Temp", monitor.cpuTempText),
+                ("GPU Temp", monitor.gpuTempText),
+                ("Fans", monitor.fansSummaryText),
+            ])
         }
     }
 }

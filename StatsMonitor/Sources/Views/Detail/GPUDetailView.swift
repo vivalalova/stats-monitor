@@ -7,22 +7,22 @@ struct GPUDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if monitor.paddedGPUHistory.count >= 2 {
-                LineChartView(lines: [(monitor.paddedGPUHistory, .purple)])
-            }
-
-            statRow("Device",   value: monitor.gpuPercent)
-            statRow("Renderer", value: monitor.gpuRenderPercent)
+            DetailChart(lines: [(monitor.paddedGPUHistory, .purple)])
+            DetailMetricSection(rows: [
+                ("Device", monitor.gpuPercent),
+                ("Renderer", monitor.gpuRenderPercent),
+            ])
             if monitor.gpuVramUsed > 0 {
                 statRow("GPU Mem", value: monitor.gpuVramUsedText)
             }
             if monitor.anePowerMilliWatts > 0 {
                 statRow("Neural Engine", value: monitor.anePowerText)
             }
-            sectionHeader("System")
-            statRow("Temperature", value: monitor.gpuTempText)
-            statRow("GPU Power", value: monitor.gpuPowerText)
-            statRow("System Power", value: monitor.powerText)
+            DetailMetricSection(title: "System", rows: [
+                ("Temperature", monitor.gpuTempText),
+                ("GPU Power", monitor.gpuPowerText),
+                ("System Power", monitor.powerText),
+            ])
             if !monitor.gpuEngines.isEmpty {
                 sectionHeader("Engines")
                 EngineGridView(engines: monitor.gpuEngines)

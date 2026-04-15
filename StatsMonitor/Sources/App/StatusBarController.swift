@@ -9,6 +9,10 @@ final class StatusBarController: NSObject {
     private var popover: NSPopover?
     private var currentPanel: PanelID?
 
+    private var statusButton: NSStatusBarButton? {
+        statusItem.button
+    }
+
     init(settings: AppSettings, monitor: SystemMonitor) {
         self.settings = settings
         self.monitor = monitor
@@ -21,7 +25,7 @@ final class StatusBarController: NSObject {
     // MARK: - Setup
 
     private func setupButton() {
-        guard let button = statusItem.button else { return }
+        guard let button = statusButton else { return }
         button.title = ""
         button.image = nil
         button.isBordered = false
@@ -34,16 +38,14 @@ final class StatusBarController: NSObject {
     // MARK: - Length
 
     private func updateLength() {
-        guard let button = statusItem.button else { return }
-        button.sizeToFit()
-        let width = ceil(button.attributedTitle.size().width) + 12
+        let width = ceil(StatusBarLabelRenderer.measuredTitleWidth(for: currentSegments)) + 12
         if width > 0 {
             statusItem.length = width
         }
     }
 
     private func renderButtonLabel() {
-        guard let button = statusItem.button else { return }
+        guard let button = statusButton else { return }
         button.attributedTitle = StatusBarLabelRenderer.makeAttributedTitle(
             monitor: monitor,
             settings: settings
@@ -80,44 +82,43 @@ final class StatusBarController: NSObject {
     }
 
     private func panelAt(x: CGFloat) -> PanelID {
-        let s = settings
-        let enabled: [PanelID] = [
-            s.showCPU ? .cpu : nil, s.showGPU ? .gpu : nil, s.showMemory ? .memory : nil,
-            s.showDisk ? .disk : nil, s.showNetwork ? .network : nil,
-            s.showBattery && monitor.hasBattery ? .battery : nil,
-            s.showThermal && monitor.hasThermal ? .thermal : nil,
-            s.showPower && monitor.hasPower ? .power : nil,
-            s.showFans && monitor.hasFans ? .fans : nil,
-        ].compactMap { $0 }
-        guard !enabled.isEmpty else { return .cpu }
-        let slotWidth = statusItem.length / CGFloat(enabled.count)
-        let index = min(Int(x / slotWidth), enabled.count - 1)
-        return enabled[max(index, 0)]
+        StatusBarLabelRenderer.panel(at: x, in: currentSegments) ?? .cpu
     }
 
     // MARK: - Popover
 
     private func toggle(panel: PanelID, relativeTo button: NSView) {
-        if let pop = popover, pop.isShown {
-            pop.close()
-            popover = nil
+        if closePopoverIfNeeded(for: panel) {
             if currentPanel == panel { currentPanel = nil; return }
         }
-
-        let content = PanelView {
-            detailView(for: panel)
-        }
-            .environment(settings)
-            .environment(monitor)
 
         let pop = NSPopover()
         pop.behavior = .transient
         pop.delegate = self
-        pop.contentViewController = NSHostingController(rootView: content)
+        pop.contentViewController = NSHostingController(rootView: makePopoverContent(for: panel))
         pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         NSApp.activate(ignoringOtherApps: true)
         popover = pop
         currentPanel = panel
+    }
+
+    private func closePopoverIfNeeded(for panel: PanelID) -> Bool {
+        guard let popover, popover.isShown else { return false }
+        popover.close()
+        self.popover = nil
+        return true
+    }
+
+    private func makePopoverContent(for panel: PanelID) -> some View {
+        PanelView {
+            detailView(for: panel)
+        }
+        .environment(settings)
+        .environment(monitor)
+    }
+
+    private var currentSegments: [StatusBarLabelRenderer.Segment] {
+        StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
     }
 
     // MARK: - Detail views

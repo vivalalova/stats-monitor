@@ -7,20 +7,20 @@ struct BatteryDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if monitor.paddedBatteryHistory.count >= 2 {
-                LineChartView(lines: [(monitor.paddedBatteryHistory, .green)], maxValue: 100)
-            }
-
-            statRow("Charge", value: monitor.batteryPercent)
-            statRow("Status", value: monitor.batteryStatusText)
-            statRow("Time", value: monitor.batteryTimeRemainingText)
-            statRow("Health", value: monitor.batteryHealthText)
-            statRow("Cycles", value: monitor.batteryCyclesText)
-            statRow("Max Capacity", value: monitor.batteryMaxCapacityText)
-            statRow("Design Capacity", value: monitor.batteryDesignCapacityText)
-            sectionHeader("System")
-            statRow("Temperature", value: monitor.cpuTempText)
-            statRow("Power Draw", value: monitor.powerText)
+            DetailChart(lines: [(monitor.paddedBatteryHistory, .green)], maxValue: 100)
+            DetailMetricSection(rows: [
+                ("Charge", monitor.batteryPercent),
+                ("Status", monitor.batteryStatusText),
+                ("Time", monitor.batteryTimeRemainingText),
+                ("Health", monitor.batteryHealthText),
+                ("Cycles", monitor.batteryCyclesText),
+                ("Max Capacity", monitor.batteryMaxCapacityText),
+                ("Design Capacity", monitor.batteryDesignCapacityText),
+            ])
+            DetailMetricSection(title: "System", rows: [
+                ("Temperature", monitor.cpuTempText),
+                ("Power Draw", monitor.powerText),
+            ])
         }
     }
 }

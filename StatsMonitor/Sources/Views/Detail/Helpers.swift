@@ -94,6 +94,71 @@ struct DetailPanelContent<Content: View>: View {
     }
 }
 
+typealias DetailMetric = (label: LocalizedStringKey, value: String)
+
+struct DetailChart: View {
+    let lines: [(history: [Double], color: Color)]
+    var maxValue: Double?
+
+    var body: some View {
+        if !lines.isEmpty {
+            if let maxValue {
+                LineChartView(lines: lines, maxValue: maxValue)
+            } else {
+                LineChartView(lines: lines)
+            }
+        }
+    }
+}
+
+struct DetailMetricSection: View {
+    private let title: LocalizedStringKey?
+    private let rows: [DetailMetric]
+
+    init(title: LocalizedStringKey? = nil, rows: [DetailMetric]) {
+        self.title = title
+        self.rows = rows
+    }
+
+    var body: some View {
+        if !rows.isEmpty {
+            if let title {
+                sectionHeader(title)
+            }
+
+            compactRows(Array(rows.enumerated()), id: \.offset) { row in
+                statRow(row.element.label, value: row.element.value)
+            }
+        }
+    }
+}
+
+struct DetailListSection<Data: RandomAccessCollection, ID: Hashable, Content: View>: View {
+    private let title: LocalizedStringKey
+    private let data: Data
+    private let id: KeyPath<Data.Element, ID>
+    private let row: (Data.Element) -> Content
+
+    init(
+        _ title: LocalizedStringKey,
+        data: Data,
+        id: KeyPath<Data.Element, ID>,
+        @ViewBuilder row: @escaping (Data.Element) -> Content
+    ) {
+        self.title = title
+        self.data = data
+        self.id = id
+        self.row = row
+    }
+
+    var body: some View {
+        if !data.isEmpty {
+            sectionHeader(title)
+            compactRows(data, id: id, row: row)
+        }
+    }
+}
+
 func sectionHeader(_ title: LocalizedStringKey) -> some View {
     Group {
         Divider()

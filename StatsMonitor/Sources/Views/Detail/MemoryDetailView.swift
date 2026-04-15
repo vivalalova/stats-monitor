@@ -7,24 +7,25 @@ struct MemoryDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if monitor.paddedMemoryHistory.count >= 2 {
-                LineChartView(lines: [(monitor.paddedMemoryHistory, .orange)])
-            }
-
-            statRow("Percent",    value: monitor.memoryPercent)
-            statRow("Used",       value: "\(monitor.memoryUsedText) / \(monitor.memoryTotalText)")
-            statRow("Free",       value: monitor.memoryFreeText)
-            statRow("Active",     value: monitor.memoryActiveText)
-            statRow("Wired",      value: monitor.memoryWiredText)
-            statRow("Compressed", value: monitor.memoryCompressedText)
-            sectionHeader("System")
-            statRow("Temperature", value: monitor.cpuTempText)
-            statRow("System Power", value: monitor.powerText)
-            if !monitor.topMemoryProcesses.isEmpty {
-                sectionHeader("Top Processes")
-                compactRows(Array(monitor.topMemoryProcesses.enumerated()), id: \.offset) { entry in
-                    statRow(verbatim: entry.element.name, value: monitor.formatProcessMemory(entry.element.memoryBytes))
-                }
+            DetailChart(lines: [(monitor.paddedMemoryHistory, .orange)])
+            DetailMetricSection(rows: [
+                ("Percent", monitor.memoryPercent),
+                ("Used", "\(monitor.memoryUsedText) / \(monitor.memoryTotalText)"),
+                ("Free", monitor.memoryFreeText),
+                ("Active", monitor.memoryActiveText),
+                ("Wired", monitor.memoryWiredText),
+                ("Compressed", monitor.memoryCompressedText),
+            ])
+            DetailMetricSection(title: "System", rows: [
+                ("Temperature", monitor.cpuTempText),
+                ("System Power", monitor.powerText),
+            ])
+            DetailListSection(
+                "Top Processes",
+                data: Array(monitor.topMemoryProcesses.enumerated()),
+                id: \.offset
+            ) { entry in
+                statRow(verbatim: entry.element.name, value: monitor.formatProcessMemory(entry.element.memoryBytes))
             }
         }
     }

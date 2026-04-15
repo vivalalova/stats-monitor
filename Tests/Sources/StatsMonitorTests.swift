@@ -711,6 +711,44 @@ struct StatusBarTests {
             "80%",
         ])
     }
+
+    @Test("status bar hit testing follows rendered segment widths instead of equal slots")
+    func statusBarHitTestingUsesMeasuredWidths() {
+        let settings = AppSettings()
+        settings.showCPU = true
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = true
+        settings.showBattery = true
+        settings.showThermal = false
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(cpu: CPUUsage(user: 98, system: 1, idle: 1, perCore: [], coreFrequencies: []))
+        monitor.record(network: NetworkUsage(bytesInPerSec: 2_048, bytesOutPerSec: 1_024))
+        monitor.record(battery: BatteryUsage(
+            percentage: 80,
+            isCharging: false,
+            isPluggedIn: true,
+            timeRemaining: nil,
+            cycleCount: 100,
+            designCapacity: 5000,
+            maxCapacity: 4800,
+            health: 96
+        ))
+
+        let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
+        #expect(segments.map(\.panel) == [.cpu, .network, .battery])
+
+        let firstBoundary = StatusBarLabelRenderer.measuredTitleWidth(for: Array(segments.prefix(1)))
+        let secondBoundary = StatusBarLabelRenderer.measuredTitleWidth(for: Array(segments.prefix(2)))
+
+        #expect(StatusBarLabelRenderer.panel(at: firstBoundary / 2 + 6, in: segments) == .cpu)
+        #expect(StatusBarLabelRenderer.panel(at: (firstBoundary + secondBoundary) / 2 + 6, in: segments) == .network)
+        #expect(StatusBarLabelRenderer.panel(at: secondBoundary + 12, in: segments) == .battery)
+    }
 }
 
 @Suite("Quit Confirmation")

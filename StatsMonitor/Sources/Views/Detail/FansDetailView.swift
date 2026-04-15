@@ -7,28 +7,25 @@ struct FansDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if monitor.paddedFanAverageHistory.count >= 2 {
-                LineChartView(
-                    lines: [(monitor.paddedFanAverageHistory, .blue)],
-                    maxValue: monitor.fanChartMaxRPM
+            DetailChart(
+                lines: [(monitor.paddedFanAverageHistory, .blue)],
+                maxValue: monitor.fanChartMaxRPM
+            )
+            DetailMetricSection(rows: [
+                ("Average", monitor.fansSummaryText),
+                ("Count", monitor.fanCountText),
+            ])
+            DetailMetricSection(title: "System", rows: [
+                ("CPU Temp", monitor.cpuTempText),
+                ("GPU Temp", monitor.gpuTempText),
+                ("System Power", monitor.powerText),
+            ])
+            DetailListSection("Per Fan", data: Array(monitor.fans.enumerated()), id: \.element.id) { entry in
+                let fan = entry.element
+                statRow(
+                    verbatim: fan.name,
+                    value: "\(monitor.fanRPMText(fan))  \(monitor.fanRangeText(fan))"
                 )
-            }
-
-            statRow("Average", value: monitor.fansSummaryText)
-            statRow("Count", value: monitor.fanCountText)
-            sectionHeader("System")
-            statRow("CPU Temp", value: monitor.cpuTempText)
-            statRow("GPU Temp", value: monitor.gpuTempText)
-            statRow("System Power", value: monitor.powerText)
-
-            if !monitor.fans.isEmpty {
-                sectionHeader("Per Fan")
-                ForEach(Array(monitor.fans.enumerated()), id: \.element.id) { _, fan in
-                    statRow(
-                        verbatim: fan.name,
-                        value: "\(monitor.fanRPMText(fan))  \(monitor.fanRangeText(fan))"
-                    )
-                }
             }
         }
     }

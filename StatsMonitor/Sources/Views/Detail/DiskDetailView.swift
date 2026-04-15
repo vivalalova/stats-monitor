@@ -7,37 +7,42 @@ struct DiskDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            let maxIO = max(
-                (monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory).max() ?? 1,
-                1_048_576
-            )
-
-            LineChartView(
-                lines: [(monitor.paddedDiskReadHistory, .yellow), (monitor.paddedDiskWriteHistory, .orange)],
-                maxValue: maxIO
-            )
-
-            statRow("↓ Read",  value: monitor.diskReadText)
-            statRow("↑ Write", value: monitor.diskWriteText)
-            statRow("Total I/O", value: monitor.diskActivityText)
+            DetailChart(lines: diskChartLines, maxValue: diskChartMax)
+            DetailMetricSection(rows: [
+                ("↓ Read", monitor.diskReadText),
+                ("↑ Write", monitor.diskWriteText),
+                ("Total I/O", monitor.diskActivityText),
+            ])
             Divider()
-            statRow("Percent", value: monitor.diskPercent)
-            statRow("Used",  value: monitor.diskUsedText)
-            statRow("Free",  value: monitor.diskFreeText)
-            statRow("Total", value: monitor.diskTotalText)
-            sectionHeader("System")
-            statRow("Temperature", value: monitor.cpuTempText)
-            statRow("System Power", value: monitor.powerText)
-            if !monitor.topDiskProcesses.isEmpty {
-                sectionHeader("Top Processes")
-                compactRows(Array(monitor.topDiskProcesses.enumerated()), id: \.offset) { entry in
-                    statRow(
-                        verbatim: entry.element.name,
-                        value: "↓\(monitor.formatProcessDisk(entry.element.diskReadBPS)) ↑\(monitor.formatProcessDisk(entry.element.diskWriteBPS))"
-                    )
-                }
+            DetailMetricSection(rows: [
+                ("Percent", monitor.diskPercent),
+                ("Used", monitor.diskUsedText),
+                ("Free", monitor.diskFreeText),
+                ("Total", monitor.diskTotalText),
+            ])
+            DetailMetricSection(title: "System", rows: [
+                ("Temperature", monitor.cpuTempText),
+                ("System Power", monitor.powerText),
+            ])
+            DetailListSection(
+                "Top Processes",
+                data: Array(monitor.topDiskProcesses.enumerated()),
+                id: \.offset
+            ) { entry in
+                statRow(
+                    verbatim: entry.element.name,
+                    value: "↓\(monitor.formatProcessDisk(entry.element.diskReadBPS)) ↑\(monitor.formatProcessDisk(entry.element.diskWriteBPS))"
+                )
             }
         }
+    }
+
+    private var diskChartLines: [(history: [Double], color: Color)] {
+        [(monitor.paddedDiskReadHistory, .yellow), (monitor.paddedDiskWriteHistory, .orange)]
+    }
+
+    private var diskChartMax: Double {
+        max((monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory).max() ?? 1, 1_048_576)
     }
 }
 

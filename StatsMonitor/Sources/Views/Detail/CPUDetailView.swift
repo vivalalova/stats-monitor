@@ -8,32 +8,35 @@ struct CPUDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            if monitor.paddedCPUHistory.count >= 2 {
-                LineChartView(lines: [(monitor.paddedCPUHistory, .blue)])
-            }
-
-            statRow("Used",   value: monitor.cpuPercent)
-            statRow("User",   value: monitor.cpuUserPercent)
-            statRow("System", value: monitor.cpuSystemPercent)
-            statRow("Idle",   value: monitor.cpuIdlePercent)
-            sectionHeader("System")
-            statRow("Temperature", value: monitor.cpuTempText)
-            statRow("CPU Power", value: monitor.cpuPowerText)
-            statRow("System Power", value: monitor.powerText)
-            sectionHeader("Frequency")
-            statRow("Average", value: monitor.cpuAverageFrequencyText)
-            statRow("Peak", value: monitor.cpuPeakFrequencyText)
+            DetailChart(lines: [(monitor.paddedCPUHistory, .blue)])
+            DetailMetricSection(rows: [
+                ("Used", monitor.cpuPercent),
+                ("User", monitor.cpuUserPercent),
+                ("System", monitor.cpuSystemPercent),
+                ("Idle", monitor.cpuIdlePercent),
+            ])
+            DetailMetricSection(title: "System", rows: [
+                ("Temperature", monitor.cpuTempText),
+                ("CPU Power", monitor.cpuPowerText),
+                ("System Power", monitor.powerText),
+            ])
+            DetailMetricSection(title: "Frequency", rows: [
+                ("Average", monitor.cpuAverageFrequencyText),
+                ("Peak", monitor.cpuPeakFrequencyText),
+            ])
             if !monitor.cpuPerCore.isEmpty {
                 sectionHeader("Per Core")
-                CoreGridView(cores: monitor.cpuPerCore,
-                             frequencies: monitor.cpuCoreFrequencies)
+                CoreGridView(
+                    cores: monitor.cpuPerCore,
+                    frequencies: monitor.cpuCoreFrequencies
+                )
             }
-
-            if !monitor.topCPUProcesses.isEmpty {
-                sectionHeader("Top Processes")
-                compactRows(Array(monitor.topCPUProcesses.enumerated()), id: \.offset) { entry in
-                    statRow(verbatim: entry.element.name, value: monitor.formatProcessCPU(entry.element.cpuPercent))
-                }
+            DetailListSection(
+                "Top Processes",
+                data: Array(monitor.topCPUProcesses.enumerated()),
+                id: \.offset
+            ) { entry in
+                statRow(verbatim: entry.element.name, value: monitor.formatProcessCPU(entry.element.cpuPercent))
             }
         }
     }

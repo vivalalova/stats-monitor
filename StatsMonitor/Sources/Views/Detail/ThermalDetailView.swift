@@ -7,17 +7,16 @@ struct ThermalDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            let lines = thermalLines
-            if !lines.isEmpty {
-                LineChartView(lines: lines, maxValue: thermalChartMax)
-            }
-
-            statRow("CPU", value: monitor.cpuTempText)
-            statRow("GPU", value: monitor.gpuTempText)
-            statRow("Summary", value: monitor.thermalSummaryText)
-            sectionHeader("System")
-            statRow("System Power", value: monitor.powerText)
-            statRow("Fans", value: monitor.fansSummaryText)
+            DetailChart(lines: thermalLines, maxValue: thermalChartMax)
+            DetailMetricSection(rows: [
+                ("CPU", monitor.cpuTempText),
+                ("GPU", monitor.gpuTempText),
+                ("Summary", monitor.thermalSummaryText),
+            ])
+            DetailMetricSection(title: "System", rows: [
+                ("System Power", monitor.powerText),
+                ("Fans", monitor.fansSummaryText),
+            ])
         }
     }
 
