@@ -8,9 +8,9 @@ final class AppSettings {
 
     static let pollIntervalOptions: [TimeInterval] = [1, 2, 5, 10]
     static let historyCapacityOptions: [(label: String, value: Int)] = [
-        ("1 分鐘 (60)", 60),
-        ("2 分鐘 (120)", 120),
-        ("5 分鐘 (300)", 300),
+        ("1 min (60)", 60),
+        ("2 min (120)", 120),
+        ("5 min (300)", 300),
     ]
 
     var pollInterval:     Double = 2.0 { didSet { persist("pollInterval",     pollInterval) } }

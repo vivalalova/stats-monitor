@@ -9,8 +9,8 @@ extension Project {
         Project(
             name: name,
             options: .options(
-                defaultKnownRegions: ["zh-Hant", "en"],
-                developmentRegion: "zh-Hant"
+                defaultKnownRegions: ["en", "zh-Hant"],
+                developmentRegion: "en"
             ),
             packages: [
                 .local(path: "Packages/Util"),

@@ -9,7 +9,7 @@ macOS menu bar app — SwiftUI + Tuist
 - **專案管理**: Tuist（Buildable Folder 結構）
 - **架構**: MVVM（@Observable）
 - **Concurrency**: Swift Strict Concurrency complete
-- **語系**: zh-Hant（developmentRegion）、en
+- **語系**: en（developmentRegion）、zh-Hant
 
 ## 指令
 
@@ -64,8 +64,7 @@ StatsMonitor/Sources/
       Helpers.swift           # statRow/sectionHeader/detailToolbar/BarView 等共用元件
 StatsMonitor/Resources/
   Assets.xcassets             # App 圖示
-  zh-Hant.lproj/Localizable.strings  # 正體中文本地化（developmentRegion）
-  en.lproj/Localizable.strings       # 英文本地化
+  Localizable.xcstrings       # String Catalog（en 為 sourceLanguage，含 zh-Hant 翻譯）
 Tests/Sources/
   StatsMonitorTests.swift     # Swift Testing：Model / ViewModel / Service 整合測試
 Packages/Util/
@@ -115,12 +114,13 @@ Packages/Util/
 
 ## 本地化機制
 
-- `developmentRegion: "zh-Hant"`：zh-Hant 為原始語言
-- UI 字串：以 `LocalizedStringKey` 字面量傳入，SwiftUI `Text` 自動查找 `Localizable.strings`
+- `developmentRegion: "en"`：英文為原始語言（source language）
+- 格式：`Localizable.xcstrings`（String Catalog），統一管理所有語言翻譯
+- UI 字串：以英文 `LocalizedStringKey` 字面量傳入，SwiftUI `Text` 自動查找翻譯
 - 共用 helper（`statRow`、`sectionHeader` 等）接受 `LocalizedStringKey`，字串字面量自動轉型
 - **Process name** 顯示用 `statRow(verbatim: proc.name, ...)` 避免誤查本地化表
 - `AboutView.uptime` 使用 `DateComponentsFormatter` 自動跟隨系統語言
-- **未本地化字串在 ViewModel 層**：`StatsViewModel` 中的狀態字串（"Charging"/"Plugged In"/"On Battery"/"N/A"/"No fans" 及 "RPM"/"W"/"mW"/"cycles" 等單位）為硬編碼英文，不在 Localizable.strings 中
+- **未本地化字串在 ViewModel 層**：`StatsViewModel` 中的狀態字串（"Charging"/"Plugged In"/"On Battery"/"N/A"/"No fans" 及 "RPM"/"W"/"mW"/"cycles" 等單位）為硬編碼英文，不在 xcstrings 中
 
 ## 測試覆蓋
 

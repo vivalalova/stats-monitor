@@ -42,15 +42,15 @@ struct AboutView: View {
 
     private var systemSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("系統資訊")
+            Text("System Information")
                 .font(.headline)
 
             VStack(spacing: 0) {
-                statRow("Mac 型號", value: macModel)
-                statRow("晶片", value: chipName)
+                statRow("Model", value: macModel)
+                statRow("Chip", value: chipName)
                 statRow("macOS", value: osVersion)
-                statRow("記憶體", value: totalRAM)
-                statRow("已開機", value: uptime)
+                statRow("Memory", value: totalRAM)
+                statRow("Uptime", value: uptime)
             }
         }
     }

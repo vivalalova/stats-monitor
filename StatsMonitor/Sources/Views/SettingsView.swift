@@ -80,21 +80,21 @@ private struct GeneralSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                settingsSection("系統") {
-                    Toggle("登入時自動啟動", isOn: $settings.launchAtLogin)
+                settingsSection("System") {
+                    Toggle("Launch at Login", isOn: $settings.launchAtLogin)
                 }
 
-                settingsSection("更新頻率") {
-                    Picker("輪詢間隔", selection: $settings.pollInterval) {
+                settingsSection("Update Frequency") {
+                    Picker("Poll Interval", selection: $settings.pollInterval) {
                         ForEach(AppSettings.pollIntervalOptions, id: \.self) { interval in
-                            Text("\(Int(interval)) 秒").tag(interval)
+                            Text("\(Int(interval)) sec").tag(interval)
                         }
                     }
                     .pickerStyle(.segmented)
                 }
 
-                settingsSection("歷史資料") {
-                    Picker("保留時間", selection: $settings.historyCapacity) {
+                settingsSection("History") {
+                    Picker("Retention Period", selection: $settings.historyCapacity) {
                         ForEach(AppSettings.historyCapacityOptions, id: \.value) { option in
                             Text(LocalizedStringKey(option.label)).tag(option.value)
                         }
@@ -102,13 +102,13 @@ private struct GeneralSettingsView: View {
                     .pickerStyle(.radioGroup)
                 }
 
-                settingsSection("行程列表") {
+                settingsSection("Process List") {
                     HStack {
-                        Text("顯示數量")
+                        Text("Display Count")
                         Spacer()
                         Picker("", selection: $settings.processCount) {
                             ForEach([5, 10, 15, 20], id: \.self) { n in
-                                Text("\(n) 個").tag(n)
+                                Text("\(n) items").tag(n)
                             }
                         }
                         .labelsHidden()
@@ -117,7 +117,7 @@ private struct GeneralSettingsView: View {
                     }
                 }
 
-                settingsSection("選單列項目") {
+                settingsSection("Menu Bar Items") {
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle("CPU", isOn: $settings.showCPU)
                         Toggle("GPU", isOn: $settings.showGPU)
@@ -125,7 +125,7 @@ private struct GeneralSettingsView: View {
                         Toggle("Disk", isOn: $settings.showDisk)
                         Toggle("Network", isOn: $settings.showNetwork)
                     }
-                    Text("至少保留一個項目以避免完全隱藏應用程式。")
+                    Text("Keep at least one item to avoid hiding the app completely.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
