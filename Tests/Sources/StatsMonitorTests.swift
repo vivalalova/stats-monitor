@@ -1414,6 +1414,16 @@ struct StatusBarTests {
 
         #expect(button.sendAction(on: []) == StatusBarController.clickActionMask.rawValue)
     }
+
+    @Test("status bar popover disables animation for faster panel opening")
+    func statusBarPopoverDisablesAnimation() {
+        let popover = NSPopover()
+
+        StatusBarController.configurePopoverBehavior(for: popover)
+
+        #expect(popover.behavior == .transient)
+        #expect(popover.animates == false)
+    }
 }
 
 @Suite("Quit Confirmation")

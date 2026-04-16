@@ -136,14 +136,14 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
-    @Test("General settings tab renders a stable screenshot")
-    func generalSettingsWindowScreenshot() {
+    @Test("General main window tab renders a stable screenshot")
+    func generalMainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()
         seedSettingsValues(into: snapshotContext.settings)
         seedMonitorSnapshotData(into: snapshotContext.monitor)
 
         let view = windowFrameView(
-            for: SettingsView(
+            for: MainWindowView(
                 settings: snapshotContext.settings,
                 monitor: snapshotContext.monitor,
                 selection: .general,
@@ -159,18 +159,18 @@ struct StatsMonitorSnapshotTests {
         assertSnapshot(
             of: view,
             as: .image(size: view.frame.size),
-            named: "settings-window-general",
+            named: "main-window-general",
             record: snapshotRecordMode
         )
     }
 
-    @Test("About settings tab renders a stable screenshot")
-    func aboutSettingsWindowScreenshot() {
+    @Test("About main window tab renders a stable screenshot")
+    func aboutMainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()
         seedSettingsValues(into: snapshotContext.settings)
 
         let view = windowFrameView(
-            for: SettingsView(
+            for: MainWindowView(
                 settings: snapshotContext.settings,
                 monitor: snapshotContext.monitor,
                 selection: .about,
@@ -186,7 +186,7 @@ struct StatsMonitorSnapshotTests {
         assertSnapshot(
             of: view,
             as: .image(size: view.frame.size),
-            named: "settings-window-about",
+            named: "main-window-about",
             record: snapshotRecordMode
         )
     }
@@ -283,14 +283,14 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
-    @Test("Settings window renders a stable screenshot")
-    func settingsWindowScreenshot() {
+    @Test("Main window renders a stable screenshot")
+    func mainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()
         seedSettingsValues(into: snapshotContext.settings)
         seedMonitorSnapshotData(into: snapshotContext.monitor)
 
         let view = windowFrameView(
-            for: SettingsView(
+            for: MainWindowView(
                 settings: snapshotContext.settings,
                 monitor: snapshotContext.monitor,
                 aboutData: .snapshot
@@ -305,7 +305,7 @@ struct StatsMonitorSnapshotTests {
         assertSnapshot(
             of: view,
             as: .image(size: view.frame.size),
-            named: "settings-window",
+            named: "main-window",
             record: snapshotRecordMode
         )
     }

@@ -45,7 +45,7 @@ Services/       CPUMonitor / GPUMonitor / ANEMonitor / MemoryMonitor /
                 ProcessMonitor / BatteryMonitor / ThermalMonitor / FanMonitor /
                 SMCClient / SystemMonitor（協調層）
 Views/          MenuBarLabel / LineChartView / DashboardView /
-                SettingsView / AboutView / Detail/*
+                MainWindowView / AboutView / Detail/*
 Packages/Util/  formatBytes / formatThroughput / ghzString / RingBuffer
 ```
 

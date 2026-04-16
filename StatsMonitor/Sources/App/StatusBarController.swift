@@ -8,7 +8,8 @@ final class StatusBarController: NSObject {
     private let statusItem: NSStatusItem
     private let settings: AppSettings
     private let monitor: SystemMonitor
-    private var popover: NSPopover?
+    private let popover: NSPopover
+    private let popoverContentController: NSHostingController<AnyView>
     private var currentPanel: PanelID?
 
     private var statusButton: NSStatusBarButton? {
@@ -19,7 +20,12 @@ final class StatusBarController: NSObject {
         self.settings = settings
         self.monitor = monitor
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        popover = NSPopover()
+        popoverContentController = NSHostingController(rootView: AnyView(EmptyView()))
         super.init()
+        Self.configurePopoverBehavior(for: popover)
+        popover.delegate = self
+        popover.contentViewController = popoverContentController
         setupButton()
         observeForLength()
     }
@@ -40,6 +46,11 @@ final class StatusBarController: NSObject {
  
     static func configureClickBehavior(for button: NSStatusBarButton) {
         button.sendAction(on: clickActionMask)
+    }
+
+    static func configurePopoverBehavior(for popover: NSPopover) {
+        popover.behavior = .transient
+        popover.animates = false
     }
 
     // MARK: - Length
@@ -87,25 +98,23 @@ final class StatusBarController: NSObject {
     // MARK: - Popover
 
     private func toggle(panel: PanelID, relativeTo button: NSView) {
-        if closePopoverIfNeeded(for: panel) {
-            if currentPanel == panel { currentPanel = nil; return }
+        if popover.isShown, currentPanel == panel {
+            popover.performClose(nil)
+            return
         }
 
-        let pop = NSPopover()
-        pop.behavior = .transient
-        pop.delegate = self
-        pop.contentViewController = NSHostingController(rootView: makePopoverContent(for: panel))
-        pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        updatePopoverContent(for: panel)
+        if popover.isShown {
+            popover.performClose(nil)
+        }
+
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         NSApp.activate(ignoringOtherApps: true)
-        popover = pop
         currentPanel = panel
     }
 
-    private func closePopoverIfNeeded(for panel: PanelID) -> Bool {
-        guard let popover, popover.isShown else { return false }
-        popover.close()
-        self.popover = nil
-        return true
+    private func updatePopoverContent(for panel: PanelID) {
+        popoverContentController.rootView = AnyView(makePopoverContent(for: panel))
     }
 
     private func makePopoverContent(for panel: PanelID) -> some View {
@@ -141,7 +150,6 @@ final class StatusBarController: NSObject {
 
 extension StatusBarController: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
-        popover = nil
         currentPanel = nil
     }
 }

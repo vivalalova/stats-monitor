@@ -6,7 +6,7 @@ struct StatsMonitorApp: App {
 
     var body: some Scene {
         Window("Settings", id: AppSceneID.settingsWindow) {
-            SettingsView(settings: appDelegate.settings, monitor: appDelegate.monitor)
+            MainWindowView(settings: appDelegate.settings, monitor: appDelegate.monitor)
         }
         .defaultSize(
             width: SettingsWindowLayout.defaultWidth,

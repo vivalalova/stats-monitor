@@ -51,7 +51,7 @@ StatsMonitor/Sources/
     MenuBarLabel.swift        # Menu bar 文字顯示
     LineChartView.swift       # 共用折線圖元件
     DashboardView.swift       # Settings 視窗 Dashboard 分頁（總覽卡片 + 行程表）
-    SettingsView.swift        # Settings 視窗 NavigationSplitView（三分頁）
+    MainWindowView.swift      # 主視窗 NavigationSplitView（Dashboard / General / About）
     AboutView.swift           # About 分頁（版本資訊 + 系統規格）
     Detail/
       DetailPanel.swift           # 點擊 menu bar 展開的 popover 容器

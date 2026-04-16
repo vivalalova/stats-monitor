@@ -13,7 +13,7 @@ enum SettingsWindowLayout {
 
 // MARK: - View
 
-struct SettingsView: View {
+struct MainWindowView: View {
     enum Tab: CaseIterable, Hashable {
         case dashboard
         case general
@@ -184,7 +184,7 @@ private struct GeneralSettingsView: View {
 #Preview {
     let settings = AppSettings()
     let monitor = SystemMonitor(settings: settings).start()
-    SettingsView(settings: settings, monitor: monitor)
+    MainWindowView(settings: settings, monitor: monitor)
         .frame(
             width: SettingsWindowLayout.defaultWidth,
             height: SettingsWindowLayout.defaultHeight
