@@ -40,13 +40,6 @@ struct DashboardView: View {
                         maxValue: histMax(monitor.paddedMemoryHistory)
                     )
                     MetricCard(
-                        title: "Disk",
-                        value: monitor.diskPercent,
-                        statusColor: progressColor(monitor.diskFraction),
-                        lines: [],
-                        maxValue: 100
-                    )
-                    MetricCard(
                         title: "Network",
                         value: "↓\(monitor.networkInText)  ↑\(monitor.networkOutText)",
                         statusColor: .blue,
@@ -56,24 +49,6 @@ struct DashboardView: View {
                         ],
                         maxValue: histMax(monitor.paddedNetworkInHistory + monitor.paddedNetworkOutHistory)
                     )
-                    if monitor.hasBattery {
-                        MetricCard(
-                            title: "Battery",
-                            value: "\(monitor.batteryPercent)  \(monitor.batteryStatusText)",
-                            statusColor: batteryStatusColor(monitor.battery),
-                            lines: [],
-                            maxValue: histMax(monitor.paddedBatteryHistory)
-                        )
-                    }
-                    if monitor.hasThermal {
-                        MetricCard(
-                            title: "Thermal",
-                            value: monitor.thermalDashboardText,
-                            statusColor: thermalStatusColor(monitor),
-                            lines: thermalCardLines(monitor: monitor),
-                            maxValue: histMax(monitor.paddedCPUTempHistory + monitor.paddedGPUTempHistory)
-                        )
-                    }
                     MetricCard(
                         title: "Disk I/O",
                         value: "↓\(monitor.diskReadText)  ↑\(monitor.diskWriteText)",
@@ -143,12 +118,6 @@ struct DashboardColumnsSlider: View {
 
 // MARK: - Dashboard Helpers
 
-private func batteryStatusColor(_ battery: BatteryUsage?) -> Color {
-    guard let b = battery else { return .gray }
-    if b.isCharging { return .green }
-    return progressColor(1.0 - b.percentage / 100.0)  // low charge → red
-}
-
 private func powerStatusColor(_ watts: Double) -> Color {
     switch watts {
     case ..<10:
@@ -160,40 +129,12 @@ private func powerStatusColor(_ watts: Double) -> Color {
     }
 }
 
-@MainActor
-private func thermalStatusColor(_ monitor: SystemMonitor) -> Color {
-    switch monitor.thermalPressureState {
-    case .critical?, .serious?:
-        return .red
-    case .fair?:
-        return .orange
-    case .nominal?, nil:
-        if let cpuTemperature = monitor.thermal?.cpuTemperature {
-            switch cpuTemperature {
-            case ..<60:
-                return .green
-            case ..<80:
-                return .orange
-            default:
-                return .red
-            }
-        }
-        return .green
-    @unknown default:
-        return .green
-    }
+func dashboardCardHasChart(lines: [(history: [Double], color: Color)]) -> Bool {
+    !lines.isEmpty
 }
 
-@MainActor
-private func thermalCardLines(monitor: SystemMonitor) -> [(history: [Double], color: Color)] {
-    var lines: [(history: [Double], color: Color)] = []
-    if monitor.paddedCPUTempHistory.count >= 2 {
-        lines.append((history: monitor.paddedCPUTempHistory, color: .orange))
-    }
-    if monitor.paddedGPUTempHistory.count >= 2 {
-        lines.append((history: monitor.paddedGPUTempHistory, color: .purple))
-    }
-    return lines
+func dashboardCardHeight(lines: [(history: [Double], color: Color)]) -> CGFloat {
+    dashboardCardHasChart(lines: lines) ? 100 : 52
 }
 
 // MARK: - MetricCard
@@ -206,36 +147,63 @@ private struct MetricCard: View {
     let maxValue: Double
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            LineChartView(lines: lines, maxValue: maxValue, height: nil, cornerRadius: 8)
+        Group {
+            if dashboardCardHasChart(lines: lines) {
+                ZStack(alignment: .topLeading) {
+                    LineChartView(lines: lines, maxValue: maxValue, height: nil, cornerRadius: 8)
 
-            HStack {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .shadow(color: .white.opacity(0.7), radius: 3, x: 0, y: 0)
-                Spacer()
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
-            }
-            .padding(4)
+                    HStack {
+                        titleLabel
+                        Spacer()
+                        statusIndicator
+                    }
+                    .padding(4)
 
-            VStack {
-                Spacer()
-                HStack {
-                    Text(value)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .shadow(color: .white.opacity(0.7), radius: 3, x: 0, y: 0)
-                    Spacer()
+                    VStack {
+                        Spacer()
+                        valueLabel
+                            .padding(4)
+                    }
                 }
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        titleLabel
+                        Spacer()
+                        statusIndicator
+                    }
+                    valueLabel
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
             }
-            .padding(4)
         }
-        .frame(height: 100)
+        .frame(height: dashboardCardHeight(lines: lines))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var titleLabel: some View {
+        Text(title)
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .shadow(color: .white.opacity(0.7), radius: 3, x: 0, y: 0)
+    }
+
+    private var statusIndicator: some View {
+        Circle()
+            .fill(statusColor)
+            .frame(width: 8, height: 8)
+    }
+
+    private var valueLabel: some View {
+        Text(value)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+            .lineLimit(1)
+            .shadow(color: .white.opacity(0.7), radius: 3, x: 0, y: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
