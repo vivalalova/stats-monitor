@@ -27,6 +27,7 @@ final class SystemMonitor {
     private(set) var fansSamples: MetricHistory<[FanUsage]>
 
     var topCPUProcesses: [ProcInfo] = []
+    var topGPUProcesses: [GPUProcessInfo] = []
     var topMemoryProcesses: [ProcInfo] = []
     var topDiskProcesses: [ProcInfo] = []
     var topNetworkProcesses: [ProcInfo] = []
@@ -126,6 +127,7 @@ final class SystemMonitor {
         record(thermal: thermal)
         record(power: power)
         record(fans: fans)
+        topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: settings.pollInterval, processCount: count)
 
         pollNetworkProcesses(processCount: count)
         pollProcesses(processCount: count)

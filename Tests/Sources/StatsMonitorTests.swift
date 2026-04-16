@@ -303,6 +303,74 @@ struct PowerMonitorTests {
     }
 }
 
+@Suite("GPUMonitor")
+struct GPUMonitorTests {
+
+    @Test("parses tiler utilization and gpu memory breakdown from performance statistics")
+    func parsesPerformanceStatistics() {
+        let usage = GPUMonitor.parseUsage(from: [
+            "Device Utilization %": 20,
+            "Renderer Utilization %": 19,
+            "Tiler Utilization %": 17,
+            "In use system memory": 685_047_808,
+            "In use system memory (driver)": 52_428_800,
+            "Alloc system memory": 10_747_871_232,
+        ])
+
+        #expect(usage.deviceUtilization == 20)
+        #expect(usage.renderUtilization == 19)
+        #expect(usage.tilerUtilization == 17)
+        #expect(usage.vramUsed == 685_047_808)
+        #expect(usage.driverMemoryBytes == 52_428_800)
+        #expect(usage.allocatedMemoryBytes == 10_747_871_232)
+    }
+
+    @Test("computes top gpu apps from accumulated gpu time deltas")
+    func computesTopGPUAppsFromDeltas() {
+        let currentSnapshots = [
+            GPUMonitor.AppUsageSnapshot(
+                pid: 601,
+                name: "WindowServer",
+                accumulatedGPUTime: 1_500_000_000,
+                commandQueueCount: 4
+            ),
+            GPUMonitor.AppUsageSnapshot(
+                pid: 83863,
+                name: "Codex Helper",
+                accumulatedGPUTime: 1_250_000_000,
+                commandQueueCount: 2
+            ),
+            GPUMonitor.AppUsageSnapshot(
+                pid: 72166,
+                name: "iTerm2",
+                accumulatedGPUTime: 1_020_000_000,
+                commandQueueCount: 1
+            ),
+        ]
+
+        let result = GPUMonitor.computeTopApps(
+            currentSnapshots: currentSnapshots,
+            previousTotalsByPID: [
+                601: 1_000_000_000,
+                83863: 1_000_000_000,
+                72166: 1_000_000_000,
+            ],
+            intervalSeconds: 1,
+            processCount: 2
+        )
+
+        #expect(result.apps.count == 2)
+        #expect(result.apps[0].name == "WindowServer")
+        #expect(result.apps[0].utilizationPercent == 50)
+        #expect(result.apps[0].commandQueueCount == 4)
+        #expect(result.apps[1].name == "Codex Helper")
+        #expect(result.apps[1].utilizationPercent == 25)
+        #expect(result.updatedTotalsByPID[601] == 1_500_000_000)
+        #expect(result.updatedTotalsByPID[83863] == 1_250_000_000)
+        #expect(result.updatedTotalsByPID[72166] == 1_020_000_000)
+    }
+}
+
 // MARK: - SystemMonitor Presentation Tests
 
 @Suite("SystemMonitor Presentation")
@@ -479,6 +547,30 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.batteryChargePowerText == "2.5 W")
         #expect(monitor.batteryDischargePowerText.isEmpty)
         #expect(monitor.powerBalanceText == "+3.5 W")
+    }
+
+    @Test("gpu detail exposes tiler and gpu memory breakdown")
+    func gpuDetailFormattingShowsMoreContext() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(gpu: GPUUsage(
+            deviceUtilization: 20,
+            renderUtilization: 19,
+            tilerUtilization: 17,
+            engines: ["Device": 20, "Renderer": 19, "Tiler": 17],
+            vramUsed: 685_047_808,
+            driverMemoryBytes: 52_428_800,
+            allocatedMemoryBytes: 10_747_871_232
+        ))
+        monitor.topGPUProcesses = [
+            GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 23.5, commandQueueCount: 4)
+        ]
+
+        #expect(monitor.gpuTilerPercent == "17.0%")
+        #expect(monitor.gpuVramUsedText == "653 MB")
+        #expect(monitor.gpuDriverMemoryText == "50 MB")
+        #expect(monitor.gpuAllocatedMemoryText == "10.0 GB")
+        #expect(monitor.formatProcessGPU(monitor.topGPUProcesses[0]) == "23.5%")
     }
 
     // MARK: - batteryStatus branching

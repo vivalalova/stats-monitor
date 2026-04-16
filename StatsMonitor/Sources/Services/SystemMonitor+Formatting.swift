@@ -26,10 +26,21 @@ extension SystemMonitor {
 
     var gpuPercent: String { formatPercent(currentGPU.used) }
     var gpuRenderPercent: String { formatPercent(currentGPU.renderUtilization) }
+    var gpuTilerPercent: String {
+        currentGPU.tilerUtilization > 0 ? formatPercent(currentGPU.tilerUtilization) : ""
+    }
     var gpuEngines: [String: Double] { currentGPU.engines }
     var paddedGPUHistory: [Double] { padded(gpuSamples.values.map(\.used), capacity: gpuSamples.capacity) }
     var gpuVramUsed: UInt64 { currentGPU.vramUsed }
-    var gpuVramUsedText: String { formatBytes(currentGPU.vramUsed) }
+    var gpuVramUsedText: String {
+        currentGPU.vramUsed > 0 ? formatBytes(currentGPU.vramUsed) : ""
+    }
+    var gpuDriverMemoryText: String {
+        currentGPU.driverMemoryBytes > 0 ? formatBytes(currentGPU.driverMemoryBytes) : ""
+    }
+    var gpuAllocatedMemoryText: String {
+        currentGPU.allocatedMemoryBytes > 0 ? formatBytes(currentGPU.allocatedMemoryBytes) : ""
+    }
     var anePowerMilliWatts: Double { currentGPU.anePowerMilliWatts }
     var anePowerText: String {
         let milliWatts = currentGPU.anePowerMilliWatts
@@ -200,6 +211,7 @@ extension SystemMonitor {
     }
 
     func formatProcessCPU(_ percent: Double) -> String { formatPercent(percent) }
+    func formatProcessGPU(_ process: GPUProcessInfo) -> String { formatPercent(process.utilizationPercent) }
     func formatProcessMemory(_ bytes: UInt64) -> String { formatBytes(bytes) }
     func formatProcessDisk(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }
     func formatProcessNetwork(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }

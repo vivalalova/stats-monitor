@@ -8,19 +8,29 @@ struct GPUDetailView: View {
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
             DetailChart(lines: [(monitor.paddedGPUHistory, .purple)])
-            DetailMetricSection(rows: [
+            DetailMetricSection(rows: availableDetailMetrics([
                 ("Device", monitor.gpuPercent),
                 ("Renderer", monitor.gpuRenderPercent),
-            ])
-            if monitor.gpuVramUsed > 0 {
-                statRow("GPU Mem", value: monitor.gpuVramUsedText)
-            }
+                ("Tiler", monitor.gpuTilerPercent),
+            ]))
+            DetailMetricSection(title: "Memory", rows: availableDetailMetrics([
+                ("Used", monitor.gpuVramUsedText),
+                ("Driver", monitor.gpuDriverMemoryText),
+                ("Allocated", monitor.gpuAllocatedMemoryText),
+            ]))
             if monitor.anePowerMilliWatts > 0 {
                 statRow("Neural Engine", value: monitor.anePowerText)
             }
             if !monitor.gpuEngines.isEmpty {
                 sectionHeader("Engines")
                 EngineGridView(engines: monitor.gpuEngines)
+            }
+            DetailListSection(
+                "Top GPU Apps",
+                data: Array(monitor.topGPUProcesses.enumerated()),
+                id: \.element.pid
+            ) { entry in
+                statRow(verbatim: entry.element.name, value: monitor.formatProcessGPU(entry.element))
             }
         }
     }

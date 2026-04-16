@@ -12,6 +12,7 @@ struct SystemStats: Sendable {
     var power:   PowerUsage?   = nil    // nil when IOReport unavailable (non-Apple Silicon)
     var fans: [FanUsage] = []           // empty on fanless Macs (e.g. MacBook Air M-series)
     var topCPUProcesses: [ProcInfo] = []
+    var topGPUProcesses: [GPUProcessInfo] = []
     var topMemoryProcesses: [ProcInfo] = []
     var topDiskProcesses: [ProcInfo] = []
     var topNetworkProcesses: [ProcInfo] = []
@@ -83,13 +84,23 @@ struct NetworkUsage: Sendable {
 struct GPUUsage: Sendable {
     var deviceUtilization: Double
     var renderUtilization: Double
+    var tilerUtilization: Double = 0
     var engines: [String: Double]
     var vramUsed: UInt64      // "In Use System Memory", bytes; 0 if unavailable
+    var driverMemoryBytes: UInt64 = 0
+    var allocatedMemoryBytes: UInt64 = 0
     var anePowerMilliWatts: Double = 0   // IOReport Energy Model; 0 = idle / unavailable
 
     var used: Double { deviceUtilization }
 
     static let zero = GPUUsage(deviceUtilization: 0, renderUtilization: 0, engines: [:], vramUsed: 0)
+}
+
+struct GPUProcessInfo: Sendable {
+    var pid: Int
+    var name: String
+    var utilizationPercent: Double
+    var commandQueueCount: Int = 0
 }
 
 struct ProcInfo: Sendable {

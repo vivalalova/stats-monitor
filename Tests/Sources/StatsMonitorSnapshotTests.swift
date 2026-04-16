@@ -319,8 +319,11 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
     monitor.record(gpu: GPUUsage(
         deviceUtilization: 37,
         renderUtilization: 25,
+        tilerUtilization: 28,
         engines: ["Compute": 42, "Tiler": 28, "Vertex": 17],
-        vramUsed: 4_294_967_296
+        vramUsed: 4_294_967_296,
+        driverMemoryBytes: 268_435_456,
+        allocatedMemoryBytes: 6_442_450_944
     ))
     monitor.record(memory: MemoryUsage(
         active: 9_663_676_416,
@@ -369,6 +372,11 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000),
     ]
     monitor.topMemoryProcesses = monitor.topCPUProcesses
+    monitor.topGPUProcesses = [
+        GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 23.5, commandQueueCount: 4),
+        GPUProcessInfo(pid: 1235, name: "Safari", utilizationPercent: 9.8, commandQueueCount: 2),
+        GPUProcessInfo(pid: 1232, name: "Fork", utilizationPercent: 4.1, commandQueueCount: 1),
+    ]
     monitor.topDiskProcesses = [
         ProcInfo(name: "mdworker", cpuPercent: 1.2, memoryBytes: 120_000_000, diskReadBPS: 4_194_304, diskWriteBPS: 524_288),
         ProcInfo(name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000, diskReadBPS: 2_097_152, diskWriteBPS: 1_048_576),
