@@ -329,7 +329,10 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         active: 9_663_676_416,
         wired: 2_147_483_648,
         compressed: 1_073_741_824,
-        total: 18_253_611_008
+        total: 18_253_611_008,
+        swapUsed: 1_367_261_184,
+        swapTotal: 2_147_483_648,
+        availablePercent: 30
     ))
     monitor.record(disk: DiskUsage(
         used: 512_000_000_000,
@@ -339,7 +342,11 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
     ))
     monitor.record(network: NetworkUsage(
         bytesInPerSec: 2_621_440,
-        bytesOutPerSec: 524_288
+        bytesOutPerSec: 524_288,
+        interfaces: [
+            NetworkInterfaceUsage(name: "en0", displayName: "Network (en0)", bytesInPerSec: 2_097_152, bytesOutPerSec: 393_216),
+            NetworkInterfaceUsage(name: "utun4", displayName: "VPN (utun4)", bytesInPerSec: 524_288, bytesOutPerSec: 131_072),
+        ]
     ))
     monitor.record(battery: BatteryUsage(
         percentage: 78,
@@ -355,6 +362,7 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         cpuTemperature: 68.4,
         gpuTemperature: 57.2
     ))
+    monitor.record(thermalPressureState: .nominal)
     monitor.record(power: PowerUsage(
         cpuMilliWatts: 12_400,
         gpuMilliWatts: 4_200,

@@ -58,6 +58,37 @@ extension SystemMonitor {
     var memoryActiveText: String { formatBytes(currentMemory.active) }
     var memoryWiredText: String { formatBytes(currentMemory.wired) }
     var memoryCompressedText: String { formatBytes(currentMemory.compressed) }
+    var memorySwapUsedText: String {
+        currentMemory.swapUsed > 0 ? formatBytes(currentMemory.swapUsed) : ""
+    }
+    var memorySwapTotalText: String {
+        currentMemory.swapTotal > 0 ? formatBytes(currentMemory.swapTotal) : ""
+    }
+    var memorySwapSummaryText: String {
+        guard currentMemory.swapTotal > 0 else { return "" }
+        return "\(formatBytes(currentMemory.swapUsed)) / \(formatBytes(currentMemory.swapTotal))"
+    }
+    var memoryAvailablePercentText: String {
+        guard let availablePercent = currentMemory.availablePercent else { return "" }
+        return String(format: "%.0f%%", availablePercent)
+    }
+    var memoryPressureLevel: MemoryPressureLevel {
+        MemoryMonitor.pressureLevel(forAvailablePercent: currentMemory.availablePercent)
+    }
+    var memoryPressureText: String {
+        switch memoryPressureLevel {
+        case .normal:
+            return "Normal"
+        case .warning:
+            return "Warning"
+        case .urgent:
+            return "Urgent"
+        case .critical:
+            return "Critical"
+        case .unknown:
+            return ""
+        }
+    }
     var paddedMemoryHistory: [Double] { padded(memorySamples.values.map { $0.usedFraction * 100 }, capacity: memorySamples.capacity) }
 
     var diskUsedText: String { formatBytes(currentDisk.used) }
@@ -75,6 +106,7 @@ extension SystemMonitor {
     var networkInText: String { formatThroughput(currentNetwork.bytesInPerSec) }
     var networkOutText: String { formatThroughput(currentNetwork.bytesOutPerSec) }
     var networkTotalText: String { formatThroughput(currentNetwork.bytesInPerSec + currentNetwork.bytesOutPerSec) }
+    var activeNetworkInterfaces: [NetworkInterfaceUsage] { currentNetwork.interfaces }
     var paddedNetworkInHistory: [Double] { padded(networkSamples.values.map(\.bytesInPerSec), capacity: networkSamples.capacity) }
     var paddedNetworkOutHistory: [Double] { padded(networkSamples.values.map(\.bytesOutPerSec), capacity: networkSamples.capacity) }
 
@@ -165,7 +197,11 @@ extension SystemMonitor {
     var powerMenuSymbol: String { "bolt.fill" }
 
     var thermal: ThermalUsage? { thermalSamples.current }
-    var hasThermal: Bool { thermal != nil }
+    var thermalPressureText: String {
+        guard let thermalPressureState else { return "" }
+        return Self.thermalPressureText(for: thermalPressureState)
+    }
+    var hasThermal: Bool { thermal != nil || !thermalPressureText.isEmpty }
     var cpuTempText: String {
         guard let thermal else { return "N/A" }
         return String(format: "%.1f°C", thermal.cpuTemperature)
@@ -177,9 +213,15 @@ extension SystemMonitor {
     var paddedCPUTempHistory: [Double] { padded(thermalSamples.values.map(\.cpuTemperature), capacity: thermalSamples.capacity) }
     var paddedGPUTempHistory: [Double] { padded(thermalSamples.values.compactMap(\.gpuTemperature), capacity: thermalSamples.capacity) }
     var thermalSummaryText: String {
-        guard thermal != nil else { return "N/A" }
+        guard thermal != nil else { return "" }
         guard let gpuTemp = thermal?.gpuTemperature else { return "CPU \(cpuTempText)" }
         return "CPU \(cpuTempText) GPU \(String(format: "%.1f°C", gpuTemp))"
+    }
+    var thermalDashboardText: String {
+        if thermal != nil {
+            return thermalPressureText.isEmpty ? "CPU \(cpuTempText)" : "CPU \(cpuTempText) \(thermalPressureText)"
+        }
+        return thermalPressureText
     }
 
     var fans: [FanUsage] { fansSamples.current ?? [] }
@@ -214,6 +256,9 @@ extension SystemMonitor {
     func formatProcessGPU(_ process: GPUProcessInfo) -> String { formatPercent(process.utilizationPercent) }
     func formatProcessMemory(_ bytes: UInt64) -> String { formatBytes(bytes) }
     func formatProcessDisk(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }
+    func formatNetworkInterface(_ interface: NetworkInterfaceUsage) -> String {
+        "↓\(formatThroughput(interface.bytesInPerSec)) ↑\(formatThroughput(interface.bytesOutPerSec))"
+    }
     func formatProcessNetwork(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }
     func formatProcessPower(_ process: ProcInfo) -> String { String(format: "%.1f impact", process.powerImpact) }
     func fanRPMText(_ fan: FanUsage) -> String { String(format: "%.0f RPM", fan.currentRPM) }
@@ -238,5 +283,20 @@ extension SystemMonitor {
     private func padded(_ data: [Double], capacity: Int) -> [Double] {
         guard !data.isEmpty, data.count < capacity else { return data }
         return Array(repeating: 0, count: capacity - data.count) + data
+    }
+
+    nonisolated static func thermalPressureText(for state: ProcessInfo.ThermalState) -> String {
+        switch state {
+        case .nominal:
+            return "Nominal"
+        case .fair:
+            return "Fair"
+        case .serious:
+            return "Serious"
+        case .critical:
+            return "Critical"
+        @unknown default:
+            return ""
+        }
     }
 }

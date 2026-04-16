@@ -25,6 +25,7 @@ final class SystemMonitor {
     private(set) var thermalSamples: MetricHistory<ThermalUsage>
     private(set) var powerSamples: MetricHistory<PowerUsage>
     private(set) var fansSamples: MetricHistory<[FanUsage]>
+    private(set) var thermalPressureState: ProcessInfo.ThermalState? = nil
 
     var topCPUProcesses: [ProcInfo] = []
     var topGPUProcesses: [GPUProcessInfo] = []
@@ -114,6 +115,7 @@ final class SystemMonitor {
         let network = networkMonitor.sample()
         let battery = batteryMonitor.sample()
         let thermal = thermalMonitor.sample()
+        let thermalPressureState = ProcessInfo.processInfo.thermalState
         let fans    = fanMonitor.sample()
         let power   = powerMonitor.sample(intervalSeconds: settings.pollInterval)
         let count   = settings.processCount
@@ -125,6 +127,7 @@ final class SystemMonitor {
         record(network: network)
         record(battery: battery)
         record(thermal: thermal)
+        record(thermalPressureState: thermalPressureState)
         record(power: power)
         record(fans: fans)
         topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: settings.pollInterval, processCount: count)
@@ -225,6 +228,10 @@ final class SystemMonitor {
     func record(thermal sample: ThermalUsage?) {
         guard let sample else { return }
         thermalSamples.record(sample)
+    }
+
+    func record(thermalPressureState state: ProcessInfo.ThermalState?) {
+        thermalPressureState = state
     }
 
     func record(power sample: PowerUsage?) {

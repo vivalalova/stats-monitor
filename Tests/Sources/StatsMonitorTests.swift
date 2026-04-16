@@ -238,6 +238,19 @@ struct BatteryMonitorTests {
     }
 }
 
+@Suite("MemoryMonitor")
+struct MemoryMonitorTests {
+
+    @Test("maps available memory percentage to user-facing pressure levels")
+    func mapsAvailablePercentToPressureLevels() {
+        #expect(MemoryMonitor.pressureLevel(forAvailablePercent: 50) == .normal)
+        #expect(MemoryMonitor.pressureLevel(forAvailablePercent: 30) == .warning)
+        #expect(MemoryMonitor.pressureLevel(forAvailablePercent: 15) == .urgent)
+        #expect(MemoryMonitor.pressureLevel(forAvailablePercent: 5) == .critical)
+        #expect(MemoryMonitor.pressureLevel(forAvailablePercent: nil) == .unknown)
+    }
+}
+
 @Suite("ThermalMonitor")
 struct ThermalMonitorTests {
 
@@ -251,6 +264,14 @@ struct ThermalMonitorTests {
     func keepsPlausibleTemperatures() {
         #expect(ThermalMonitor.sanitizeTemperature(34.5) == 34.5)
         #expect(ThermalMonitor.sanitizeTemperature(92.0) == 92.0)
+    }
+
+    @Test("formats thermal pressure states for display")
+    func formatsThermalPressureStates() {
+        #expect(SystemMonitor.thermalPressureText(for: .nominal) == "Nominal")
+        #expect(SystemMonitor.thermalPressureText(for: .fair) == "Fair")
+        #expect(SystemMonitor.thermalPressureText(for: .serious) == "Serious")
+        #expect(SystemMonitor.thermalPressureText(for: .critical) == "Critical")
     }
 }
 
@@ -368,6 +389,32 @@ struct GPUMonitorTests {
         #expect(result.updatedTotalsByPID[601] == 1_500_000_000)
         #expect(result.updatedTotalsByPID[83863] == 1_250_000_000)
         #expect(result.updatedTotalsByPID[72166] == 1_020_000_000)
+    }
+}
+
+@Suite("NetworkMonitor")
+struct NetworkMonitorTests {
+
+    @Test("computes active interface throughput deltas and sorts by total traffic")
+    func computesInterfaceUsage() {
+        let usage = NetworkMonitor.computeInterfaceUsage(
+            currentCounters: [
+                "en0": (bytesIn: 3_145_728, bytesOut: 1_048_576),
+                "utun4": (bytesIn: 786_432, bytesOut: 524_288),
+            ],
+            previousCounters: [
+                "en0": (bytesIn: 2_097_152, bytesOut: 524_288),
+                "utun4": (bytesIn: 262_144, bytesOut: 262_144),
+            ],
+            elapsed: 1
+        )
+
+        #expect(usage.count == 2)
+        #expect(usage[0].name == "en0")
+        #expect(usage[0].displayName == "Network (en0)")
+        #expect(usage[0].bytesInPerSec == 1_048_576)
+        #expect(usage[0].bytesOutPerSec == 524_288)
+        #expect(usage[1].displayName == "VPN (utun4)")
     }
 }
 
@@ -571,6 +618,46 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.gpuDriverMemoryText == "50 MB")
         #expect(monitor.gpuAllocatedMemoryText == "10.0 GB")
         #expect(monitor.formatProcessGPU(monitor.topGPUProcesses[0]) == "23.5%")
+    }
+
+    @Test("memory detail exposes pressure and swap summary")
+    func memoryDetailFormattingShowsPressureAndSwap() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(memory: MemoryUsage(
+            active: 9_663_676_416,
+            wired: 2_147_483_648,
+            compressed: 1_073_741_824,
+            total: 18_253_611_008,
+            swapUsed: 1_367_261_184,
+            swapTotal: 2_147_483_648,
+            availablePercent: 30
+        ))
+
+        #expect(monitor.memoryPressureText == "Warning")
+        #expect(monitor.memoryAvailablePercentText == "30%")
+        #expect(monitor.memorySwapSummaryText == "1.3 GB / 2.0 GB")
+    }
+
+    @Test("network detail exposes active interfaces")
+    func networkDetailFormattingShowsInterfaces() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(network: NetworkUsage(
+            bytesInPerSec: 1_048_576,
+            bytesOutPerSec: 524_288,
+            interfaces: [
+                NetworkInterfaceUsage(
+                    name: "en0",
+                    displayName: "Network (en0)",
+                    bytesInPerSec: 786_432,
+                    bytesOutPerSec: 262_144
+                )
+            ]
+        ))
+
+        #expect(monitor.activeNetworkInterfaces.count == 1)
+        #expect(monitor.formatNetworkInterface(monitor.activeNetworkInterfaces[0]) == "↓768 KB/s ↑256 KB/s")
     }
 
     // MARK: - batteryStatus branching

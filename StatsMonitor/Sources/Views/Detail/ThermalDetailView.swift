@@ -8,13 +8,13 @@ struct ThermalDetailView: View {
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
             DetailChart(lines: thermalLines, maxValue: thermalChartMax)
-            DetailMetricSection(rows: [
+            DetailMetricSection(rows: availableDetailMetrics([
                 ("CPU", monitor.cpuTempText),
                 ("GPU", monitor.gpuTempText),
+                ("Pressure", monitor.thermalPressureText),
                 ("Summary", monitor.thermalSummaryText),
-            ])
+            ]))
             DetailMetricSection(title: "System", rows: availableDetailMetrics([
-                ("System Power", monitor.powerText),
                 ("Fans", monitor.fansSummaryText),
             ]))
         }

@@ -22,12 +22,51 @@ struct MemoryMonitor {
         let active     = UInt64(stats.active_count) * pageSize
         let wired      = UInt64(stats.wire_count) * pageSize
         let compressed = UInt64(stats.compressor_page_count) * pageSize
+        let swapUsage = Self.readSwapUsage()
+        let availablePercent = Self.readAvailablePercent()
 
         return MemoryUsage(
             active:     min(active, total),
             wired:      min(wired, total),
             compressed: min(compressed, total - min(active + wired, total)),
-            total:      total
+            total:      total,
+            swapUsed:   swapUsage?.used ?? 0,
+            swapTotal:  swapUsage?.total ?? 0,
+            availablePercent: availablePercent
         )
+    }
+
+    static func pressureLevel(forAvailablePercent availablePercent: Double?) -> MemoryPressureLevel {
+        guard let availablePercent else { return .unknown }
+        switch availablePercent {
+        case 40...:
+            return .normal
+        case 25..<40:
+            return .warning
+        case 10..<25:
+            return .urgent
+        default:
+            return .critical
+        }
+    }
+
+    static func readAvailablePercent() -> Double? {
+        var value: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        let result = withUnsafeMutablePointer(to: &value) { pointer in
+            sysctlbyname("kern.memorystatus_level", pointer, &size, nil, 0)
+        }
+        guard result == 0, value >= 0 else { return nil }
+        return Double(value)
+    }
+
+    private static func readSwapUsage() -> (used: UInt64, total: UInt64)? {
+        var swapUsage = xsw_usage()
+        var size = MemoryLayout<xsw_usage>.size
+        let result = withUnsafeMutablePointer(to: &swapUsage) { pointer in
+            sysctlbyname("vm.swapusage", pointer, &size, nil, 0)
+        }
+        guard result == 0 else { return nil }
+        return (used: swapUsage.xsu_used, total: swapUsage.xsu_total)
     }
 }

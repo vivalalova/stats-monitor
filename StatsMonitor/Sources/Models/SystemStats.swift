@@ -51,6 +51,9 @@ struct MemoryUsage: Sendable {
     var wired: UInt64
     var compressed: UInt64
     var total: UInt64
+    var swapUsed: UInt64 = 0
+    var swapTotal: UInt64 = 0
+    var availablePercent: Double? = nil
 
     var used: UInt64 { active + wired + compressed }
 
@@ -77,8 +80,26 @@ struct DiskUsage: Sendable {
 struct NetworkUsage: Sendable {
     var bytesInPerSec: Double
     var bytesOutPerSec: Double
+    var interfaces: [NetworkInterfaceUsage] = []
 
     static let zero = NetworkUsage(bytesInPerSec: 0, bytesOutPerSec: 0)
+}
+
+enum MemoryPressureLevel: String, Sendable {
+    case normal
+    case warning
+    case urgent
+    case critical
+    case unknown
+}
+
+struct NetworkInterfaceUsage: Sendable {
+    var name: String
+    var displayName: String
+    var bytesInPerSec: Double
+    var bytesOutPerSec: Double
+
+    var totalBytesPerSec: Double { bytesInPerSec + bytesOutPerSec }
 }
 
 struct GPUUsage: Sendable {

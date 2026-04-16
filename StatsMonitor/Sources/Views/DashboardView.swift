@@ -68,8 +68,8 @@ struct DashboardView: View {
                     if monitor.hasThermal {
                         MetricCard(
                             title: "Thermal",
-                            value: "CPU \(monitor.cpuTempText)",
-                            statusColor: thermalStatusColor(monitor.thermal?.cpuTemperature ?? 0),
+                            value: monitor.thermalDashboardText,
+                            statusColor: thermalStatusColor(monitor),
                             lines: thermalCardLines(monitor: monitor),
                             maxValue: histMax(monitor.paddedCPUTempHistory + monitor.paddedGPUTempHistory)
                         )
@@ -151,17 +151,36 @@ private func batteryStatusColor(_ battery: BatteryUsage?) -> Color {
 
 private func powerStatusColor(_ watts: Double) -> Color {
     switch watts {
-    case ..<10:  .green
-    case ..<30:  .orange
-    default:     .red
+    case ..<10:
+        return .green
+    case ..<30:
+        return .orange
+    default:
+        return .red
     }
 }
 
-private func thermalStatusColor(_ celsius: Double) -> Color {
-    switch celsius {
-    case ..<60:  .green
-    case ..<80:  .orange
-    default:     .red
+@MainActor
+private func thermalStatusColor(_ monitor: SystemMonitor) -> Color {
+    switch monitor.thermalPressureState {
+    case .critical?, .serious?:
+        return .red
+    case .fair?:
+        return .orange
+    case .nominal?, nil:
+        if let cpuTemperature = monitor.thermal?.cpuTemperature {
+            switch cpuTemperature {
+            case ..<60:
+                return .green
+            case ..<80:
+                return .orange
+            default:
+                return .red
+            }
+        }
+        return .green
+    @unknown default:
+        return .green
     }
 }
 

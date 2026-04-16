@@ -14,6 +14,13 @@ struct NetworkDetailView: View {
                 ("Total", monitor.networkTotalText),
             ])
             DetailListSection(
+                "Interfaces",
+                data: Array(monitor.activeNetworkInterfaces.prefix(4).enumerated()),
+                id: \.element.name
+            ) { entry in
+                statRow(verbatim: entry.element.displayName, value: monitor.formatNetworkInterface(entry.element))
+            }
+            DetailListSection(
                 "Top Processes",
                 data: Array(monitor.topNetworkProcesses.enumerated()),
                 id: \.offset

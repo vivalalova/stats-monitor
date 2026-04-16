@@ -8,14 +8,17 @@ struct MemoryDetailView: View {
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
             DetailChart(lines: [(monitor.paddedMemoryHistory, .orange)])
-            DetailMetricSection(rows: [
+            DetailMetricSection(rows: availableDetailMetrics([
                 ("Percent", monitor.memoryPercent),
+                ("Pressure", monitor.memoryPressureText),
+                ("Available", monitor.memoryAvailablePercentText),
                 ("Used", "\(monitor.memoryUsedText) / \(monitor.memoryTotalText)"),
                 ("Free", monitor.memoryFreeText),
                 ("Active", monitor.memoryActiveText),
                 ("Wired", monitor.memoryWiredText),
                 ("Compressed", monitor.memoryCompressedText),
-            ])
+                ("Swap", monitor.memorySwapSummaryText),
+            ]))
             DetailListSection(
                 "Top Processes",
                 data: Array(monitor.topMemoryProcesses.enumerated()),
