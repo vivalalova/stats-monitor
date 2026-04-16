@@ -180,7 +180,7 @@ struct StatsMonitorSnapshotTests {
 
     @Test("Combined menu bar label renders a stable screenshot")
     func combinedMenuBarLabelScreenshot() {
-        let settings = AppSettings()
+        let settings = makeTestSettings()
         settings.showCPU = true
         settings.showGPU = true
         settings.showMemory = true
@@ -266,16 +266,17 @@ struct StatsMonitorSnapshotTests {
 
 @MainActor
 private func makeSnapshotContext() -> (settings: AppSettings, monitor: SystemMonitor) {
-    let settings = AppSettings()
-    settings.dashboardColumns = AppSettings.dashboardColumnRange.lowerBound
-    settings.processCount = 5
+    let settings = makeTestSettings()
+    seedSettingsValues(into: settings)
     let monitor = SystemMonitor(settings: settings)
     return (settings, monitor)
 }
 
 @MainActor
 private func makeSeededMonitor() -> SystemMonitor {
-    let monitor = SystemMonitor(settings: AppSettings())
+    let settings = makeTestSettings()
+    seedSettingsValues(into: settings)
+    let monitor = SystemMonitor(settings: settings)
     seedMonitorSnapshotData(into: monitor)
     return monitor
 }

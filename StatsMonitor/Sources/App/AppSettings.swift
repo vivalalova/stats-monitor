@@ -5,6 +5,9 @@ import ServiceManagement
 @Observable
 @MainActor
 final class AppSettings {
+    typealias LaunchAtLoginStateProvider = @MainActor () -> Bool
+    typealias LaunchAtLoginHandler = @MainActor (Bool) -> Void
+
     static let defaultDashboardColumns = 4
     static let dashboardColumnRange = 3...6
 
@@ -14,6 +17,10 @@ final class AppSettings {
         ("2 min (120)", 120),
         ("5 min (300)", 300),
     ]
+
+    private let defaults: UserDefaults
+    private let launchAtLoginHandler: LaunchAtLoginHandler
+    private var isHydrating = false
 
     var pollInterval:     Double = 2.0 { didSet { persist("pollInterval",     pollInterval) } }
     var historyCapacity:  Int    = 120 { didSet { persist("historyCapacity",  historyCapacity) } }
@@ -30,15 +37,26 @@ final class AppSettings {
     var showPower:   Bool = true { didSet { persist("showPower",   showPower) } }
     var showFans:    Bool = true { didSet { persist("showFans",    showFans) } }
 
-    var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled {
+    var launchAtLogin: Bool = false {
         didSet {
-            if launchAtLogin { try? SMAppService.mainApp.register() }
-            else             { try? SMAppService.mainApp.unregister() }
+            guard !isHydrating else { return }
+            launchAtLoginHandler(launchAtLogin)
         }
     }
 
-    init() {
-        let ud = UserDefaults.standard
+    init(
+        defaults: UserDefaults = .standard,
+        launchAtLoginStateProvider: LaunchAtLoginStateProvider = { SMAppService.mainApp.status == .enabled },
+        launchAtLoginHandler: @escaping LaunchAtLoginHandler = { enabled in
+            if enabled { try? SMAppService.mainApp.register() }
+            else       { try? SMAppService.mainApp.unregister() }
+        }
+    ) {
+        self.defaults = defaults
+        self.launchAtLoginHandler = launchAtLoginHandler
+
+        isHydrating = true
+        let ud = defaults
         ud.register(defaults: [
             "pollInterval": 2.0,  "historyCapacity": 120, "processCount": 10, "dashboardColumns": Self.defaultDashboardColumns,
             "showCPU": true, "showGPU": true, "showMemory": true, "showDisk": true, "showNetwork": true,
@@ -57,10 +75,13 @@ final class AppSettings {
         showThermal = ud.bool(forKey: "showThermal")
         showPower   = ud.bool(forKey: "showPower")
         showFans    = ud.bool(forKey: "showFans")
+        launchAtLogin = launchAtLoginStateProvider()
+        isHydrating = false
     }
 
     private func persist(_ key: String, _ value: Any) {
-        UserDefaults.standard.set(value, forKey: key)
+        guard !isHydrating else { return }
+        defaults.set(value, forKey: key)
     }
 
     private static func clampDashboardColumns(_ value: Int) -> Int {

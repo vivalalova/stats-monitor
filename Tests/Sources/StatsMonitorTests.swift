@@ -263,7 +263,7 @@ struct PowerMonitorTests {
 struct SystemMonitorPresentationTests {
 
     private func makeMonitor() -> SystemMonitor {
-        SystemMonitor(settings: AppSettings())
+        SystemMonitor(settings: makeTestSettings())
     }
 
     // MARK: - Lifecycle
@@ -499,7 +499,7 @@ struct SystemMonitorTests {
 
     @Test("record appends raw samples and latest display reads from history")
     func recordAppendsRawSamplesAndDisplaysLatest() {
-        let monitor = SystemMonitor(settings: AppSettings())
+        let monitor = SystemMonitor(settings: makeTestSettings())
 
         monitor.record(cpu: CPUUsage(user: 8.5, system: 4.0, idle: 87.5, perCore: [], coreFrequencies: []))
         monitor.record(cpu: CPUUsage(user: 10.0, system: 8.0, idle: 82.0, perCore: [], coreFrequencies: []))
@@ -525,7 +525,7 @@ struct SystemMonitorTests {
 
     @Test("history-derived values stay at defaults until a history sample is recorded")
     func historyDerivedValuesStayAtDefaultsWithoutHistorySample() {
-        let monitor = SystemMonitor(settings: AppSettings())
+        let monitor = SystemMonitor(settings: makeTestSettings())
 
         #expect(monitor.cpuPercent == "0.0%")
         #expect(monitor.networkInText == "0 KB/s")
@@ -536,7 +536,7 @@ struct SystemMonitorTests {
 
     @Test("padded history zero-fills until enough raw samples arrive")
     func paddedHistoryZeroFillsBeforeCapacityIsReached() {
-        let settings = AppSettings()
+        let settings = makeTestSettings()
         settings.historyCapacity = 4
         let monitor = SystemMonitor(settings: settings)
 
@@ -550,7 +550,7 @@ struct SystemMonitorTests {
 
     @Test("historyCapacity changes recreate buffers without a view-model adapter")
     func historyCapacityChangeRecreatesBuffersViaSettingsObservation() async throws {
-        let settings = AppSettings()
+        let settings = makeTestSettings()
         settings.historyCapacity = 60
         let monitor = SystemMonitor(settings: settings)
 
@@ -566,19 +566,10 @@ struct SystemMonitorTests {
 
     @Test("resetHistories keeps current buffers until historyCapacity changes, then recreates them")
     func resetHistoriesRecreatesBuffersOnCapacityChange() {
-        let defaults = UserDefaults.standard
+        let defaults = makeTestDefaults()
         let key = "historyCapacity"
-        let originalValue = defaults.object(forKey: key)
-        defer {
-            if let originalValue {
-                defaults.set(originalValue, forKey: key)
-            } else {
-                defaults.removeObject(forKey: key)
-            }
-        }
-
         defaults.set(60, forKey: key)
-        let settings = AppSettings()
+        let settings = makeTestSettings(defaults: defaults)
         let monitor = SystemMonitor(settings: settings)
         monitor.start()
         defer { monitor.stop() }
@@ -627,47 +618,28 @@ struct SettingsWindowTests {
 struct DashboardToolbarTests {
     @Test("dashboard column default comes from app settings contract")
     func dashboardColumnDefault() {
-        let defaults = UserDefaults.standard
+        let defaults = makeTestDefaults()
         let key = "dashboardColumns"
-        let originalValue = defaults.object(forKey: key)
-        defer {
-            if let originalValue {
-                defaults.set(originalValue, forKey: key)
-            } else {
-                defaults.removeObject(forKey: key)
-            }
-        }
-
         defaults.removeObject(forKey: key)
-
-        let settings = AppSettings()
+        let settings = makeTestSettings(defaults: defaults)
 
         #expect(settings.dashboardColumns == AppSettings.defaultDashboardColumns)
     }
 
     @Test("dashboard column restores persisted values within supported range")
     func dashboardColumnRestoreClampsOutOfRangeValues() {
-        let defaults = UserDefaults.standard
+        let defaults = makeTestDefaults()
         let key = "dashboardColumns"
-        let originalValue = defaults.object(forKey: key)
-        defer {
-            if let originalValue {
-                defaults.set(originalValue, forKey: key)
-            } else {
-                defaults.removeObject(forKey: key)
-            }
-        }
-
         defaults.set(2, forKey: key)
-        #expect(AppSettings().dashboardColumns == AppSettings.dashboardColumnRange.lowerBound)
+        #expect(makeTestSettings(defaults: defaults).dashboardColumns == AppSettings.dashboardColumnRange.lowerBound)
 
         defaults.set(7, forKey: key)
-        #expect(AppSettings().dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
+        #expect(makeTestSettings(defaults: defaults).dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
     }
 
     @Test("all supported menu bar monitor items default to visible")
     func monitorItemVisibilityDefaults() {
-        let defaults = UserDefaults.standard
+        let defaults = makeTestDefaults()
         let keys = [
             "showCPU",
             "showGPU",
@@ -679,24 +651,10 @@ struct DashboardToolbarTests {
             "showPower",
             "showFans",
         ]
-        let originalValues = keys.reduce(into: [String: Any?]()) { values, key in
-            values[key] = defaults.object(forKey: key)
-        }
-        defer {
-            for key in keys {
-                if let value = originalValues[key] ?? nil {
-                    defaults.set(value, forKey: key)
-                } else {
-                    defaults.removeObject(forKey: key)
-                }
-            }
-        }
-
         for key in keys {
             defaults.removeObject(forKey: key)
         }
-
-        let settings = AppSettings()
+        let settings = makeTestSettings(defaults: defaults)
 
         #expect(settings.showCPU)
         #expect(settings.showGPU)
@@ -711,18 +669,8 @@ struct DashboardToolbarTests {
 
     @Test("columns slider binding reflects and rounds dashboard column count")
     func columnsSliderBindingRoundsToNearestWholeNumber() {
-        let defaults = UserDefaults.standard
-        let key = "dashboardColumns"
-        let originalValue = defaults.object(forKey: key)
-        defer {
-            if let originalValue {
-                defaults.set(originalValue, forKey: key)
-            } else {
-                defaults.removeObject(forKey: key)
-            }
-        }
-
-        let settings = AppSettings()
+        let defaults = makeTestDefaults()
+        let settings = makeTestSettings(defaults: defaults)
         settings.dashboardColumns = AppSettings.dashboardColumnRange.lowerBound
 
         let binding = DashboardColumnsSlider.binding(for: settings)
@@ -737,6 +685,29 @@ struct DashboardToolbarTests {
 
         binding.wrappedValue = 7.2
         #expect(settings.dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
+    }
+
+    @Test("isolated settings writes do not leak into standard defaults")
+    func isolatedSettingsDoNotPolluteStandardDefaults() {
+        let standardDefaults = UserDefaults.standard
+        let key = "historyCapacity"
+        let originalValue = standardDefaults.object(forKey: key)
+        defer {
+            if let originalValue {
+                standardDefaults.set(originalValue, forKey: key)
+            } else {
+                standardDefaults.removeObject(forKey: key)
+            }
+        }
+
+        standardDefaults.set(60, forKey: key)
+
+        let defaults = makeTestDefaults()
+        let settings = makeTestSettings(defaults: defaults)
+        settings.historyCapacity = 300
+
+        #expect(defaults.integer(forKey: key) == 300)
+        #expect(standardDefaults.integer(forKey: key) == 60)
     }
 }
 
@@ -769,7 +740,7 @@ struct StatusBarTests {
 
     @Test("status bar label renderer builds one segment per enabled monitor")
     func statusBarLabelRendererBuildsExpectedSegments() {
-        let settings = AppSettings()
+        let settings = makeTestSettings()
         settings.showCPU = true
         settings.showGPU = false
         settings.showMemory = true
@@ -810,7 +781,7 @@ struct StatusBarTests {
 
     @Test("status bar hit testing follows rendered segment widths instead of equal slots")
     func statusBarHitTestingUsesMeasuredWidths() {
-        let settings = AppSettings()
+        let settings = makeTestSettings()
         settings.showCPU = true
         settings.showGPU = false
         settings.showMemory = false
