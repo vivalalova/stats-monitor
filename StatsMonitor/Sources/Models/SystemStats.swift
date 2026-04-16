@@ -1,23 +1,6 @@
 import Foundation
 import Util
 
-struct SystemStats: Sendable {
-    var cpu: CPUUsage = .zero
-    var gpu: GPUUsage = .zero
-    var memory: MemoryUsage = .zero
-    var disk: DiskUsage = .zero
-    var network: NetworkUsage = .zero
-    var battery: BatteryUsage? = nil    // nil on desktop Macs (no battery hardware)
-    var thermal: ThermalUsage? = nil    // nil when SMC is unavailable or all keys fail
-    var power:   PowerUsage?   = nil    // nil when IOReport unavailable (non-Apple Silicon)
-    var fans: [FanUsage] = []           // empty on fanless Macs (e.g. MacBook Air M-series)
-    var topCPUProcesses: [ProcInfo] = []
-    var topGPUProcesses: [GPUProcessInfo] = []
-    var topMemoryProcesses: [ProcInfo] = []
-    var topDiskProcesses: [ProcInfo] = []
-    var topNetworkProcesses: [ProcInfo] = []
-}
-
 struct CPUCoreFrequency: Sendable {
     var currentHz: UInt64   // 0 = unavailable
     var maxHz: UInt64       // 0 = unavailable

@@ -34,11 +34,6 @@ struct DetailToolbar: View {
     @Environment(\.openWindow) private var openWindow
     @State private var quitConfirmation = QuitConfirmationController()
 
-    init(title: LocalizedStringKey, quitConfirmation: QuitConfirmationController = QuitConfirmationController()) {
-        self.title = title
-        _quitConfirmation = State(initialValue: quitConfirmation)
-    }
-
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             Text(title)

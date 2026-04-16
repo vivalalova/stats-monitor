@@ -51,11 +51,11 @@ extension SystemMonitor {
         appendMenuBarItem(to: &items, isVisible: settings.showCPU, panel: .cpu, symbol: "cpu", text: cpuPercent)
         appendMenuBarItem(to: &items, isVisible: settings.showGPU, panel: .gpu, symbol: "display", text: gpuPercent)
         appendMenuBarItem(to: &items, isVisible: settings.showMemory, panel: .memory, symbol: "memorychip", text: memoryPercent)
-        appendMenuBarItem(to: &items, isVisible: settings.showDisk, panel: .disk, symbol: "internaldrive", text: diskMenuText)
+        appendMenuBarItem(to: &items, isVisible: settings.showDisk, panel: .disk, symbol: "internaldrive", text: diskActivityText)
         appendMenuBarItem(to: &items, isVisible: settings.showNetwork, panel: .network, symbol: "network", text: networkInText)
         appendMenuBarItem(
             to: &items,
-            isVisible: settings.showPowerPanel && hasPowerPanel,
+            isVisible: settings.showPowerPanel && hasPower,
             panel: .power,
             symbol: powerMenuSymbol,
             text: powerMenuText

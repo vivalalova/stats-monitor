@@ -26,10 +26,11 @@ tuist clean         # 清理
 ```
 StatsMonitor/Sources/
   App/
-    StatsMonitorApp.swift     # MenuBarExtra scene + window management
-    AppSettings.swift         # @Observable 使用者設定，UserDefaults 持久化
+    StatsMonitorApp.swift              # MenuBarExtra scene + window management
+    AppSettings.swift                  # @Observable 使用者設定，UserDefaults 持久化
+    QuitConfirmationController.swift   # 退出確認流程（AppTerminationGate、QuitConfirmationController）
   Models/
-    SystemStats.swift         # 所有資料結構（CPUUsage/MemoryUsage/DiskUsage/…）
+    SystemStats.swift         # 硬體資料結構（CPUUsage/MemoryUsage/DiskUsage/…；無 SystemStats 容器）
   Services/
     SystemMonitor.swift       # 單一 @Observable store，集中管理 raw sample histories，current 由 history.last 推導
     CPUMonitor.swift          # host_processor_info
@@ -53,13 +54,16 @@ StatsMonitor/Sources/
     SettingsView.swift        # Settings 視窗 NavigationSplitView（三分頁）
     AboutView.swift           # About 分頁（版本資訊 + 系統規格）
     Detail/
-      DetailPanel.swift       # 點擊 menu bar 展開的 popover 容器
-      CPUDetailView.swift     # CPU 詳細（用量、每核心、頻率、熱門行程）
-      GPUDetailView.swift     # GPU 詳細（Device/Renderer/VRAM/ANE/Engines）
-      MemoryDetailView.swift  # Memory 詳細（Used/Active/Wired/Compressed/行程）
-      DiskDetailView.swift    # Disk 詳細（IO throughput/Used/Free/Total/行程）
-      NetworkDetailView.swift # Network 詳細（In/Out throughput/行程）
-      Helpers.swift           # statRow/sectionHeader/detailToolbar/BarView 等共用元件
+      DetailPanel.swift           # 點擊 menu bar 展開的 popover 容器
+      CPUDetailView.swift         # CPU 詳細（用量、每核心、頻率、熱門行程）
+      GPUDetailView.swift         # GPU 詳細（Device/Renderer/VRAM/ANE/Engines）
+      MemoryDetailView.swift      # Memory 詳細（Used/Active/Wired/Compressed/行程）
+      DiskDetailView.swift        # Disk 詳細（IO throughput/Used/Free/Total/行程）
+      NetworkDetailView.swift     # Network 詳細（In/Out throughput/行程）
+      ThermalDetailView.swift     # Thermal 詳細（溫度歷史圖、CPU/GPU 溫度、風扇統計）
+      PowerDetailView.swift       # Power 詳細（功耗歷史圖、CPU/GPU/整機功率、電池充放電）
+      FansDetailView.swift        # Fans 詳細（平均 RPM 歷史圖、各風扇 RPM 範圍）
+      DetailComponents.swift      # statRow/sectionHeader/detailToolbar/BarView 等共用元件
 StatsMonitor/Resources/
   Assets.xcassets             # App 圖示
   Localizable.xcstrings       # String Catalog（en 為 sourceLanguage，含 zh-Hant 翻譯）
@@ -69,7 +73,6 @@ Packages/Util/
   Sources/Util/
     Formatters.swift          # formatBytes / formatBytesCompact / formatThroughput / ghzString
     RingBuffer.swift          # 固定容量 O(1) 環形緩衝（history 用）
-    Util.swift                # Package entry（re-export）
 ```
 
 ## AppSettings — UserDefaults Keys

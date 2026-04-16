@@ -127,6 +127,8 @@ struct ProcessMonitor: Sendable {
         return parseTopPowerOutput(output)
     }
 
+    private static let topPowerRegex = try! NSRegularExpression(pattern: #"^\s*(\d+)\s+.+\s+([0-9]+(?:\.[0-9]+)?)\s*$"#)
+
     static func parseTopPowerOutput(_ output: String) -> [Int32: Double] {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         guard let lastHeaderIndex = lines.lastIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("PID") }) else {
@@ -134,12 +136,10 @@ struct ProcessMonitor: Sendable {
         }
 
         var powerByPID: [Int32: Double] = [:]
-        let pattern = #"^\s*(\d+)\s+.+\s+([0-9]+(?:\.[0-9]+)?)\s*$"#
-        let regex = try? NSRegularExpression(pattern: pattern)
+        let regex = Self.topPowerRegex
 
         for line in lines[(lastHeaderIndex + 1)...] {
             let rawLine = String(line)
-            guard let regex else { break }
             let range = NSRange(rawLine.startIndex..<rawLine.endIndex, in: rawLine)
             guard let match = regex.firstMatch(in: rawLine, range: range),
                   let pidRange = Range(match.range(at: 1), in: rawLine),

@@ -98,7 +98,6 @@ extension SystemMonitor {
     var diskReadText: String { formatThroughput(currentDisk.readBPS) }
     var diskWriteText: String { formatThroughput(currentDisk.writeBPS) }
     var diskActivityText: String { formatThroughput(currentDisk.readBPS + currentDisk.writeBPS) }
-    var diskMenuText: String { diskActivityText }
     var paddedDiskHistory: [Double] { padded(diskSamples.values.map { $0.usedFraction * 100 }, capacity: diskSamples.capacity) }
     var paddedDiskReadHistory: [Double] { padded(diskSamples.values.map(\.readBPS), capacity: diskSamples.capacity) }
     var paddedDiskWriteHistory: [Double] { padded(diskSamples.values.map(\.writeBPS), capacity: diskSamples.capacity) }
@@ -112,7 +111,6 @@ extension SystemMonitor {
 
     var power: PowerUsage? { powerSamples.current }
     var hasPower: Bool { power != nil }
-    var hasPowerPanel: Bool { hasPower }
     var paddedPowerHistory: [Double] { padded(powerSamples.values.map(\.totalWatts), capacity: powerSamples.capacity) }
     var powerText: String {
         guard let power else { return "N/A" }
@@ -159,11 +157,7 @@ extension SystemMonitor {
         guard let battery else { return "" }
         if battery.isCharging { return "Charging" }
         if battery.isPluggedIn { return "Plugged In" }
-        if let mins = battery.timeRemaining {
-            let hours = mins / 60
-            let minutes = mins % 60
-            return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
-        }
+        if let mins = battery.timeRemaining { return formatMinutes(mins) }
         return "On Battery"
     }
     var batteryHealthText: String {
@@ -178,9 +172,7 @@ extension SystemMonitor {
         guard let battery else { return "" }
         guard !battery.isCharging, !battery.isPluggedIn else { return batteryStatusText }
         guard let mins = battery.timeRemaining else { return "Estimating" }
-        let hours = mins / 60
-        let minutes = mins % 60
-        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
+        return formatMinutes(mins)
     }
     var batteryMaxCapacityText: String {
         guard let battery else { return "" }
@@ -276,6 +268,12 @@ extension SystemMonitor {
     func formatProcessPower(_ process: ProcInfo) -> String { String(format: "%.1f impact", process.powerImpact) }
     func fanRPMText(_ fan: FanUsage) -> String { String(format: "%.0f RPM", fan.currentRPM) }
     func fanRangeText(_ fan: FanUsage) -> String { String(format: "%.0f–%.0f RPM", fan.minRPM, fan.maxRPM) }
+
+    private func formatMinutes(_ mins: Int) -> String {
+        let hours = mins / 60
+        let minutes = mins % 60
+        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
+    }
 
     private func formatPercent(_ value: Double) -> String {
         String(format: "%.1f%%", value)
