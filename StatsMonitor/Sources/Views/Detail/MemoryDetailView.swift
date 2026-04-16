@@ -16,10 +16,10 @@ struct MemoryDetailView: View {
                 ("Wired", monitor.memoryWiredText),
                 ("Compressed", monitor.memoryCompressedText),
             ])
-            DetailMetricSection(title: "System", rows: [
+            DetailMetricSection(title: "System", rows: availableDetailMetrics([
                 ("Temperature", monitor.cpuTempText),
                 ("System Power", monitor.powerText),
-            ])
+            ]))
             DetailListSection(
                 "Top Processes",
                 data: Array(monitor.topMemoryProcesses.enumerated()),

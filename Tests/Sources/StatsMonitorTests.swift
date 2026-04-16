@@ -168,6 +168,94 @@ struct StatsMonitorTests {
     }
 }
 
+@Suite("BatteryMonitor")
+struct BatteryMonitorTests {
+
+    @Test("prefers nominal capacity when reported max capacity is a percentage scale")
+    func prefersNominalCapacityForMilliampHours() {
+        let usage = BatteryMonitor.parseUsage(from: [
+            "CurrentCapacity": 80,
+            "MaxCapacity": 100,
+            "NominalChargeCapacity": 4161,
+            "AppleRawMaxCapacity": 4034,
+            "DesignCapacity": 4563,
+            "IsCharging": false,
+            "ExternalConnected": true,
+            "CycleCount": 127,
+            "TimeRemaining": 65535,
+        ])
+
+        #expect(usage != nil)
+        #expect(usage?.percentage == 80)
+        #expect(usage?.maxCapacity == 4161)
+        #expect(usage?.designCapacity == 4563)
+        #expect(usage?.cycleCount == 127)
+        #expect(usage?.timeRemaining == nil)
+        #expect((usage?.health ?? 0) > 90)
+    }
+
+    @Test("falls back to reported mAh capacity when nominal capacity is unavailable")
+    func fallsBackToReportedCapacity() {
+        let usage = BatteryMonitor.parseUsage(from: [
+            "CurrentCapacity": 2400,
+            "MaxCapacity": 3000,
+            "DesignCapacity": 3200,
+            "IsCharging": true,
+            "ExternalConnected": true,
+            "CycleCount": 20,
+            "TimeRemaining": 45,
+        ])
+
+        #expect(usage != nil)
+        #expect(usage?.percentage == 80)
+        #expect(usage?.maxCapacity == 3000)
+        #expect(usage?.designCapacity == 3200)
+        #expect(usage?.health == 93.75)
+        #expect(usage?.timeRemaining == 45)
+    }
+}
+
+@Suite("ThermalMonitor")
+struct ThermalMonitorTests {
+
+    @Test("rejects denormal sensor values that round to zero")
+    func rejectsNearZeroSensorNoise() {
+        #expect(ThermalMonitor.sanitizeTemperature(0.00000000014764814) == nil)
+        #expect(ThermalMonitor.sanitizeTemperature(-0.003) == nil)
+    }
+
+    @Test("keeps plausible thermal readings")
+    func keepsPlausibleTemperatures() {
+        #expect(ThermalMonitor.sanitizeTemperature(34.5) == 34.5)
+        #expect(ThermalMonitor.sanitizeTemperature(92.0) == 92.0)
+    }
+}
+
+@Suite("PowerMonitor")
+struct PowerMonitorTests {
+
+    @Test("prefers system load from battery telemetry when available")
+    func prefersSystemLoadTelemetry() {
+        let milliWatts = PowerMonitor.telemetryTotalMilliWatts(from: [
+            "SystemLoad": 24_085,
+            "SystemPowerIn": 12_420,
+            "BatteryPower": UInt64.max - 11_664
+        ])
+
+        #expect(milliWatts == 24_085)
+    }
+
+    @Test("derives total load from adapter plus battery discharge when system load is missing")
+    func derivesTotalLoadFromSources() {
+        let milliWatts = PowerMonitor.telemetryTotalMilliWatts(from: [
+            "SystemPowerIn": 12_420,
+            "BatteryPower": UInt64.max - 11_664
+        ])
+
+        #expect(milliWatts == 24_085)
+    }
+}
+
 // MARK: - SystemMonitor Presentation Tests
 
 @Suite("SystemMonitor Presentation")

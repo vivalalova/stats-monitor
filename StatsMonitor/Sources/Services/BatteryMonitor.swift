@@ -19,30 +19,52 @@ struct BatteryMonitor {
               let dict = props?.takeRetainedValue() as? [String: Any]
         else { return nil }
 
-        // CurrentCapacity and MaxCapacity are the minimum required fields
-        guard let current = dict["CurrentCapacity"] as? Int,
-              let maxCap  = dict["MaxCapacity"]      as? Int,
-              maxCap > 0
+        return Self.parseUsage(from: dict)
+    }
+
+    static func parseUsage(from dict: [String: Any]) -> BatteryUsage? {
+        guard let current = positiveInt(from: dict["CurrentCapacity"]),
+              let reportedMax = positiveInt(from: dict["MaxCapacity"])
         else { return nil }
 
-        let designCap   = dict["DesignCapacity"]    as? Int ?? maxCap
+        let designCap = positiveInt(from: dict["DesignCapacity"]) ?? reportedMax
+        let nominalMaxCapacity = positiveInt(from: dict["NominalChargeCapacity"])
+        let rawMaxCapacity = positiveInt(from: dict["AppleRawMaxCapacity"])
+        let maxCap = nominalMaxCapacity
+            ?? rawMaxCapacity
+            ?? (reportedMax > 100 ? reportedMax : nil)
+            ?? reportedMax
+
+        let safeDesign = designCap > 0 ? designCap : maxCap
         let isCharging  = dict["IsCharging"]        as? Bool ?? false
         let isPluggedIn = dict["ExternalConnected"] as? Bool ?? false
         let cycleCount  = dict["CycleCount"]        as? Int ?? 0
-        let rawRemain   = dict["TimeRemaining"]     as? Int  // 65535 = estimating
+        let rawRemain   = dict["TimeRemaining"]     as? Int
+        let timeRemaining = validTimeRemaining(rawRemain)
 
-        let timeRemaining: Int? = (rawRemain == nil || rawRemain == 65535) ? nil : rawRemain
-
-        let safeDesign = designCap > 0 ? designCap : maxCap
         return BatteryUsage(
-            percentage:     max(0, min(Double(current) / Double(maxCap) * 100.0, 100.0)),
+            percentage:     clamp(Double(current) / Double(reportedMax) * 100.0),
             isCharging:     isCharging,
             isPluggedIn:    isPluggedIn,
             timeRemaining:  timeRemaining,
             cycleCount:     cycleCount,
             designCapacity: safeDesign,
             maxCapacity:    maxCap,
-            health:         max(0, min(Double(maxCap) / Double(safeDesign) * 100.0, 100.0))
+            health:         clamp(Double(maxCap) / Double(safeDesign) * 100.0)
         )
+    }
+
+    private static func positiveInt(from value: Any?) -> Int? {
+        guard let value = value as? Int, value > 0 else { return nil }
+        return value
+    }
+
+    private static func validTimeRemaining(_ rawValue: Int?) -> Int? {
+        guard let rawValue, rawValue >= 0, rawValue != 65535 else { return nil }
+        return rawValue
+    }
+
+    private static func clamp(_ percentage: Double) -> Double {
+        max(0, min(percentage, 100))
     }
 }

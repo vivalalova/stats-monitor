@@ -13,10 +13,10 @@ struct ThermalDetailView: View {
                 ("GPU", monitor.gpuTempText),
                 ("Summary", monitor.thermalSummaryText),
             ])
-            DetailMetricSection(title: "System", rows: [
+            DetailMetricSection(title: "System", rows: availableDetailMetrics([
                 ("System Power", monitor.powerText),
                 ("Fans", monitor.fansSummaryText),
-            ])
+            ]))
         }
     }
 

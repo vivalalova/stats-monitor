@@ -17,10 +17,10 @@ struct BatteryDetailView: View {
                 ("Max Capacity", monitor.batteryMaxCapacityText),
                 ("Design Capacity", monitor.batteryDesignCapacityText),
             ])
-            DetailMetricSection(title: "System", rows: [
+            DetailMetricSection(title: "System", rows: availableDetailMetrics([
                 ("Temperature", monitor.cpuTempText),
                 ("Power Draw", monitor.powerText),
-            ])
+            ]))
         }
     }
 }

@@ -2,16 +2,18 @@ import Foundation
 
 struct ThermalMonitor {
     private let smc: SMCClient
+    private static let plausibleTemperatureRange = 10.0...130.0
 
     init(smc: SMCClient) { self.smc = smc }
 
     /// Returns nil when SMC is unavailable or all known keys fail.
     func sample() -> ThermalUsage? {
         guard smc.isAvailable else { return nil }
+        // Apple Silicon does not expose a verified public CPU/GPU temperature map here.
+        // Returning nil is more honest than rendering unvalidated SMC guesses as real values.
+        guard !smc.isAppleSilicon else { return nil }
 
-        let cpuTemp = smc.isAppleSilicon
-            ? readAppleSiliconCPUTemp()
-            : readIntelCPUTemp()
+        let cpuTemp = readIntelCPUTemp()
         guard let cpuTemp else { return nil }
 
         return ThermalUsage(
@@ -22,25 +24,22 @@ struct ThermalMonitor {
 
     // MARK: - Private
 
-    /// Apple Silicon: try all known P-core cluster keys, return maximum (proxy for package temp).
-    /// Keys with 0x0000 (= 0.0 °C) are unpopulated sensor slots — filter them out.
-    private func readAppleSiliconCPUTemp() -> Double? {
-        let keys = ["Tp09", "Tp0T", "Tp01", "Tp05", "Tp0D", "Tp0b", "Tp0j",
-                    "Tp0L", "Tp0P", "Tp0X", "Tp0d", "Tp0h", "Tp0l", "Tp0p"]
-        let readings = keys.compactMap { smc.readTemperature($0) }.filter { $0 > 0 }
-        return readings.isEmpty ? nil : readings.max()
-    }
-
     /// Intel: try keys in order, return first valid reading.
     private func readIntelCPUTemp() -> Double? {
         let keys = ["TC0P", "TC0H", "TC0D", "TC1C", "TCXC"]
-        return keys.lazy.compactMap { smc.readTemperature($0) }.first
+        return keys.lazy.compactMap { Self.sanitizeTemperature(smc.readTemperature($0)) }.first
     }
 
     private func readGPUTemp() -> Double? {
         let keys = smc.isAppleSilicon
             ? ["Tg0P", "Tg0p", "Tg0H", "TG0P"]
             : ["TG0P", "TG0H", "TGDD"]
-        return keys.lazy.compactMap { smc.readTemperature($0) }.first
+        return keys.lazy.compactMap { Self.sanitizeTemperature(smc.readTemperature($0)) }.first
+    }
+
+    static func sanitizeTemperature(_ value: Double?) -> Double? {
+        guard let value, value.isFinite else { return nil }
+        guard plausibleTemperatureRange.contains(value) else { return nil }
+        return value
     }
 }

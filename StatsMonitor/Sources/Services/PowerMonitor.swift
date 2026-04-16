@@ -1,4 +1,5 @@
 import Foundation
+import IOKit
 
 /// Reads CPU / GPU / total package power from IOReport Energy Model.
 /// Same IOReport subscription pattern as ANEMonitor.
@@ -37,6 +38,39 @@ final class PowerMonitor: @unchecked Sendable {
 
     /// Returns power usage in milliwatts for the last poll interval.
     func sample(intervalSeconds: Double) -> PowerUsage? {
+        let ioReportUsage = sampleIOReport(intervalSeconds: intervalSeconds)
+        if let telemetryTotal = Self.telemetryTotalMilliWatts(fromBatteryProperties: Self.readBatteryProperties()) {
+            return PowerUsage(
+                cpuMilliWatts: ioReportUsage?.cpuMilliWatts ?? 0,
+                gpuMilliWatts: ioReportUsage?.gpuMilliWatts ?? 0,
+                totalMilliWatts: telemetryTotal
+            )
+        }
+
+        return ioReportUsage
+    }
+
+    static func telemetryTotalMilliWatts(fromBatteryProperties properties: [String: Any]?) -> Double? {
+        guard let telemetry = properties?["PowerTelemetryData"] as? [String: Any] else { return nil }
+        return telemetryTotalMilliWatts(from: telemetry)
+    }
+
+    static func telemetryTotalMilliWatts(from telemetry: [String: Any]) -> Double? {
+        if let errorCount = nonNegativeDouble(from: telemetry["PowerTelemetryErrorCount"]), errorCount > 0 {
+            return nil
+        }
+
+        if let systemLoad = nonNegativeDouble(from: telemetry["SystemLoad"]), systemLoad > 0 {
+            return systemLoad
+        }
+
+        let systemPowerIn = nonNegativeDouble(from: telemetry["SystemPowerIn"]) ?? 0
+        let batteryContribution = signedDouble(from: telemetry["BatteryPower"]).map { min($0, 0).magnitude } ?? 0
+        let derivedTotal = systemPowerIn + batteryContribution
+        return derivedTotal > 0 ? derivedTotal : nil
+    }
+
+    private func sampleIOReport(intervalSeconds: Double) -> PowerUsage? {
         guard let sub = subscription,
               let createSamples = _createSamples,
               let createDelta   = _createDelta,
@@ -62,8 +96,10 @@ final class PowerMonitor: @unchecked Sendable {
         // that share the same group but return data in different units.
         let cpuNames: Set<String> = ["CPU", "ECPU", "PCPU", "ECORE", "PCORE"]
         let gpuNames: Set<String> = ["GPU"]
-        let otherNames: Set<String> = ["ANE", "DRAM", "Pbridge0", "Pbridge1",
-                                       "DCS0", "DCS1", "ISP", "SEP", "NAND"]
+        let otherNames: Set<String> = [
+            "AMCC", "AVE", "DCS", "DISP", "DISPEXT", "DRAM", "GPU SRAM",
+            "ISP", "MSR", "NAND", "Pbridge0", "Pbridge1", "SEP", "SOC_AON", "SOC_REST"
+        ]
 
         var cpuMJ:   Int64 = 0
         var gpuMJ:   Int64 = 0
@@ -113,6 +149,54 @@ final class PowerMonitor: @unchecked Sendable {
     private static func sym<T>(_ lib: UnsafeMutableRawPointer, _ name: String) -> T? {
         guard let ptr = dlsym(lib, name) else { return nil }
         return unsafeBitCast(ptr, to: T.self)
+    }
+
+    private static func readBatteryProperties() -> [String: Any]? {
+        let service = IOServiceGetMatchingService(
+            kIOMainPortDefault,
+            IOServiceMatching("AppleSmartBattery")
+        )
+        guard service != IO_OBJECT_NULL else { return nil }
+        defer { IOObjectRelease(service) }
+
+        var props: Unmanaged<CFMutableDictionary>?
+        guard IORegistryEntryCreateCFProperties(
+            service, &props, kCFAllocatorDefault, 0
+        ) == kIOReturnSuccess,
+              let dict = props?.takeRetainedValue() as? [String: Any]
+        else { return nil }
+
+        return dict
+    }
+
+    private static func nonNegativeDouble(from value: Any?) -> Double? {
+        guard let value = numericDouble(from: value), value >= 0 else { return nil }
+        return value
+    }
+
+    private static func signedDouble(from value: Any?) -> Double? {
+        if let value = value as? Int64 { return Double(value) }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? UInt64 { return Double(Int64(bitPattern: value)) }
+        if let number = value as? NSNumber {
+            let text = number.stringValue
+            if let unsigned = UInt64(text) {
+                return Double(Int64(bitPattern: unsigned))
+            }
+            if let signed = Int64(text) {
+                return Double(signed)
+            }
+        }
+        return nil
+    }
+
+    private static func numericDouble(from value: Any?) -> Double? {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? Int64 { return Double(value) }
+        if let value = value as? UInt64 { return Double(value) }
+        if let number = value as? NSNumber { return Double(number.stringValue) }
+        return nil
     }
 
     // MARK: - C function types

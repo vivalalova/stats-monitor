@@ -101,6 +101,10 @@ struct DetailPanelContent<Content: View>: View {
 
 typealias DetailMetric = (label: LocalizedStringKey, value: String)
 
+func availableDetailMetrics(_ rows: [DetailMetric]) -> [DetailMetric] {
+    rows.filter { !$0.value.isEmpty && $0.value != "N/A" && $0.value != "—" }
+}
+
 struct DetailChart: View {
     let lines: [(history: [Double], color: Color)]
     var maxValue: Double?

@@ -20,10 +20,10 @@ struct DiskDetailView: View {
                 ("Free", monitor.diskFreeText),
                 ("Total", monitor.diskTotalText),
             ])
-            DetailMetricSection(title: "System", rows: [
+            DetailMetricSection(title: "System", rows: availableDetailMetrics([
                 ("Temperature", monitor.cpuTempText),
                 ("System Power", monitor.powerText),
-            ])
+            ]))
             DetailListSection(
                 "Top Processes",
                 data: Array(monitor.topDiskProcesses.enumerated()),

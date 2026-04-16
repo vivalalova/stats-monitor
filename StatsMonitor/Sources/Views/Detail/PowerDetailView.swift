@@ -14,11 +14,11 @@ struct PowerDetailView: View {
                 ("GPU", monitor.gpuPowerText),
                 ("Neural Engine", monitor.anePowerText),
             ])
-            DetailMetricSection(title: "Thermals", rows: [
+            DetailMetricSection(title: "Thermals", rows: availableDetailMetrics([
                 ("CPU Temp", monitor.cpuTempText),
                 ("GPU Temp", monitor.gpuTempText),
                 ("Fans", monitor.fansSummaryText),
-            ])
+            ]))
         }
     }
 }

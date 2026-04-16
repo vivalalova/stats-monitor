@@ -15,11 +15,11 @@ struct FansDetailView: View {
                 ("Average", monitor.fansSummaryText),
                 ("Count", monitor.fanCountText),
             ])
-            DetailMetricSection(title: "System", rows: [
+            DetailMetricSection(title: "System", rows: availableDetailMetrics([
                 ("CPU Temp", monitor.cpuTempText),
                 ("GPU Temp", monitor.gpuTempText),
                 ("System Power", monitor.powerText),
-            ])
+            ]))
             DetailListSection("Per Fan", data: Array(monitor.fans.enumerated()), id: \.element.id) { entry in
                 let fan = entry.element
                 statRow(
