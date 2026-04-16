@@ -28,7 +28,7 @@ struct PowerDetailView: View {
                 ("Design Capacity", monitor.batteryDesignCapacityText),
             ]))
             DetailMetricSection(title: "Thermals", rows: availableDetailMetrics([
-                ("CPU Temp", monitor.cpuTempText),
+                ("CPU Temp", monitor.thermalTemperatureStatusText),
                 ("GPU Temp", monitor.gpuTempText),
                 ("Fans", monitor.fansSummaryText),
             ]))

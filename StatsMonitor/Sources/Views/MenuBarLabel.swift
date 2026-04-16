@@ -40,7 +40,7 @@ struct CombinedMenuBarLabel: View {
                 MenuBarItemLabel(icon: monitor.powerMenuSymbol, text: monitor.powerMenuText)
             }
             if settings.showThermal, monitor.hasThermal {
-                MenuBarItemLabel(icon: "thermometer.medium", text: monitor.cpuTempText)
+                MenuBarItemLabel(icon: "thermometer.medium", text: monitor.thermalMenuText)
             }
             if settings.showFans, monitor.hasFans {
                 MenuBarItemLabel(icon: "wind", text: monitor.fansSummaryText)

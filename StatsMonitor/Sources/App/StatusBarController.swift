@@ -70,7 +70,7 @@ final class StatusBarController: NSObject {
             _ = m.cpuPercent; _ = m.gpuPercent; _ = m.memoryPercent
             _ = m.diskMenuText; _ = m.networkInText
             _ = m.hasBattery; _ = m.hasThermal; _ = m.hasPower; _ = m.hasFans
-            _ = m.powerMenuText; _ = m.cpuTempText; _ = m.fansSummaryText
+            _ = m.powerMenuText; _ = m.cpuTempText; _ = m.thermalMenuText; _ = m.thermalPressureText; _ = m.fansSummaryText
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.renderButtonLabel()

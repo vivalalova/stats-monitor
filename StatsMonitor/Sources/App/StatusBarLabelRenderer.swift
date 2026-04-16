@@ -6,10 +6,16 @@ enum StatusBarLabelRenderer {
     private static let symbolPointSize: CGFloat = 11
     private static let textFontSize: CGFloat = 12
 
+    enum SegmentEmphasis: Equatable {
+        case normal
+        case critical
+    }
+
     struct Segment {
         let panel: PanelID
         let symbol: String
         let text: String
+        let emphasis: SegmentEmphasis
     }
 
     static func makeAttributedTitle(monitor: SystemMonitor, settings: AppSettings) -> NSAttributedString {
@@ -20,7 +26,7 @@ enum StatusBarLabelRenderer {
             if index > 0 {
                 result.append(separatorString)
             }
-            result.append(makeSegment(symbol: segment.symbol, text: segment.text))
+            result.append(makeSegment(symbol: segment.symbol, text: segment.text, emphasis: segment.emphasis))
         }
 
         return result
@@ -40,7 +46,14 @@ enum StatusBarLabelRenderer {
             symbol: monitor.powerMenuSymbol,
             text: monitor.powerMenuText
         )
-        appendSegment(to: &segments, isVisible: settings.showThermal && monitor.hasThermal, panel: .thermal, symbol: "thermometer.medium", text: monitor.cpuTempText)
+        appendSegment(
+            to: &segments,
+            isVisible: settings.showThermal && monitor.hasThermal,
+            panel: .thermal,
+            symbol: "thermometer.medium",
+            text: monitor.thermalMenuText,
+            emphasis: monitor.thermalPressureState == .critical ? .critical : .normal
+        )
         appendSegment(to: &segments, isVisible: settings.showFans && monitor.hasFans, panel: .fans, symbol: "wind", text: monitor.fansSummaryText)
         return segments
     }
@@ -75,24 +88,24 @@ enum StatusBarLabelRenderer {
         return segments.last?.panel
     }
 
-    private static func makeSegment(symbol: String, text: String) -> NSAttributedString {
+    private static func makeSegment(symbol: String, text: String, emphasis: SegmentEmphasis) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let attachment = NSTextAttachment()
+        let color = foregroundColor(for: emphasis)
 
-        let configuration = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
         attachment.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(configuration)
+            .withSymbolConfiguration(symbolConfiguration(for: emphasis))
 
         let attachmentString = NSMutableAttributedString(attachment: attachment)
         attachmentString.addAttributes([
             .baselineOffset: -1,
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: color,
         ], range: NSRange(location: 0, length: attachmentString.length))
         result.append(attachmentString)
 
         let textAttributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(ofSize: textFontSize, weight: .regular),
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: color,
         ]
         result.append(NSAttributedString(string: " \(text)", attributes: textAttributes))
         return result
@@ -103,14 +116,37 @@ enum StatusBarLabelRenderer {
         isVisible: Bool,
         panel: PanelID,
         symbol: String,
-        text: String
+        text: String,
+        emphasis: SegmentEmphasis = .normal
     ) {
         guard isVisible else { return }
-        segments.append(Segment(panel: panel, symbol: symbol, text: text))
+        segments.append(Segment(panel: panel, symbol: symbol, text: text, emphasis: emphasis))
     }
 
     private static func segmentWidth(for segment: Segment) -> CGFloat {
-        makeSegment(symbol: segment.symbol, text: segment.text).size().width
+        makeSegment(symbol: segment.symbol, text: segment.text, emphasis: segment.emphasis).size().width
+    }
+
+    private static func foregroundColor(for emphasis: SegmentEmphasis) -> NSColor {
+        switch emphasis {
+        case .normal:
+            return .labelColor
+        case .critical:
+            return .systemRed
+        }
+    }
+
+    private static func symbolConfiguration(for emphasis: SegmentEmphasis) -> NSImage.SymbolConfiguration {
+        let baseConfiguration = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
+
+        switch emphasis {
+        case .normal:
+            return baseConfiguration
+        case .critical:
+            let paletteConfiguration = NSImage.SymbolConfiguration(paletteColors: [.systemRed, .systemOrange])
+            let multicolorConfiguration = NSImage.SymbolConfiguration.preferringMulticolor()
+            return baseConfiguration.applying(paletteConfiguration).applying(multicolorConfiguration)
+        }
     }
 
     private static var separatorString: NSAttributedString {

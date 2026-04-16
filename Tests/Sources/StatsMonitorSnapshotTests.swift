@@ -85,6 +85,18 @@ struct StatsMonitorSnapshotTests {
         }
     }
 
+    @Test("Thermal detail panel shows unavailable temperature when only pressure exists")
+    func thermalDetailPanelUnavailableTemperatureScreenshot() {
+        let settings = makeTestSettings()
+        seedSettingsValues(into: settings)
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(thermalPressureState: .nominal)
+
+        assertDetailPanelSnapshot(named: "thermal-detail-panel-unavailable-temperature") {
+            ThermalDetailView(monitor: monitor)
+        }
+    }
+
     @Test("Power detail panel renders a stable screenshot")
     func powerDetailPanelScreenshot() {
         let monitor = makeSeededMonitor()

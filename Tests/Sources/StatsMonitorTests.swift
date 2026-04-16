@@ -757,6 +757,18 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.fanCountText == "2 fans")
     }
 
+    @Test("thermal display falls back to pressure when no temperature is available")
+    func thermalDisplayFallsBackToPressure() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(thermalPressureState: .nominal)
+
+        #expect(monitor.hasThermal)
+        #expect(!monitor.hasTemperatureReadings)
+        #expect(monitor.thermalTemperatureStatusText == "Unavailable on this Mac")
+        #expect(monitor.thermalMenuText == "Nominal")
+    }
+
     // MARK: - formatProcess helpers (known input → known output)
 
     @Test("formatProcessCPU formats one decimal percent")
@@ -1105,7 +1117,7 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            StatusBarLabelRenderer.Segment(panel: .disk, symbol: "internaldrive", text: "10.0 MB/s")
+            StatusBarLabelRenderer.Segment(panel: .disk, symbol: "internaldrive", text: "10.0 MB/s", emphasis: .normal)
         ])
     }
 
@@ -1140,8 +1152,65 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            StatusBarLabelRenderer.Segment(panel: .power, symbol: "bolt.fill", text: "21.3W")
+            StatusBarLabelRenderer.Segment(panel: .power, symbol: "bolt.fill", text: "21.3W", emphasis: .normal)
         ])
+    }
+
+    @Test("status bar thermal segment shows pressure when temperature is unavailable")
+    func statusBarThermalSegmentFallsBackToPressure() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = true
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(thermalPressureState: .nominal)
+
+        #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
+            StatusBarLabelRenderer.Segment(panel: .thermal, symbol: "thermometer.medium", text: "Nominal", emphasis: .normal)
+        ])
+    }
+
+    @Test("status bar thermal segment turns critical red")
+    func statusBarThermalSegmentTurnsCriticalRed() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = true
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(thermalPressureState: .critical)
+
+        let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
+        #expect(segments == [
+            StatusBarLabelRenderer.Segment(panel: .thermal, symbol: "thermometer.medium", text: "Critical", emphasis: .critical)
+        ])
+
+        let attributedTitle = StatusBarLabelRenderer.makeAttributedTitle(monitor: monitor, settings: settings)
+        let textColor = attributedTitle.attribute(.foregroundColor, at: 2, effectiveRange: nil) as? NSColor
+        #expect(textColor == .systemRed)
+
+        let criticalAttachment = attributedTitle.attribute(.attachment, at: 0, effectiveRange: nil) as? NSTextAttachment
+        #expect(criticalAttachment?.image?.tiffRepresentation != nil)
+        let criticalConfigurationDescription = String(describing: criticalAttachment?.image?.symbolConfiguration)
+        #expect(criticalConfigurationDescription.contains("prefers multicolor: YES"))
+
+        monitor.record(thermalPressureState: .nominal)
+        let nominalTitle = StatusBarLabelRenderer.makeAttributedTitle(monitor: monitor, settings: settings)
+        let nominalAttachment = nominalTitle.attribute(.attachment, at: 0, effectiveRange: nil) as? NSTextAttachment
+        #expect(criticalAttachment?.image?.tiffRepresentation != nominalAttachment?.image?.tiffRepresentation)
     }
 
     @Test("status bar hit testing follows rendered segment widths instead of equal slots")

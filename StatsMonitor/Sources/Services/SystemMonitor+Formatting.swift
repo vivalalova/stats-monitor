@@ -202,6 +202,19 @@ extension SystemMonitor {
         return Self.thermalPressureText(for: thermalPressureState)
     }
     var hasThermal: Bool { thermal != nil || !thermalPressureText.isEmpty }
+    var hasTemperatureReadings: Bool { thermal != nil }
+    var thermalTemperatureStatusText: String {
+        if thermal != nil {
+            return cpuTempText
+        }
+        return thermalPressureText.isEmpty ? "N/A" : "Unavailable on this Mac"
+    }
+    var thermalMenuText: String {
+        if thermal != nil {
+            return cpuTempText
+        }
+        return thermalPressureText.isEmpty ? "N/A" : thermalPressureText
+    }
     var cpuTempText: String {
         guard let thermal else { return "N/A" }
         return String(format: "%.1f°C", thermal.cpuTemperature)
