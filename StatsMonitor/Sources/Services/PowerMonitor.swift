@@ -39,11 +39,15 @@ final class PowerMonitor: @unchecked Sendable {
     /// Returns power usage in milliwatts for the last poll interval.
     func sample(intervalSeconds: Double) -> PowerUsage? {
         let ioReportUsage = sampleIOReport(intervalSeconds: intervalSeconds)
-        if let telemetryTotal = Self.telemetryTotalMilliWatts(fromBatteryProperties: Self.readBatteryProperties()) {
+        let batteryProperties = Self.readBatteryProperties()
+        if let telemetryTotal = Self.telemetryTotalMilliWatts(fromBatteryProperties: batteryProperties) {
+            let telemetry = batteryProperties?["PowerTelemetryData"] as? [String: Any]
             return PowerUsage(
                 cpuMilliWatts: ioReportUsage?.cpuMilliWatts ?? 0,
                 gpuMilliWatts: ioReportUsage?.gpuMilliWatts ?? 0,
-                totalMilliWatts: telemetryTotal
+                totalMilliWatts: telemetryTotal,
+                externalInputMilliWatts: Self.telemetryExternalInputMilliWatts(from: telemetry),
+                batteryMilliWatts: Self.telemetryBatteryMilliWatts(from: telemetry) ?? 0
             )
         }
 
@@ -53,6 +57,16 @@ final class PowerMonitor: @unchecked Sendable {
     static func telemetryTotalMilliWatts(fromBatteryProperties properties: [String: Any]?) -> Double? {
         guard let telemetry = properties?["PowerTelemetryData"] as? [String: Any] else { return nil }
         return telemetryTotalMilliWatts(from: telemetry)
+    }
+
+    static func telemetryExternalInputMilliWatts(from telemetry: [String: Any]?) -> Double? {
+        guard let telemetry else { return nil }
+        return nonNegativeDouble(from: telemetry["SystemPowerIn"])
+    }
+
+    static func telemetryBatteryMilliWatts(from telemetry: [String: Any]?) -> Double? {
+        guard let telemetry else { return nil }
+        return signedDouble(from: telemetry["BatteryPower"])
     }
 
     static func telemetryTotalMilliWatts(from telemetry: [String: Any]) -> Double? {

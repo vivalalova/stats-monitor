@@ -192,7 +192,12 @@ struct StatsMonitorSnapshotTests {
             compressed: 1_073_741_824,
             total: 17_179_869_184
         ))
-        monitor.record(disk: DiskUsage(used: 400_000_000_000, total: 1_000_000_000_000))
+        monitor.record(disk: DiskUsage(
+            used: 400_000_000_000,
+            total: 1_000_000_000_000,
+            readBPS: 8_388_608,
+            writeBPS: 2_097_152
+        ))
         monitor.record(network: NetworkUsage(bytesInPerSec: 1_572_864, bytesOutPerSec: 262_144))
         monitor.record(battery: BatteryUsage(
             percentage: 78,
@@ -350,7 +355,9 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
     monitor.record(power: PowerUsage(
         cpuMilliWatts: 12_400,
         gpuMilliWatts: 4_200,
-        totalMilliWatts: 21_300
+        totalMilliWatts: 21_300,
+        externalInputMilliWatts: 18_000,
+        batteryMilliWatts: -3_300
     ))
     monitor.record(fans: [
         FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),

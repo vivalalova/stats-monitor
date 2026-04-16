@@ -126,10 +126,19 @@ struct PowerUsage: Sendable {
     var cpuMilliWatts:   Double   // CPU cluster(s) power
     var gpuMilliWatts:   Double   // GPU power
     var totalMilliWatts: Double   // all Energy Model channels
+    var externalInputMilliWatts: Double? = nil   // charger / adapter input
+    var batteryMilliWatts: Double = 0            // signed: +charging, -discharging
 
     var totalWatts: Double { totalMilliWatts / 1000 }
     var cpuWatts:   Double { cpuMilliWatts   / 1000 }
     var gpuWatts:   Double { gpuMilliWatts   / 1000 }
+    var externalInputWatts: Double? { externalInputMilliWatts.map { $0 / 1000 } }
+    var batteryChargeWatts: Double? { batteryMilliWatts > 0 ? batteryMilliWatts / 1000 : nil }
+    var batteryDischargeWatts: Double? { batteryMilliWatts < 0 ? abs(batteryMilliWatts) / 1000 : nil }
+    var balanceWatts: Double? {
+        guard let externalInputMilliWatts else { return nil }
+        return (externalInputMilliWatts - totalMilliWatts) / 1000
+    }
 }
 
 struct FanUsage: Sendable {

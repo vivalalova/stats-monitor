@@ -9,12 +9,16 @@ struct PowerDetailView: View {
         DetailPanelContent(title: Self.panelTitle) {
             DetailChart(lines: monitor.hasPower ? [(monitor.paddedPowerHistory, .red)] : [])
             DetailMetricSection(rows: availableDetailMetrics([
-                ("Total", monitor.powerText),
+                ("Consumption", monitor.powerText),
+                ("External Input", monitor.externalInputPowerText),
+                ("Balance", monitor.powerBalanceText),
                 ("CPU", monitor.cpuPowerText),
                 ("GPU", monitor.gpuPowerText),
                 ("Neural Engine", monitor.anePowerText),
             ]))
             DetailMetricSection(title: "Battery", rows: availableDetailMetrics([
+                ("Charge Power", monitor.batteryChargePowerText),
+                ("Discharge Power", monitor.batteryDischargePowerText),
                 ("Charge", monitor.batteryPercent),
                 ("Status", monitor.batteryStatusText),
                 ("Time", monitor.batteryTimeRemainingText),

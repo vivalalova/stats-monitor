@@ -31,7 +31,7 @@ struct CombinedMenuBarLabel: View {
                 MenuBarItemLabel(icon: "memorychip", text: monitor.memoryPercent)
             }
             if settings.showDisk {
-                MenuBarItemLabel(icon: "internaldrive", text: monitor.diskPercent)
+                MenuBarItemLabel(icon: "internaldrive", text: monitor.diskMenuText)
             }
             if settings.showNetwork {
                 MenuBarItemLabel(icon: "network", text: monitor.networkInText)
@@ -58,7 +58,7 @@ struct CombinedMenuBarLabel: View {
         MenuBarItemLabel(icon: "cpu",          text: "42%")
         MenuBarItemLabel(icon: "display",      text: "18%")
         MenuBarItemLabel(icon: "memorychip",   text: "71%")
-        MenuBarItemLabel(icon: "internaldrive",text: "55%")
+        MenuBarItemLabel(icon: "internaldrive",text: "10.0 MB/s")
         MenuBarItemLabel(icon: "network",      text: "↓1.2 MB/s")
         MenuBarItemLabel(icon: "bolt.fill",    text: "21.3W")
         MenuBarItemLabel(icon: "thermometer.medium", text: "68.4°C")

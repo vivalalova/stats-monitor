@@ -68,7 +68,7 @@ final class StatusBarController: NSObject {
             _ = s.showDisk; _ = s.showNetwork
             _ = s.showBattery; _ = s.showThermal; _ = s.showPower; _ = s.showFans
             _ = m.cpuPercent; _ = m.gpuPercent; _ = m.memoryPercent
-            _ = m.diskPercent; _ = m.networkInText
+            _ = m.diskMenuText; _ = m.networkInText
             _ = m.hasBattery; _ = m.hasThermal; _ = m.hasPower; _ = m.hasFans
             _ = m.powerMenuText; _ = m.cpuTempText; _ = m.fansSummaryText
         } onChange: { [weak self] in

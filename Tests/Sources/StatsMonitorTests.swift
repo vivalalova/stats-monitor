@@ -268,6 +268,30 @@ struct PowerMonitorTests {
         #expect(milliWatts == 24_085)
     }
 
+    @Test("reads external input from battery telemetry")
+    func readsExternalInputTelemetry() {
+        let milliWatts = PowerMonitor.telemetryExternalInputMilliWatts(from: [
+            "SystemLoad": 24_085,
+            "SystemPowerIn": 12_420,
+            "BatteryPower": UInt64.max - 11_664
+        ])
+
+        #expect(milliWatts == 12_420)
+    }
+
+    @Test("reads signed battery power from battery telemetry")
+    func readsSignedBatteryPowerTelemetry() {
+        let dischargingMilliWatts = PowerMonitor.telemetryBatteryMilliWatts(from: [
+            "BatteryPower": UInt64.max - 11_664
+        ])
+        let chargingMilliWatts = PowerMonitor.telemetryBatteryMilliWatts(from: [
+            "BatteryPower": 2_450
+        ])
+
+        #expect(dischargingMilliWatts == -11_665)
+        #expect(chargingMilliWatts == 2_450)
+    }
+
     @Test("derives total load from adapter plus battery discharge when system load is missing")
     func derivesTotalLoadFromSources() {
         let milliWatts = PowerMonitor.telemetryTotalMilliWatts(from: [
@@ -419,6 +443,42 @@ struct SystemMonitorPresentationTests {
         ))
 
         #expect(monitor.powerMenuText == "N/A")
+    }
+
+    @Test("power detail exposes external input, discharge, and balance")
+    func powerDetailFormattingShowsDeficit() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 2_300,
+            gpuMilliWatts: 200,
+            totalMilliWatts: 11_500,
+            externalInputMilliWatts: 10_466,
+            batteryMilliWatts: -636
+        ))
+
+        #expect(monitor.powerText == "11.5 W")
+        #expect(monitor.externalInputPowerText == "10.5 W")
+        #expect(monitor.batteryDischargePowerText == "0.6 W")
+        #expect(monitor.batteryChargePowerText.isEmpty)
+        #expect(monitor.powerBalanceText == "-1.0 W")
+    }
+
+    @Test("power detail exposes battery charging power when surplus is available")
+    func powerDetailFormattingShowsChargePower() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 2_300,
+            gpuMilliWatts: 200,
+            totalMilliWatts: 11_500,
+            externalInputMilliWatts: 15_000,
+            batteryMilliWatts: 2_450
+        ))
+
+        #expect(monitor.batteryChargePowerText == "2.5 W")
+        #expect(monitor.batteryDischargePowerText.isEmpty)
+        #expect(monitor.powerBalanceText == "+3.5 W")
     }
 
     // MARK: - batteryStatus branching
@@ -841,6 +901,32 @@ struct StatusBarTests {
             .cpu,
             .memory,
             .network,
+        ])
+    }
+
+    @Test("status bar shows disk total io instead of usage percent")
+    func statusBarShowsDiskTotalIO() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = true
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = false
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(disk: DiskUsage(
+            used: 400_000_000_000,
+            total: 1_000_000_000_000,
+            readBPS: 8_388_608,
+            writeBPS: 2_097_152
+        ))
+
+        #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
+            StatusBarLabelRenderer.Segment(panel: .disk, symbol: "internaldrive", text: "10.0 MB/s")
         ])
     }
 

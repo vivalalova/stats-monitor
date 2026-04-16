@@ -56,6 +56,7 @@ extension SystemMonitor {
     var diskReadText: String { formatThroughput(currentDisk.readBPS) }
     var diskWriteText: String { formatThroughput(currentDisk.writeBPS) }
     var diskActivityText: String { formatThroughput(currentDisk.readBPS + currentDisk.writeBPS) }
+    var diskMenuText: String { diskActivityText }
     var paddedDiskHistory: [Double] { padded(diskSamples.values.map { $0.usedFraction * 100 }, capacity: diskSamples.capacity) }
     var paddedDiskReadHistory: [Double] { padded(diskSamples.values.map(\.readBPS), capacity: diskSamples.capacity) }
     var paddedDiskWriteHistory: [Double] { padded(diskSamples.values.map(\.writeBPS), capacity: diskSamples.capacity) }
@@ -85,6 +86,22 @@ extension SystemMonitor {
     var gpuPowerText: String {
         guard let power else { return "N/A" }
         return String(format: "%.1f W", power.gpuWatts)
+    }
+    var externalInputPowerText: String {
+        guard let inputWatts = power?.externalInputWatts else { return "" }
+        return String(format: "%.1f W", inputWatts)
+    }
+    var batteryChargePowerText: String {
+        guard let chargeWatts = power?.batteryChargeWatts else { return "" }
+        return String(format: "%.1f W", chargeWatts)
+    }
+    var batteryDischargePowerText: String {
+        guard let dischargeWatts = power?.batteryDischargeWatts else { return "" }
+        return String(format: "%.1f W", dischargeWatts)
+    }
+    var powerBalanceText: String {
+        guard let balanceWatts = power?.balanceWatts else { return "" }
+        return String(format: "%+.1f W", balanceWatts)
     }
 
     var battery: BatteryUsage? { batterySamples.current }

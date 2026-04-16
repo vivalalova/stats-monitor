@@ -31,7 +31,7 @@ enum StatusBarLabelRenderer {
         appendSegment(to: &segments, isVisible: settings.showCPU, panel: .cpu, symbol: "cpu", text: monitor.cpuPercent)
         appendSegment(to: &segments, isVisible: settings.showGPU, panel: .gpu, symbol: "display", text: monitor.gpuPercent)
         appendSegment(to: &segments, isVisible: settings.showMemory, panel: .memory, symbol: "memorychip", text: monitor.memoryPercent)
-        appendSegment(to: &segments, isVisible: settings.showDisk, panel: .disk, symbol: "internaldrive", text: monitor.diskPercent)
+        appendSegment(to: &segments, isVisible: settings.showDisk, panel: .disk, symbol: "internaldrive", text: monitor.diskMenuText)
         appendSegment(to: &segments, isVisible: settings.showNetwork, panel: .network, symbol: "network", text: monitor.networkInText)
         appendSegment(
             to: &segments,
