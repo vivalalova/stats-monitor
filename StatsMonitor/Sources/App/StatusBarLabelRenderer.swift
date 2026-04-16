@@ -6,16 +6,26 @@ enum StatusBarLabelRenderer {
     private static let symbolPointSize: CGFloat = 11
     private static let textFontSize: CGFloat = 12
 
-    enum SegmentEmphasis: Equatable {
-        case normal
-        case critical
-    }
-
     struct Segment {
         let panel: PanelID
         let symbol: String
         let text: String
-        let emphasis: SegmentEmphasis
+        let color: NSColor
+        let symbolPaletteColors: [NSColor]?
+
+        init(
+            panel: PanelID,
+            symbol: String,
+            text: String,
+            color: NSColor,
+            symbolPaletteColors: [NSColor]? = nil
+        ) {
+            self.panel = panel
+            self.symbol = symbol
+            self.text = text
+            self.color = color
+            self.symbolPaletteColors = symbolPaletteColors
+        }
     }
 
     static func makeAttributedTitle(monitor: SystemMonitor, settings: AppSettings) -> NSAttributedString {
@@ -26,7 +36,12 @@ enum StatusBarLabelRenderer {
             if index > 0 {
                 result.append(separatorString)
             }
-            result.append(makeSegment(symbol: segment.symbol, text: segment.text, emphasis: segment.emphasis))
+            result.append(makeSegment(
+                symbol: segment.symbol,
+                text: segment.text,
+                color: segment.color,
+                symbolPaletteColors: segment.symbolPaletteColors
+            ))
         }
 
         return result
@@ -52,7 +67,8 @@ enum StatusBarLabelRenderer {
             panel: .thermal,
             symbol: "thermometer.medium",
             text: monitor.thermalMenuText,
-            emphasis: monitor.thermalPressureState == .critical ? .critical : .normal
+            color: monitor.thermalMenuColor,
+            symbolPaletteColors: monitor.thermalMenuSymbolPaletteColors
         )
         appendSegment(to: &segments, isVisible: settings.showFans && monitor.hasFans, panel: .fans, symbol: "wind", text: monitor.fansSummaryText)
         return segments
@@ -88,13 +104,17 @@ enum StatusBarLabelRenderer {
         return segments.last?.panel
     }
 
-    private static func makeSegment(symbol: String, text: String, emphasis: SegmentEmphasis) -> NSAttributedString {
+    private static func makeSegment(
+        symbol: String,
+        text: String,
+        color: NSColor,
+        symbolPaletteColors: [NSColor]?
+    ) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let attachment = NSTextAttachment()
-        let color = foregroundColor(for: emphasis)
 
         attachment.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(symbolConfiguration(for: emphasis))
+            .withSymbolConfiguration(symbolConfiguration(paletteColors: symbolPaletteColors))
 
         let attachmentString = NSMutableAttributedString(attachment: attachment)
         attachmentString.addAttributes([
@@ -117,36 +137,32 @@ enum StatusBarLabelRenderer {
         panel: PanelID,
         symbol: String,
         text: String,
-        emphasis: SegmentEmphasis = .normal
+        color: NSColor = .labelColor,
+        symbolPaletteColors: [NSColor]? = nil
     ) {
         guard isVisible else { return }
-        segments.append(Segment(panel: panel, symbol: symbol, text: text, emphasis: emphasis))
+        segments.append(Segment(panel: panel, symbol: symbol, text: text, color: color, symbolPaletteColors: symbolPaletteColors))
     }
 
     private static func segmentWidth(for segment: Segment) -> CGFloat {
-        makeSegment(symbol: segment.symbol, text: segment.text, emphasis: segment.emphasis).size().width
+        makeSegment(
+            symbol: segment.symbol,
+            text: segment.text,
+            color: segment.color,
+            symbolPaletteColors: segment.symbolPaletteColors
+        ).size().width
     }
 
-    private static func foregroundColor(for emphasis: SegmentEmphasis) -> NSColor {
-        switch emphasis {
-        case .normal:
-            return .labelColor
-        case .critical:
-            return .systemRed
-        }
-    }
-
-    private static func symbolConfiguration(for emphasis: SegmentEmphasis) -> NSImage.SymbolConfiguration {
+    private static func symbolConfiguration(paletteColors: [NSColor]?) -> NSImage.SymbolConfiguration {
         let baseConfiguration = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
 
-        switch emphasis {
-        case .normal:
+        guard let paletteColors else {
             return baseConfiguration
-        case .critical:
-            let paletteConfiguration = NSImage.SymbolConfiguration(paletteColors: [.systemRed, .systemOrange])
-            let multicolorConfiguration = NSImage.SymbolConfiguration.preferringMulticolor()
-            return baseConfiguration.applying(paletteConfiguration).applying(multicolorConfiguration)
         }
+
+        let paletteConfiguration = NSImage.SymbolConfiguration(paletteColors: paletteColors)
+        let multicolorConfiguration = NSImage.SymbolConfiguration.preferringMulticolor()
+        return baseConfiguration.applying(paletteConfiguration).applying(multicolorConfiguration)
     }
 
     private static var separatorString: NSAttributedString {
@@ -164,4 +180,24 @@ enum StatusBarLabelRenderer {
     }
 }
 
-extension StatusBarLabelRenderer.Segment: Equatable {}
+extension StatusBarLabelRenderer.Segment: Equatable {
+    static func == (lhs: StatusBarLabelRenderer.Segment, rhs: StatusBarLabelRenderer.Segment) -> Bool {
+        lhs.panel == rhs.panel &&
+        lhs.symbol == rhs.symbol &&
+        lhs.text == rhs.text &&
+        lhs.color.isEqual(rhs.color) &&
+        paletteColorsEqual(lhs.symbolPaletteColors, rhs.symbolPaletteColors)
+    }
+
+    private static func paletteColorsEqual(_ lhs: [NSColor]?, _ rhs: [NSColor]?) -> Bool {
+        switch (lhs, rhs) {
+        case (nil, nil):
+            return true
+        case let (left?, right?):
+            guard left.count == right.count else { return false }
+            return zip(left, right).allSatisfy { $0.isEqual($1) }
+        default:
+            return false
+        }
+    }
+}

@@ -3,15 +3,29 @@ import SwiftUI
 struct MenuBarItemLabel: View {
     let icon: String
     let text: String
+    var textColor: Color = .primary
+    var iconPaletteColors: [Color]? = nil
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: icon)
+            iconView
             Text(text)
                 .monospacedDigit()
                 .lineLimit(1)
+                .foregroundStyle(textColor)
         }
         .padding(.horizontal, 4)
+    }
+
+    @ViewBuilder
+    private var iconView: some View {
+        if let iconPaletteColors, iconPaletteColors.count >= 2 {
+            Image(systemName: icon)
+                .symbolRenderingMode(.multicolor)
+                .foregroundStyle(iconPaletteColors[0], iconPaletteColors[1])
+        } else {
+            Image(systemName: icon)
+        }
     }
 }
 
@@ -40,7 +54,12 @@ struct CombinedMenuBarLabel: View {
                 MenuBarItemLabel(icon: monitor.powerMenuSymbol, text: monitor.powerMenuText)
             }
             if settings.showThermal, monitor.hasThermal {
-                MenuBarItemLabel(icon: "thermometer.medium", text: monitor.thermalMenuText)
+                MenuBarItemLabel(
+                    icon: "thermometer.medium",
+                    text: monitor.thermalMenuText,
+                    textColor: Color(nsColor: monitor.thermalMenuColor),
+                    iconPaletteColors: monitor.thermalMenuSymbolPaletteColors?.map(Color.init(nsColor:))
+                )
             }
             if settings.showFans, monitor.hasFans {
                 MenuBarItemLabel(icon: "wind", text: monitor.fansSummaryText)
@@ -53,7 +72,7 @@ struct CombinedMenuBarLabel: View {
     }
 }
 
-#Preview(traits: .sizeThatFitsLayout) {
+#Preview("All Metrics", traits: .sizeThatFitsLayout) {
     HStack(spacing: 0) {
         MenuBarItemLabel(icon: "cpu",          text: "42%")
         MenuBarItemLabel(icon: "display",      text: "18%")
@@ -65,4 +84,23 @@ struct CombinedMenuBarLabel: View {
         MenuBarItemLabel(icon: "wind",         text: "2470 RPM")
     }
     .padding()
+}
+
+#Preview("Thermal Critical", traits: .sizeThatFitsLayout) {
+    let settings = AppSettings()
+    settings.showCPU = false
+    settings.showGPU = false
+    settings.showMemory = false
+    settings.showDisk = false
+    settings.showNetwork = false
+    settings.showBattery = false
+    settings.showThermal = true
+    settings.showPower = false
+    settings.showFans = false
+
+    let monitor = SystemMonitor(settings: settings)
+    monitor.record(thermalPressureState: .critical)
+
+    return CombinedMenuBarLabel(monitor: monitor, settings: settings)
+        .padding()
 }

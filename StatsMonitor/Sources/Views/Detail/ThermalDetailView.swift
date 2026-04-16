@@ -47,6 +47,14 @@ struct ThermalDetailView: View {
     }
 }
 
-#Preview(traits: .sizeThatFitsLayout) {
+#Preview("Live", traits: .sizeThatFitsLayout) {
     ThermalDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
+}
+
+#Preview("Pressure Only", traits: .sizeThatFitsLayout) {
+    let settings = AppSettings()
+    let monitor = SystemMonitor(settings: settings)
+    monitor.record(thermalPressureState: .nominal)
+
+    return ThermalDetailView(monitor: monitor)
 }

@@ -105,6 +105,15 @@ struct StatsMonitorSnapshotTests {
         }
     }
 
+    @Test("Power detail panel shows unavailable temperature when only pressure exists")
+    func powerDetailPanelUnavailableTemperatureScreenshot() {
+        let monitor = makePressureOnlyMonitor(includePowerData: true)
+
+        assertDetailPanelSnapshot(named: "power-detail-panel-unavailable-temperature") {
+            PowerDetailView(monitor: monitor)
+        }
+    }
+
     @Test("Fans detail panel renders a stable screenshot")
     func fansDetailPanelScreenshot() {
         let monitor = makeSeededMonitor()
@@ -245,6 +254,35 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    @Test("Combined menu bar label shows thermal critical state")
+    func combinedMenuBarLabelCriticalThermalScreenshot() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = true
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(thermalPressureState: .critical)
+
+        let view = hostingView(for: snapshotSurface {
+            CombinedMenuBarLabel(monitor: monitor, settings: settings)
+                .padding(8)
+        })
+
+        assertSnapshot(
+            of: view,
+            as: .image(size: view.fittingSize),
+            named: "combined-menu-bar-label-thermal-critical",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("Settings window renders a stable screenshot")
     func settingsWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()
@@ -287,6 +325,41 @@ private func makeSeededMonitor() -> SystemMonitor {
     seedSettingsValues(into: settings)
     let monitor = SystemMonitor(settings: settings)
     seedMonitorSnapshotData(into: monitor)
+    return monitor
+}
+
+@MainActor
+private func makePressureOnlyMonitor(
+    pressure: ProcessInfo.ThermalState = .nominal,
+    includePowerData: Bool = false
+) -> SystemMonitor {
+    let settings = makeTestSettings()
+    seedSettingsValues(into: settings)
+    let monitor = SystemMonitor(settings: settings)
+    monitor.record(thermalPressureState: pressure)
+
+    if includePowerData {
+        monitor.record(battery: BatteryUsage(
+            percentage: 78,
+            isCharging: false,
+            isPluggedIn: false,
+            timeRemaining: 165,
+            cycleCount: 132,
+            designCapacity: 5000,
+            maxCapacity: 4630,
+            health: 92.6
+        ))
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+        monitor.record(fans: [
+            FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
+        ])
+    }
+
     return monitor
 }
 

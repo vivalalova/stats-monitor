@@ -767,6 +767,21 @@ struct SystemMonitorPresentationTests {
         #expect(!monitor.hasTemperatureReadings)
         #expect(monitor.thermalTemperatureStatusText == "Unavailable on this Mac")
         #expect(monitor.thermalMenuText == "Nominal")
+        #expect(monitor.thermalMenuColor == .labelColor)
+        #expect(monitor.thermalMenuSymbolPaletteColors == nil)
+    }
+
+    @Test("thermal menu styling turns red and multicolor at critical pressure")
+    func thermalMenuStylingAtCriticalPressure() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(thermalPressureState: .critical)
+
+        #expect(monitor.thermalMenuText == "Critical")
+        #expect(monitor.thermalMenuColor == NSColor.systemRed)
+        #expect(monitor.thermalMenuSymbolPaletteColors?.count == 2)
+        #expect(monitor.thermalMenuSymbolPaletteColors?[0] == NSColor.systemRed)
+        #expect(monitor.thermalMenuSymbolPaletteColors?[1] == NSColor.systemOrange)
     }
 
     // MARK: - formatProcess helpers (known input → known output)
@@ -1117,7 +1132,7 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            StatusBarLabelRenderer.Segment(panel: .disk, symbol: "internaldrive", text: "10.0 MB/s", emphasis: .normal)
+            StatusBarLabelRenderer.Segment(panel: .disk, symbol: "internaldrive", text: "10.0 MB/s", color: .labelColor)
         ])
     }
 
@@ -1152,7 +1167,7 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            StatusBarLabelRenderer.Segment(panel: .power, symbol: "bolt.fill", text: "21.3W", emphasis: .normal)
+            StatusBarLabelRenderer.Segment(panel: .power, symbol: "bolt.fill", text: "21.3W", color: .labelColor)
         ])
     }
 
@@ -1173,7 +1188,7 @@ struct StatusBarTests {
         monitor.record(thermalPressureState: .nominal)
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            StatusBarLabelRenderer.Segment(panel: .thermal, symbol: "thermometer.medium", text: "Nominal", emphasis: .normal)
+            StatusBarLabelRenderer.Segment(panel: .thermal, symbol: "thermometer.medium", text: "Nominal", color: .labelColor)
         ])
     }
 
@@ -1195,7 +1210,13 @@ struct StatusBarTests {
 
         let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
         #expect(segments == [
-            StatusBarLabelRenderer.Segment(panel: .thermal, symbol: "thermometer.medium", text: "Critical", emphasis: .critical)
+            StatusBarLabelRenderer.Segment(
+                panel: .thermal,
+                symbol: "thermometer.medium",
+                text: "Critical",
+                color: .systemRed,
+                symbolPaletteColors: [NSColor.systemRed, NSColor.systemOrange]
+            )
         ])
 
         let attributedTitle = StatusBarLabelRenderer.makeAttributedTitle(monitor: monitor, settings: settings)

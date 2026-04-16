@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Util
 
@@ -214,6 +215,13 @@ extension SystemMonitor {
             return cpuTempText
         }
         return thermalPressureText.isEmpty ? "N/A" : thermalPressureText
+    }
+    var thermalMenuColor: NSColor {
+        thermalPressureState == .critical ? .systemRed : .labelColor
+    }
+    var thermalMenuSymbolPaletteColors: [NSColor]? {
+        guard thermalPressureState == .critical else { return nil }
+        return [.systemRed, .systemOrange]
     }
     var cpuTempText: String {
         guard let thermal else { return "N/A" }

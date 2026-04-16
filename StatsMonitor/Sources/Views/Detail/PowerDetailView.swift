@@ -43,6 +43,33 @@ struct PowerDetailView: View {
     }
 }
 
-#Preview(traits: .sizeThatFitsLayout) {
+#Preview("Live", traits: .sizeThatFitsLayout) {
     PowerDetailView(monitor: SystemMonitor(settings: AppSettings()).start())
+}
+
+#Preview("Thermal Pressure Only", traits: .sizeThatFitsLayout) {
+    let settings = AppSettings()
+    let monitor = SystemMonitor(settings: settings)
+    monitor.record(thermalPressureState: .nominal)
+    monitor.record(battery: BatteryUsage(
+        percentage: 78,
+        isCharging: false,
+        isPluggedIn: false,
+        timeRemaining: 165,
+        cycleCount: 132,
+        designCapacity: 5000,
+        maxCapacity: 4630,
+        health: 92.6
+    ))
+    monitor.record(power: PowerUsage(
+        cpuMilliWatts: 12_400,
+        gpuMilliWatts: 4_200,
+        totalMilliWatts: 21_300
+    ))
+    monitor.record(fans: [
+        FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
+        FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
+    ])
+
+    return PowerDetailView(monitor: monitor)
 }
