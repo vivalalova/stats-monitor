@@ -2,10 +2,6 @@ import AppKit
 
 @MainActor
 enum StatusBarLabelRenderer {
-    private static let contentInset: CGFloat = 6
-    private static let symbolPointSize: CGFloat = 11
-    private static let textFontSize: CGFloat = 12
-
     static func makeAttributedTitle(monitor: SystemMonitor, settings: AppSettings) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let segments = makeSegments(monitor: monitor, settings: settings)
@@ -14,12 +10,7 @@ enum StatusBarLabelRenderer {
             if index > 0 {
                 result.append(separatorString)
             }
-            result.append(makeSegment(
-                symbol: segment.symbol,
-                text: segment.text,
-                color: segment.color,
-                symbolPaletteColors: segment.symbolPaletteColors
-            ))
+            result.append(makeSegment(for: segment))
         }
 
         return result
@@ -41,7 +32,7 @@ enum StatusBarLabelRenderer {
     static func panel(at x: CGFloat, in segments: [MenuBarItem]) -> PanelID? {
         guard !segments.isEmpty else { return nil }
 
-        let clampedX = max(0, x - contentInset)
+        let clampedX = max(0, x - MenuBarTextLayout.contentInset)
         var currentMinX: CGFloat = 0
 
         for (index, segment) in segments.enumerated() {
@@ -59,44 +50,41 @@ enum StatusBarLabelRenderer {
         return segments.last?.panel
     }
 
-    private static func makeSegment(
-        symbol: String,
-        text: String,
-        color: NSColor,
-        symbolPaletteColors: [NSColor]?
-    ) -> NSAttributedString {
+    private static func makeSegment(for segment: MenuBarItem) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let attachment = NSTextAttachment()
 
-        attachment.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(symbolConfiguration(paletteColors: symbolPaletteColors))
+        attachment.image = NSImage(systemSymbolName: segment.symbol, accessibilityDescription: nil)?
+            .withSymbolConfiguration(symbolConfiguration(paletteColors: segment.symbolPaletteColors))
 
         let attachmentString = NSMutableAttributedString(attachment: attachment)
         attachmentString.addAttributes([
             .baselineOffset: -1,
-            .foregroundColor: color,
+            .foregroundColor: segment.color,
         ], range: NSRange(location: 0, length: attachmentString.length))
         result.append(attachmentString)
 
         let textAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: textFontSize, weight: .regular),
-            .foregroundColor: color,
+            .font: MenuBarTextLayout.textFont,
+            .foregroundColor: segment.color,
         ]
-        result.append(NSAttributedString(string: " \(text)", attributes: textAttributes))
+        let paddedText = MenuBarTextLayout.paddedText(segment.text, for: segment.panel)
+        result.append(NSAttributedString(
+            string: " \(paddedText)",
+            attributes: textAttributes
+        ))
         return result
     }
 
     private static func segmentWidth(for segment: MenuBarItem) -> CGFloat {
-        makeSegment(
-            symbol: segment.symbol,
-            text: segment.text,
-            color: segment.color,
-            symbolPaletteColors: segment.symbolPaletteColors
-        ).size().width
+        makeSegment(for: segment).size().width
     }
 
     private static func symbolConfiguration(paletteColors: [NSColor]?) -> NSImage.SymbolConfiguration {
-        let baseConfiguration = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
+        let baseConfiguration = NSImage.SymbolConfiguration(
+            pointSize: MenuBarTextLayout.symbolPointSize,
+            weight: .regular
+        )
 
         guard let paletteColors else {
             return baseConfiguration
@@ -109,9 +97,9 @@ enum StatusBarLabelRenderer {
 
     private static var separatorString: NSAttributedString {
         NSAttributedString(
-            string: "  ",
+            string: " ",
             attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: textFontSize, weight: .regular),
+                .font: MenuBarTextLayout.textFont,
                 .foregroundColor: NSColor.labelColor,
             ]
         )

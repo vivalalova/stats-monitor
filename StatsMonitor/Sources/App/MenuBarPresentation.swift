@@ -42,17 +42,25 @@ struct MenuBarItem: Equatable, Identifiable {
             return false
         }
     }
+
+    var paddedText: String {
+        MenuBarTextLayout.paddedText(text, for: panel)
+    }
+
+    var textSlotWidth: CGFloat {
+        MenuBarTextLayout.slotWidth(for: panel)
+    }
 }
 
 @MainActor
 extension SystemMonitor {
     func menuBarItems(settings: AppSettings) -> [MenuBarItem] {
         var items: [MenuBarItem] = []
-        appendMenuBarItem(to: &items, isVisible: settings.showCPU, panel: .cpu, symbol: "cpu", text: cpuPercent)
-        appendMenuBarItem(to: &items, isVisible: settings.showGPU, panel: .gpu, symbol: "display", text: gpuPercent)
-        appendMenuBarItem(to: &items, isVisible: settings.showMemory, panel: .memory, symbol: "memorychip", text: memoryPercent)
-        appendMenuBarItem(to: &items, isVisible: settings.showDisk, panel: .disk, symbol: "internaldrive", text: diskActivityText)
-        appendMenuBarItem(to: &items, isVisible: settings.showNetwork, panel: .network, symbol: "network", text: networkInText)
+        appendMenuBarItem(to: &items, isVisible: settings.showCPU, panel: .cpu, symbol: "cpu", text: cpuMenuText)
+        appendMenuBarItem(to: &items, isVisible: settings.showGPU, panel: .gpu, symbol: "display", text: gpuMenuText)
+        appendMenuBarItem(to: &items, isVisible: settings.showMemory, panel: .memory, symbol: "memorychip", text: memoryMenuText)
+        appendMenuBarItem(to: &items, isVisible: settings.showDisk, panel: .disk, symbol: "internaldrive", text: diskMenuText)
+        appendMenuBarItem(to: &items, isVisible: settings.showNetwork, panel: .network, symbol: "network", text: networkMenuText)
         appendMenuBarItem(
             to: &items,
             isVisible: settings.showPowerPanel && hasPower,
@@ -69,7 +77,7 @@ extension SystemMonitor {
             color: thermalMenuColor,
             symbolPaletteColors: thermalMenuSymbolPaletteColors
         )
-        appendMenuBarItem(to: &items, isVisible: settings.showFans && hasFans, panel: .fans, symbol: "wind", text: fansSummaryText)
+        appendMenuBarItem(to: &items, isVisible: settings.showFans && hasFans, panel: .fans, symbol: "wind", text: fansMenuText)
         return items
     }
 

@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import Util
 
 @MainActor
@@ -15,6 +16,7 @@ extension SystemMonitor {
     var diskFraction: Double { currentDisk.usedFraction }
 
     var cpuPercent: String { formatPercent(currentCPU.used) }
+    var cpuMenuText: String { formatMenuPercent(currentCPU.used) }
     var cpuUserPercent: String { formatPercent(currentCPU.user) }
     var cpuSystemPercent: String { formatPercent(currentCPU.system) }
     var cpuIdlePercent: String { formatPercent(currentCPU.idle) }
@@ -25,6 +27,7 @@ extension SystemMonitor {
     var paddedCPUHistory: [Double] { padded(cpuSamples.values.map(\.used), capacity: cpuSamples.capacity) }
 
     var gpuPercent: String { formatPercent(currentGPU.used) }
+    var gpuMenuText: String { formatMenuPercent(currentGPU.used) }
     var gpuRenderPercent: String { formatPercent(currentGPU.renderUtilization) }
     var gpuTilerPercent: String {
         currentGPU.tilerUtilization > 0 ? formatPercent(currentGPU.tilerUtilization) : ""
@@ -55,6 +58,7 @@ extension SystemMonitor {
         formatBytes(currentMemory.total > currentMemory.used ? currentMemory.total - currentMemory.used : 0)
     }
     var memoryPercent: String { formatPercent(currentMemory.usedFraction * 100) }
+    var memoryMenuText: String { formatMenuPercent(currentMemory.usedFraction * 100) }
     var memoryActiveText: String { formatBytes(currentMemory.active) }
     var memoryWiredText: String { formatBytes(currentMemory.wired) }
     var memoryCompressedText: String { formatBytes(currentMemory.compressed) }
@@ -98,6 +102,7 @@ extension SystemMonitor {
     var diskReadText: String { formatThroughput(currentDisk.readBPS) }
     var diskWriteText: String { formatThroughput(currentDisk.writeBPS) }
     var diskActivityText: String { formatThroughput(currentDisk.readBPS + currentDisk.writeBPS) }
+    var diskMenuText: String { formatMenuThroughput(currentDisk.readBPS + currentDisk.writeBPS) }
     var paddedDiskHistory: [Double] { padded(diskSamples.values.map { $0.usedFraction * 100 }, capacity: diskSamples.capacity) }
     var paddedDiskReadHistory: [Double] { padded(diskSamples.values.map(\.readBPS), capacity: diskSamples.capacity) }
     var paddedDiskWriteHistory: [Double] { padded(diskSamples.values.map(\.writeBPS), capacity: diskSamples.capacity) }
@@ -105,6 +110,7 @@ extension SystemMonitor {
     var networkInText: String { formatThroughput(currentNetwork.bytesInPerSec) }
     var networkOutText: String { formatThroughput(currentNetwork.bytesOutPerSec) }
     var networkTotalText: String { formatThroughput(currentNetwork.bytesInPerSec + currentNetwork.bytesOutPerSec) }
+    var networkMenuText: String { formatMenuThroughput(currentNetwork.bytesInPerSec) }
     var activeNetworkInterfaces: [NetworkInterfaceUsage] { currentNetwork.interfaces }
     var paddedNetworkInHistory: [Double] { padded(networkSamples.values.map(\.bytesInPerSec), capacity: networkSamples.capacity) }
     var paddedNetworkOutHistory: [Double] { padded(networkSamples.values.map(\.bytesOutPerSec), capacity: networkSamples.capacity) }
@@ -184,7 +190,7 @@ extension SystemMonitor {
     }
     var powerMenuText: String {
         guard hasPower else { return "N/A" }
-        return powerCompactText
+        return formatMenuPower(power?.totalWatts ?? 0)
     }
     var powerMenuSymbol: String { "bolt.fill" }
 
@@ -203,9 +209,10 @@ extension SystemMonitor {
     }
     var thermalMenuText: String {
         if thermal != nil {
-            return cpuTempText
+            return formatMenuTemperature(thermal?.cpuTemperature ?? 0)
         }
-        return thermalPressureText.isEmpty ? "N/A" : thermalPressureText
+        guard let thermalPressureState else { return "N/A" }
+        return formatMenuThermalPressure(thermalPressureState)
     }
     var cpuTempText: String {
         guard let thermal else { return "N/A" }
@@ -244,6 +251,11 @@ extension SystemMonitor {
         let averageRPM = fans.map(\.currentRPM).reduce(0, +) / Double(fans.count)
         return String(format: "%.0f RPM avg", averageRPM)
     }
+    var fansMenuText: String {
+        guard !fans.isEmpty else { return "N/A" }
+        let averageRPM = fans.map(\.currentRPM).reduce(0, +) / Double(fans.count)
+        return formatMenuFanSpeed(averageRPM)
+    }
     var paddedFanAverageHistory: [Double] {
         padded(
             fansSamples.values.map { sample in
@@ -275,8 +287,80 @@ extension SystemMonitor {
         return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
     }
 
+    private func formatMenuPercent(_ value: Double) -> String {
+        String(format: "%.0f%%", value)
+    }
+
+    private func formatMenuThroughput(_ bytesPerSec: Double) -> String {
+        formatCompactMenuValue(
+            bytesPerSec / 1_024,
+            units: ["K", "M", "G", "T"],
+            maxLength: MenuBarTextLayout.slotLength(for: .disk)
+        )
+    }
+
+    private func formatMenuPower(_ watts: Double) -> String {
+        formatCompactMenuValue(
+            watts,
+            units: ["W", "K"],
+            maxLength: MenuBarTextLayout.slotLength(for: .power)
+        )
+    }
+
+    private func formatMenuTemperature(_ celsius: Double) -> String {
+        "\(Int(celsius.rounded()))C"
+    }
+
+    private func formatMenuThermalPressure(_ state: ProcessInfo.ThermalState) -> String {
+        switch state {
+        case .nominal:
+            return "OK"
+        case .fair:
+            return "FA"
+        case .serious:
+            return "SR"
+        case .critical:
+            return "CR"
+        @unknown default:
+            return "?"
+        }
+    }
+
+    private func formatMenuFanSpeed(_ rpm: Double) -> String {
+        formatCompactMenuValue(
+            rpm,
+            units: ["R", "K"],
+            maxLength: MenuBarTextLayout.slotLength(for: .fans)
+        )
+    }
+
     private func formatPercent(_ value: Double) -> String {
         String(format: "%.1f%%", value)
+    }
+
+    private func formatCompactMenuValue(_ value: Double, units: [String], maxLength: Int) -> String {
+        guard value > 0 else { return "0\(units[0])" }
+
+        var scaledValue = value
+        var unitIndex = 0
+        while scaledValue >= 1_000, unitIndex < units.count - 1 {
+            scaledValue /= 1_000
+            unitIndex += 1
+        }
+
+        let number: String
+        if scaledValue < 10, scaledValue.rounded() != scaledValue {
+            number = String(format: "%.1f", scaledValue)
+        } else {
+            number = String(format: "%.0f", scaledValue)
+        }
+
+        let compactNumber = number.hasSuffix(".0") ? String(number.dropLast(2)) : number
+        let compactValue = "\(compactNumber)\(units[unitIndex])"
+        guard compactValue.count <= maxLength else {
+            return "\(Int(scaledValue.rounded()))\(units[unitIndex])"
+        }
+        return compactValue
     }
 
     private func formatAverageFrequency(_ frequencies: [CPUCoreFrequency]) -> String {

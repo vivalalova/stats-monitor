@@ -544,7 +544,7 @@ struct SystemMonitorPresentationTests {
             totalMilliWatts: 21_300
         ))
 
-        #expect(monitor.powerMenuText == "21.3W")
+        #expect(monitor.powerMenuText == "21W")
     }
 
     @Test("powerMenuText is unavailable when power telemetry is unavailable")
@@ -766,7 +766,7 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.hasThermal)
         #expect(!monitor.hasTemperatureReadings)
         #expect(monitor.thermalTemperatureStatusText == "Unavailable on this Mac")
-        #expect(monitor.thermalMenuText == "Nominal")
+        #expect(monitor.thermalMenuText == "OK")
         #expect(monitor.thermalMenuColor == .labelColor)
         #expect(monitor.thermalMenuSymbolPaletteColors == nil)
     }
@@ -777,7 +777,7 @@ struct SystemMonitorPresentationTests {
         defer { monitor.stop() }
         monitor.record(thermalPressureState: .critical)
 
-        #expect(monitor.thermalMenuText == "Critical")
+        #expect(monitor.thermalMenuText == "CR")
         #expect(monitor.thermalMenuColor == NSColor.systemRed)
         #expect(monitor.thermalMenuSymbolPaletteColors?.count == 2)
         #expect(monitor.thermalMenuSymbolPaletteColors?[0] == NSColor.systemRed)
@@ -1100,7 +1100,7 @@ struct StatusBarTests {
 
         let items = monitor.menuBarItems(settings: settings)
         #expect(items.map(\.panel) == [.cpu, .memory, .network])
-        #expect(items.map(\.text) == ["25.0%", "50.0%", "2 KB/s"])
+        #expect(items.map(\.text) == ["25%", "50%", "2K"])
     }
 
     @Test("menu bar items carry thermal critical styling")
@@ -1123,7 +1123,7 @@ struct StatusBarTests {
             MenuBarItem(
                 panel: .thermal,
                 symbol: "thermometer.medium",
-                text: "Critical",
+                text: "CR",
                 color: .systemRed,
                 symbolPaletteColors: [NSColor.systemRed, NSColor.systemOrange]
             )
@@ -1164,9 +1164,9 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings).map(\.text) == [
-            "25.0%",
-            "50.0%",
-            "2 KB/s",
+            "25%",
+            "50%",
+            "2K",
         ])
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings).map(\.panel) == [
             .cpu,
@@ -1197,7 +1197,7 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            MenuBarItem(panel: .disk, symbol: "internaldrive", text: "10.0 MB/s", color: .labelColor)
+            MenuBarItem(panel: .disk, symbol: "internaldrive", text: "10M", color: .labelColor)
         ])
     }
 
@@ -1232,7 +1232,7 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            MenuBarItem(panel: .power, symbol: "bolt.fill", text: "21.3W", color: .labelColor)
+            MenuBarItem(panel: .power, symbol: "bolt.fill", text: "21W", color: .labelColor)
         ])
     }
 
@@ -1253,7 +1253,7 @@ struct StatusBarTests {
         monitor.record(thermalPressureState: .nominal)
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            MenuBarItem(panel: .thermal, symbol: "thermometer.medium", text: "Nominal", color: .labelColor)
+            MenuBarItem(panel: .thermal, symbol: "thermometer.medium", text: "OK", color: .labelColor)
         ])
     }
 
@@ -1278,7 +1278,7 @@ struct StatusBarTests {
             MenuBarItem(
                 panel: .thermal,
                 symbol: "thermometer.medium",
-                text: "Critical",
+                text: "CR",
                 color: .systemRed,
                 symbolPaletteColors: [NSColor.systemRed, NSColor.systemOrange]
             )
@@ -1340,6 +1340,70 @@ struct StatusBarTests {
         #expect(StatusBarLabelRenderer.panel(at: firstBoundary / 2 + 6, in: segments) == .cpu)
         #expect(StatusBarLabelRenderer.panel(at: (firstBoundary + secondBoundary) / 2 + 6, in: segments) == .network)
         #expect(StatusBarLabelRenderer.panel(at: secondBoundary + 12, in: segments) == .power)
+    }
+
+    @Test("status bar keeps a stable measured width when menu values change")
+    func statusBarWidthRemainsStableAcrossValueChanges() {
+        let settings = makeTestSettings()
+        settings.showCPU = true
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = true
+        settings.showBattery = false
+        settings.showThermal = true
+        settings.showPower = true
+        settings.showFans = true
+
+        let lowMonitor = SystemMonitor(settings: settings)
+        lowMonitor.record(cpu: CPUUsage(user: 4, system: 1, idle: 95, perCore: [], coreFrequencies: []))
+        lowMonitor.record(network: NetworkUsage(bytesInPerSec: 512, bytesOutPerSec: 0))
+        lowMonitor.record(thermal: ThermalUsage(cpuTemperature: 39.2, gpuTemperature: nil))
+        lowMonitor.record(power: PowerUsage(
+            cpuMilliWatts: 4_100,
+            gpuMilliWatts: 2_400,
+            totalMilliWatts: 9_800
+        ))
+        lowMonitor.record(fans: [
+            FanUsage(id: 0, currentRPM: 950, minRPM: 800, maxRPM: 5_000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 1_050, minRPM: 800, maxRPM: 5_000, name: "Right Fan"),
+        ])
+
+        let highMonitor = SystemMonitor(settings: settings)
+        highMonitor.record(cpu: CPUUsage(user: 98, system: 2, idle: 0, perCore: [], coreFrequencies: []))
+        highMonitor.record(network: NetworkUsage(bytesInPerSec: 12 * 1_048_576, bytesOutPerSec: 0))
+        highMonitor.record(thermal: ThermalUsage(cpuTemperature: 100.0, gpuTemperature: nil))
+        highMonitor.record(power: PowerUsage(
+            cpuMilliWatts: 88_500,
+            gpuMilliWatts: 12_300,
+            totalMilliWatts: 125_300
+        ))
+        highMonitor.record(fans: [
+            FanUsage(id: 0, currentRPM: 5_100, minRPM: 800, maxRPM: 6_000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 5_360, minRPM: 800, maxRPM: 6_000, name: "Right Fan"),
+        ])
+
+        let lowWidth = StatusBarLabelRenderer.measuredTitleWidth(
+            for: StatusBarLabelRenderer.makeSegments(monitor: lowMonitor, settings: settings)
+        )
+        let highWidth = StatusBarLabelRenderer.measuredTitleWidth(
+            for: StatusBarLabelRenderer.makeSegments(monitor: highMonitor, settings: settings)
+        )
+
+        #expect(lowWidth == highWidth)
+    }
+
+    @Test("menu bar uses narrower fixed widths for compact metrics")
+    func menuBarUsesPanelSpecificFixedWidths() {
+        #expect(MenuBarTextLayout.slotLength(for: .cpu) == 4)
+        #expect(MenuBarTextLayout.slotLength(for: .gpu) == 4)
+        #expect(MenuBarTextLayout.slotLength(for: .memory) == 4)
+        #expect(MenuBarTextLayout.slotLength(for: .disk) == 4)
+        #expect(MenuBarTextLayout.slotLength(for: .network) == 4)
+        #expect(MenuBarTextLayout.slotLength(for: .power) == 4)
+        #expect(MenuBarTextLayout.slotLength(for: .thermal) == 4)
+        #expect(MenuBarTextLayout.slotLength(for: .fans) == 4)
+        #expect(MenuBarTextLayout.slotWidth(for: .cpu) == MenuBarTextLayout.slotWidth(for: .disk))
     }
 
     @Test("status bar button handles click on mouse down to avoid popover click-through")
