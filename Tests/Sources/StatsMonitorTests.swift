@@ -1285,17 +1285,20 @@ struct StatusBarTests {
         ])
 
         let attributedTitle = StatusBarLabelRenderer.makeAttributedTitle(monitor: monitor, settings: settings)
-        let textColor = attributedTitle.attribute(.foregroundColor, at: 2, effectiveRange: nil) as? NSColor
+        let textColor = attributedTitle.attribute(.foregroundColor, at: 1, effectiveRange: nil) as? NSColor
         #expect(textColor == .systemRed)
 
-        let criticalAttachment = attributedTitle.attribute(.attachment, at: 0, effectiveRange: nil) as? NSTextAttachment
+        #expect(attributedTitle.attribute(.attachment, at: 0, effectiveRange: nil) == nil)
+
+        let criticalAttachmentIndex = attributedTitle.length - 1
+        let criticalAttachment = attributedTitle.attribute(.attachment, at: criticalAttachmentIndex, effectiveRange: nil) as? NSTextAttachment
         #expect(criticalAttachment?.image?.tiffRepresentation != nil)
         let criticalConfigurationDescription = String(describing: criticalAttachment?.image?.symbolConfiguration)
         #expect(criticalConfigurationDescription.contains("prefers multicolor: YES"))
 
         monitor.record(thermalPressureState: .nominal)
         let nominalTitle = StatusBarLabelRenderer.makeAttributedTitle(monitor: monitor, settings: settings)
-        let nominalAttachment = nominalTitle.attribute(.attachment, at: 0, effectiveRange: nil) as? NSTextAttachment
+        let nominalAttachment = nominalTitle.attribute(.attachment, at: nominalTitle.length - 1, effectiveRange: nil) as? NSTextAttachment
         #expect(criticalAttachment?.image?.tiffRepresentation != nominalAttachment?.image?.tiffRepresentation)
     }
 

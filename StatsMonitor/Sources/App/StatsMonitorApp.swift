@@ -57,12 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func quitConfirmationReply() -> NSApplication.TerminateReply {
-        let alert = NSAlert()
-        alert.messageText = QuitConfirmationCopy.title
-        alert.informativeText = QuitConfirmationCopy.message
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: QuitConfirmationCopy.confirm)
-        alert.addButton(withTitle: QuitConfirmationCopy.cancel)
+        let alert = QuitConfirmationAlertFactory.makeAlert()
         NSApp.activate(ignoringOtherApps: true)
         return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
     }

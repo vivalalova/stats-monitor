@@ -52,8 +52,17 @@ enum StatusBarLabelRenderer {
 
     private static func makeSegment(for segment: MenuBarItem) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        let attachment = NSTextAttachment()
+        let textAttributes: [NSAttributedString.Key: Any] = [
+            .font: MenuBarTextLayout.textFont,
+            .foregroundColor: segment.color,
+        ]
+        let paddedText = MenuBarTextLayout.paddedText(segment.text, for: segment.panel)
+        result.append(NSAttributedString(
+            string: "\(paddedText) ",
+            attributes: textAttributes
+        ))
 
+        let attachment = NSTextAttachment()
         attachment.image = NSImage(systemSymbolName: segment.symbol, accessibilityDescription: nil)?
             .withSymbolConfiguration(symbolConfiguration(paletteColors: segment.symbolPaletteColors))
 
@@ -63,16 +72,6 @@ enum StatusBarLabelRenderer {
             .foregroundColor: segment.color,
         ], range: NSRange(location: 0, length: attachmentString.length))
         result.append(attachmentString)
-
-        let textAttributes: [NSAttributedString.Key: Any] = [
-            .font: MenuBarTextLayout.textFont,
-            .foregroundColor: segment.color,
-        ]
-        let paddedText = MenuBarTextLayout.paddedText(segment.text, for: segment.panel)
-        result.append(NSAttributedString(
-            string: " \(paddedText)",
-            attributes: textAttributes
-        ))
         return result
     }
 

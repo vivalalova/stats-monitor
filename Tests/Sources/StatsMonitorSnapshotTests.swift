@@ -1,6 +1,5 @@
 import AppKit
 import SnapshotTesting
-import SwiftUI
 import Testing
 @testable import StatsMonitor
 
@@ -31,11 +30,11 @@ struct StatsMonitorSnapshotTests {
             ProcInfo(name: "WindowServer", cpuPercent: 7.4, memoryBytes: 421_527_552),
         ]
 
-        let view = hostingView(for: snapshotSurface {
-            PanelView {
-                CPUDetailView(monitor: monitor)
-            }
-        })
+        let view = detailPopoverSnapshotView(
+            panel: .cpu,
+            settings: snapshotContext.settings,
+            monitor: monitor
+        )
 
         assertSnapshot(
             of: view,
@@ -47,42 +46,67 @@ struct StatsMonitorSnapshotTests {
 
     @Test("GPU detail panel renders a stable screenshot")
     func gpuDetailPanelScreenshot() {
-        let monitor = makeSeededMonitor()
-        assertDetailPanelSnapshot(named: "gpu-detail-panel") {
-            GPUDetailView(monitor: monitor)
-        }
+        let snapshotContext = makeSeededSnapshotContext()
+        assertDetailPanelSnapshot(
+            named: "gpu-detail-panel",
+            content: DetailPanelSnapshotContent(
+                panel: .gpu,
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor
+            )
+        )
     }
 
     @Test("Memory detail panel renders a stable screenshot")
     func memoryDetailPanelScreenshot() {
-        let monitor = makeSeededMonitor()
-        assertDetailPanelSnapshot(named: "memory-detail-panel") {
-            MemoryDetailView(monitor: monitor)
-        }
+        let snapshotContext = makeSeededSnapshotContext()
+        assertDetailPanelSnapshot(
+            named: "memory-detail-panel",
+            content: DetailPanelSnapshotContent(
+                panel: .memory,
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor
+            )
+        )
     }
 
     @Test("Disk detail panel renders a stable screenshot")
     func diskDetailPanelScreenshot() {
-        let monitor = makeSeededMonitor()
-        assertDetailPanelSnapshot(named: "disk-detail-panel") {
-            DiskDetailView(monitor: monitor)
-        }
+        let snapshotContext = makeSeededSnapshotContext()
+        assertDetailPanelSnapshot(
+            named: "disk-detail-panel",
+            content: DetailPanelSnapshotContent(
+                panel: .disk,
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor
+            )
+        )
     }
 
     @Test("Network detail panel renders a stable screenshot")
     func networkDetailPanelScreenshot() {
-        let monitor = makeSeededMonitor()
-        assertDetailPanelSnapshot(named: "network-detail-panel") {
-            NetworkDetailView(monitor: monitor)
-        }
+        let snapshotContext = makeSeededSnapshotContext()
+        assertDetailPanelSnapshot(
+            named: "network-detail-panel",
+            content: DetailPanelSnapshotContent(
+                panel: .network,
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor
+            )
+        )
     }
 
     @Test("Thermal detail panel renders a stable screenshot")
     func thermalDetailPanelScreenshot() {
-        let monitor = makeSeededMonitor()
-        assertDetailPanelSnapshot(named: "thermal-detail-panel") {
-            ThermalDetailView(monitor: monitor)
-        }
+        let snapshotContext = makeSeededSnapshotContext()
+        assertDetailPanelSnapshot(
+            named: "thermal-detail-panel",
+            content: DetailPanelSnapshotContent(
+                panel: .thermal,
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor
+            )
+        )
     }
 
     @Test("Thermal detail panel shows unavailable temperature when only pressure exists")
@@ -92,45 +116,62 @@ struct StatsMonitorSnapshotTests {
         let monitor = SystemMonitor(settings: settings)
         monitor.record(thermalPressureState: .nominal)
 
-        assertDetailPanelSnapshot(named: "thermal-detail-panel-unavailable-temperature") {
-            ThermalDetailView(monitor: monitor)
-        }
+        assertDetailPanelSnapshot(
+            named: "thermal-detail-panel-unavailable-temperature",
+            content: DetailPanelSnapshotContent(
+                panel: .thermal,
+                settings: settings,
+                monitor: monitor
+            )
+        )
     }
 
     @Test("Power detail panel renders a stable screenshot")
     func powerDetailPanelScreenshot() {
-        let monitor = makeSeededMonitor()
-        assertDetailPanelSnapshot(named: "power-detail-panel") {
-            PowerDetailView(monitor: monitor)
-        }
+        let snapshotContext = makeSeededSnapshotContext()
+        assertDetailPanelSnapshot(
+            named: "power-detail-panel",
+            content: DetailPanelSnapshotContent(
+                panel: .power,
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor
+            )
+        )
     }
 
     @Test("Power detail panel shows unavailable temperature when only pressure exists")
     func powerDetailPanelUnavailableTemperatureScreenshot() {
-        let monitor = makePressureOnlyMonitor(includePowerData: true)
-
-        assertDetailPanelSnapshot(named: "power-detail-panel-unavailable-temperature") {
-            PowerDetailView(monitor: monitor)
-        }
+        let snapshotContext = makePressureOnlySnapshotContext(includePowerData: true)
+        assertDetailPanelSnapshot(
+            named: "power-detail-panel-unavailable-temperature",
+            content: DetailPanelSnapshotContent(
+                panel: .power,
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor
+            )
+        )
     }
 
     @Test("Fans detail panel renders a stable screenshot")
     func fansDetailPanelScreenshot() {
-        let monitor = makeSeededMonitor()
-        assertDetailPanelSnapshot(named: "fans-detail-panel") {
-            FansDetailView(monitor: monitor)
-        }
+        let snapshotContext = makeSeededSnapshotContext()
+        assertDetailPanelSnapshot(
+            named: "fans-detail-panel",
+            content: DetailPanelSnapshotContent(
+                panel: .fans,
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor
+            )
+        )
     }
 
     @Test("Quit confirmation alert renders a stable screenshot")
     func quitConfirmationAlertScreenshot() {
-        let view = hostingView(for: snapshotSurface {
-            QuitConfirmationAlertSnapshotView()
-        })
+        let view = alertSnapshotView(QuitConfirmationAlertFactory.makeAlert())
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.fittingSize),
+            as: .image(size: view.frame.size),
             named: "quit-confirmation-alert",
             record: snapshotRecordMode
         )
@@ -142,19 +183,20 @@ struct StatsMonitorSnapshotTests {
         seedSettingsValues(into: snapshotContext.settings)
         seedMonitorSnapshotData(into: snapshotContext.monitor)
 
-        let view = windowFrameView(
-            for: MainWindowView(
-                settings: snapshotContext.settings,
-                monitor: snapshotContext.monitor,
-                selection: .general,
-                aboutData: .snapshot
-            ),
+        let view = appWindowSnapshotView(
             title: "Settings",
             contentSize: CGSize(
                 width: SettingsWindowLayout.defaultWidth,
                 height: SettingsWindowLayout.defaultHeight
             )
-        )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .general,
+                aboutData: .snapshot
+            )
+        }
 
         assertSnapshot(
             of: view,
@@ -169,19 +211,20 @@ struct StatsMonitorSnapshotTests {
         let snapshotContext = makeSnapshotContext()
         seedSettingsValues(into: snapshotContext.settings)
 
-        let view = windowFrameView(
-            for: MainWindowView(
-                settings: snapshotContext.settings,
-                monitor: snapshotContext.monitor,
-                selection: .about,
-                aboutData: .snapshot
-            ),
+        let view = appWindowSnapshotView(
             title: "Settings",
             contentSize: CGSize(
                 width: SettingsWindowLayout.defaultWidth,
                 height: SettingsWindowLayout.defaultHeight
             )
-        )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .about,
+                aboutData: .snapshot
+            )
+        }
 
         assertSnapshot(
             of: view,
@@ -241,14 +284,11 @@ struct StatsMonitorSnapshotTests {
             FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
         ])
 
-        let view = hostingView(for: snapshotSurface {
-            CombinedMenuBarLabel(monitor: monitor, settings: settings)
-                .padding(8)
-        })
+        let view = menuBarSnapshotView(monitor: monitor, settings: settings)
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.fittingSize),
+            as: .image(size: view.frame.size),
             named: "combined-menu-bar-label",
             record: snapshotRecordMode
         )
@@ -270,14 +310,11 @@ struct StatsMonitorSnapshotTests {
         let monitor = SystemMonitor(settings: settings)
         monitor.record(thermalPressureState: .critical)
 
-        let view = hostingView(for: snapshotSurface {
-            CombinedMenuBarLabel(monitor: monitor, settings: settings)
-                .padding(8)
-        })
+        let view = menuBarSnapshotView(monitor: monitor, settings: settings)
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.fittingSize),
+            as: .image(size: view.frame.size),
             named: "combined-menu-bar-label-thermal-critical",
             record: snapshotRecordMode
         )
@@ -289,18 +326,19 @@ struct StatsMonitorSnapshotTests {
         seedSettingsValues(into: snapshotContext.settings)
         seedMonitorSnapshotData(into: snapshotContext.monitor)
 
-        let view = windowFrameView(
-            for: MainWindowView(
-                settings: snapshotContext.settings,
-                monitor: snapshotContext.monitor,
-                aboutData: .snapshot
-            ),
+        let view = appWindowSnapshotView(
             title: "Settings",
             contentSize: CGSize(
                 width: SettingsWindowLayout.defaultWidth,
                 height: SettingsWindowLayout.defaultHeight
             )
-        )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                aboutData: .snapshot
+            )
+        }
 
         assertSnapshot(
             of: view,
@@ -320,19 +358,19 @@ private func makeSnapshotContext() -> (settings: AppSettings, monitor: SystemMon
 }
 
 @MainActor
-private func makeSeededMonitor() -> SystemMonitor {
+private func makeSeededSnapshotContext() -> (settings: AppSettings, monitor: SystemMonitor) {
     let settings = makeTestSettings()
     seedSettingsValues(into: settings)
     let monitor = SystemMonitor(settings: settings)
     seedMonitorSnapshotData(into: monitor)
-    return monitor
+    return (settings, monitor)
 }
 
 @MainActor
-private func makePressureOnlyMonitor(
+private func makePressureOnlySnapshotContext(
     pressure: ProcessInfo.ThermalState = .nominal,
     includePowerData: Bool = false
-) -> SystemMonitor {
+) -> (settings: AppSettings, monitor: SystemMonitor) {
     let settings = makeTestSettings()
     seedSettingsValues(into: settings)
     let monitor = SystemMonitor(settings: settings)
@@ -360,7 +398,7 @@ private func makePressureOnlyMonitor(
         ])
     }
 
-    return monitor
+    return (settings, monitor)
 }
 
 private var snapshotRecordMode: SnapshotTestingConfiguration.Record {
@@ -499,22 +537,22 @@ private extension AboutView.SnapshotData {
     )
 }
 
-private func snapshotSurface<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-    content()
-        .padding(12)
-        .background(Color(nsColor: .windowBackgroundColor))
+private struct DetailPanelSnapshotContent {
+    let panel: PanelID
+    let settings: AppSettings
+    let monitor: SystemMonitor
 }
 
 @MainActor
-private func assertDetailPanelSnapshot<Content: View>(
+private func assertDetailPanelSnapshot(
     named name: String,
-    @ViewBuilder content: () -> Content
+    content: DetailPanelSnapshotContent
 ) {
-    let view = hostingView(for: snapshotSurface {
-        PanelView {
-            content()
-        }
-    })
+    let view = detailPopoverSnapshotView(
+        panel: content.panel,
+        settings: content.settings,
+        monitor: content.monitor
+    )
 
     assertSnapshot(
         of: view,
@@ -522,141 +560,4 @@ private func assertDetailPanelSnapshot<Content: View>(
         named: name,
         record: snapshotRecordMode
     )
-}
-
-@MainActor
-private func hostingView<Content: View>(for rootView: Content) -> NSHostingView<Content> {
-    let view = NSHostingView(rootView: rootView)
-    let size = view.fittingSize
-    view.frame = CGRect(origin: .zero, size: size)
-    return view
-}
-
-@MainActor
-private func windowFrameView<Content: View>(
-    for rootView: Content,
-    title: String,
-    contentSize: CGSize
-) -> NSView {
-    hostingView(for: WindowSnapshotFrame(title: title, contentSize: contentSize) {
-        rootView
-    })
-}
-
-private struct QuitConfirmationAlertSnapshotView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.yellow)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(QuitConfirmationCopy.title)
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(QuitConfirmationCopy.message)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            HStack(spacing: 8) {
-                Spacer()
-                alertButton(QuitConfirmationCopy.cancel, emphasized: false)
-                alertButton(QuitConfirmationCopy.confirm, emphasized: true)
-            }
-        }
-        .padding(20)
-        .frame(width: 320)
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    private func alertButton(_ title: String, emphasized: Bool) -> some View {
-        Text(title)
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(emphasized ? .white : .primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(emphasized ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
-            )
-    }
-}
-
-private struct WindowSnapshotFrame<Content: View>: View {
-    let title: String
-    let contentSize: CGSize
-    let content: Content
-
-    init(
-        title: String,
-        contentSize: CGSize,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.title = title
-        self.contentSize = contentSize
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            titleBar
-            content
-                .frame(width: contentSize.width, height: contentSize.height)
-                .background(Color(nsColor: .windowBackgroundColor))
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: WindowSnapshotLayout.cornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: WindowSnapshotLayout.cornerRadius, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor), lineWidth: WindowSnapshotLayout.outerBorderWidth)
-        )
-        .frame(
-            width: contentSize.width,
-            height: contentSize.height + WindowSnapshotLayout.titleBarHeight
-        )
-    }
-
-    private var titleBar: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: WindowSnapshotLayout.cornerRadius, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
-
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: WindowSnapshotLayout.trafficLightSpacing) {
-                trafficLight(.systemRed)
-                trafficLight(.systemYellow)
-                trafficLight(.systemGreen)
-                Spacer()
-            }
-            .padding(.horizontal, WindowSnapshotLayout.horizontalPadding)
-        }
-        .frame(height: WindowSnapshotLayout.titleBarHeight)
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
-    }
-
-    private func trafficLight(_ color: NSColor) -> some View {
-        Circle()
-            .fill(Color(nsColor: color))
-            .frame(
-                width: WindowSnapshotLayout.trafficLightSize,
-                height: WindowSnapshotLayout.trafficLightSize
-            )
-    }
-}
-
-private enum WindowSnapshotLayout {
-    static let titleBarHeight: CGFloat = 52
-    static let cornerRadius: CGFloat = 10
-    static let outerBorderWidth: CGFloat = 1
-    static let trafficLightSize: CGFloat = 12
-    static let trafficLightSpacing: CGFloat = 8
-    static let horizontalPadding: CGFloat = 14
 }

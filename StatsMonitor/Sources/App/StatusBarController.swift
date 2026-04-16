@@ -2,6 +2,28 @@ import AppKit
 import SwiftUI
 
 @MainActor
+enum StatusBarButtonPresentation {
+    static func itemLength(monitor: SystemMonitor, settings: AppSettings) -> CGFloat {
+        let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
+        return ceil(StatusBarLabelRenderer.measuredTitleWidth(for: segments)) + 12
+    }
+
+    static func applyLabel(
+        to button: NSStatusBarButton,
+        monitor: SystemMonitor,
+        settings: AppSettings
+    ) {
+        button.title = ""
+        button.image = nil
+        button.isBordered = false
+        button.attributedTitle = StatusBarLabelRenderer.makeAttributedTitle(
+            monitor: monitor,
+            settings: settings
+        )
+    }
+}
+
+@MainActor
 final class StatusBarController: NSObject {
     static let clickActionMask: NSEvent.EventTypeMask = [.leftMouseDown]
 
@@ -34,11 +56,8 @@ final class StatusBarController: NSObject {
 
     private func setupButton() {
         guard let button = statusButton else { return }
-        button.title = ""
-        button.image = nil
-        button.isBordered = false
+        StatusBarButtonPresentation.applyLabel(to: button, monitor: monitor, settings: settings)
         Self.configureClickBehavior(for: button)
-        renderButtonLabel()
         button.setAccessibilityLabel("StatsMonitor")
         button.target = self
         button.action = #selector(handleClick(_:))
@@ -56,7 +75,7 @@ final class StatusBarController: NSObject {
     // MARK: - Length
 
     private func updateLength() {
-        let width = ceil(StatusBarLabelRenderer.measuredTitleWidth(for: currentSegments)) + 12
+        let width = StatusBarButtonPresentation.itemLength(monitor: monitor, settings: settings)
         if width > 0 {
             statusItem.length = width
         }
@@ -64,10 +83,7 @@ final class StatusBarController: NSObject {
 
     private func renderButtonLabel() {
         guard let button = statusButton else { return }
-        button.attributedTitle = StatusBarLabelRenderer.makeAttributedTitle(
-            monitor: monitor,
-            settings: settings
-        )
+        StatusBarButtonPresentation.applyLabel(to: button, monitor: monitor, settings: settings)
     }
 
     /// 觀察所有影響 label 寬度的值（指標數值 + show 設定），任一改變就重算 length
@@ -114,35 +130,17 @@ final class StatusBarController: NSObject {
     }
 
     private func updatePopoverContent(for panel: PanelID) {
-        popoverContentController.rootView = AnyView(makePopoverContent(for: panel))
-    }
-
-    private func makePopoverContent(for panel: PanelID) -> some View {
-        PanelView {
-            detailView(for: panel)
-        }
-        .environment(settings)
-        .environment(monitor)
+        popoverContentController.rootView = AnyView(
+            DetailPopoverContentFactory.makeContent(
+                for: panel,
+                settings: settings,
+                monitor: monitor
+            )
+        )
     }
 
     private var currentSegments: [MenuBarItem] {
         StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
-    }
-
-    // MARK: - Detail views
-
-    @ViewBuilder
-    private func detailView(for panel: PanelID) -> some View {
-        switch panel {
-        case .cpu:     CPUDetailView(monitor: monitor)
-        case .gpu:     GPUDetailView(monitor: monitor)
-        case .memory:  MemoryDetailView(monitor: monitor)
-        case .disk:    DiskDetailView(monitor: monitor)
-        case .network: NetworkDetailView(monitor: monitor)
-        case .thermal: ThermalDetailView(monitor: monitor)
-        case .power:   PowerDetailView(monitor: monitor)
-        case .fans:    FansDetailView(monitor: monitor)
-        }
     }
 }
 

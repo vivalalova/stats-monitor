@@ -48,7 +48,6 @@ StatsMonitor/Sources/
     SMCClient.swift           # SMC 連線管理，ThermalMonitor/FanMonitor 共用
     PowerMonitor.swift        # IOReport Energy Model（CPU/GPU/整機功率 mW；非 Apple Silicon 回傳 nil）
   Views/
-    MenuBarLabel.swift        # Menu bar 文字顯示
     LineChartView.swift       # 共用折線圖元件
     DashboardView.swift       # Settings 視窗 Dashboard 分頁（總覽卡片 + 行程表）
     MainWindowView.swift      # 主視窗 NavigationSplitView（Dashboard / General / About）
