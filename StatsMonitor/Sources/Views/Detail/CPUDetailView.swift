@@ -15,11 +15,6 @@ struct CPUDetailView: View {
                 ("System", monitor.cpuSystemPercent),
                 ("Idle", monitor.cpuIdlePercent),
             ])
-            DetailMetricSection(title: "System", rows: availableDetailMetrics([
-                ("Temperature", monitor.cpuTempText),
-                ("CPU Power", monitor.cpuPowerText),
-                ("System Power", monitor.powerText),
-            ]))
             DetailMetricSection(title: "Frequency", rows: [
                 ("Average", monitor.cpuAverageFrequencyText),
                 ("Peak", monitor.cpuPeakFrequencyText),

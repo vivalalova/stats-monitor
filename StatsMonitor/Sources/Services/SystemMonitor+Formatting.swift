@@ -68,10 +68,15 @@ extension SystemMonitor {
 
     var power: PowerUsage? { powerSamples.current }
     var hasPower: Bool { power != nil }
+    var hasPowerPanel: Bool { hasPower }
     var paddedPowerHistory: [Double] { padded(powerSamples.values.map(\.totalWatts), capacity: powerSamples.capacity) }
     var powerText: String {
         guard let power else { return "N/A" }
         return String(format: "%.1f W", power.totalWatts)
+    }
+    var powerCompactText: String {
+        guard let power else { return "" }
+        return String(format: "%.1fW", power.totalWatts)
     }
     var cpuPowerText: String {
         guard let power else { return "N/A" }
@@ -125,6 +130,11 @@ extension SystemMonitor {
         guard let battery else { return "" }
         return "\(battery.designCapacity) mAh"
     }
+    var powerMenuText: String {
+        guard hasPower else { return "N/A" }
+        return powerCompactText
+    }
+    var powerMenuSymbol: String { "bolt.fill" }
 
     var thermal: ThermalUsage? { thermalSamples.current }
     var hasThermal: Bool { thermal != nil }
@@ -176,6 +186,7 @@ extension SystemMonitor {
     func formatProcessMemory(_ bytes: UInt64) -> String { formatBytes(bytes) }
     func formatProcessDisk(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }
     func formatProcessNetwork(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }
+    func formatProcessPower(_ process: ProcInfo) -> String { String(format: "%.1f impact", process.powerImpact) }
     func fanRPMText(_ fan: FanUsage) -> String { String(format: "%.0f RPM", fan.currentRPM) }
     func fanRangeText(_ fan: FanUsage) -> String { String(format: "%.0f–%.0f RPM", fan.minRPM, fan.maxRPM) }
 

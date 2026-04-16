@@ -30,6 +30,7 @@ final class SystemMonitor {
     var topMemoryProcesses: [ProcInfo] = []
     var topDiskProcesses: [ProcInfo] = []
     var topNetworkProcesses: [ProcInfo] = []
+    var topPowerProcesses: [ProcInfo] = []
 
     private var cpuMonitor      = CPUMonitor()
     private var gpuMonitor      = GPUMonitor()
@@ -182,6 +183,7 @@ final class SystemMonitor {
             self.topCPUProcesses    = result.cpuTop
             self.topMemoryProcesses = result.memoryTop
             self.topDiskProcesses   = result.diskTop
+            self.topPowerProcesses  = result.powerTop
         }
     }
 

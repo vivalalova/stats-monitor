@@ -36,14 +36,11 @@ struct CombinedMenuBarLabel: View {
             if settings.showNetwork {
                 MenuBarItemLabel(icon: "network", text: monitor.networkInText)
             }
-            if settings.showBattery, monitor.hasBattery {
-                MenuBarItemLabel(icon: "battery.100", text: monitor.batteryPercent)
+            if settings.showPowerPanel, monitor.hasPowerPanel {
+                MenuBarItemLabel(icon: monitor.powerMenuSymbol, text: monitor.powerMenuText)
             }
             if settings.showThermal, monitor.hasThermal {
                 MenuBarItemLabel(icon: "thermometer.medium", text: monitor.cpuTempText)
-            }
-            if settings.showPower, monitor.hasPower {
-                MenuBarItemLabel(icon: "bolt.fill", text: monitor.powerText)
             }
             if settings.showFans, monitor.hasFans {
                 MenuBarItemLabel(icon: "wind", text: monitor.fansSummaryText)
@@ -63,9 +60,8 @@ struct CombinedMenuBarLabel: View {
         MenuBarItemLabel(icon: "memorychip",   text: "71%")
         MenuBarItemLabel(icon: "internaldrive",text: "55%")
         MenuBarItemLabel(icon: "network",      text: "↓1.2 MB/s")
-        MenuBarItemLabel(icon: "battery.100",  text: "78%")
+        MenuBarItemLabel(icon: "bolt.fill",    text: "21.3W")
         MenuBarItemLabel(icon: "thermometer.medium", text: "68.4°C")
-        MenuBarItemLabel(icon: "bolt.fill",    text: "21.3 W")
         MenuBarItemLabel(icon: "wind",         text: "2470 RPM")
     }
     .padding()

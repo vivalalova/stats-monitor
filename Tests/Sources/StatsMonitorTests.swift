@@ -88,10 +88,33 @@ struct StatsMonitorTests {
 
     @Test("ProcessInfo stores name and metrics")
     func processInfoFields() {
-        let p = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000)
+        let p = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 8.4)
         #expect(p.name == "Xcode")
         #expect(p.cpuPercent == 12.5)
         #expect(p.memoryBytes == 500_000_000)
+        #expect(p.powerImpact == 8.4)
+    }
+
+    @Test("ProcessMonitor parses top POWER output into per-process energy impact")
+    func processMonitorParsesTopPowerOutput() {
+        let output = """
+        Processes: 653 total, 5 running, 648 sleeping, 3730 threads
+        PID    COMMAND          POWER
+        99935  iconservicesd    0.0
+        99934  iconservicesagen 0.0
+
+        Processes: 653 total, 5 running, 648 sleeping, 3730 threads
+        PID    COMMAND          POWER
+        601    WindowServer     45.1
+        72166  iTerm2           14.1
+        83863  Codex Helper     13.8
+        """
+
+        let powerByPID = ProcessMonitor.parseTopPowerOutput(output)
+
+        #expect(powerByPID[601] == 45.1)
+        #expect(powerByPID[72166] == 14.1)
+        #expect(powerByPID[83863] == 13.8)
     }
 
     // MARK: - BatteryUsage
@@ -367,6 +390,37 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.batteryPercent == "80%")
     }
 
+    @Test("powerMenuText shows only system power when battery and power are both available")
+    func powerMenuTextShowsOnlySystemPower() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(battery: BatteryUsage(
+            percentage: 78, isCharging: false, isPluggedIn: false,
+            timeRemaining: 165, cycleCount: 132,
+            designCapacity: 5000, maxCapacity: 4630, health: 92.6
+        ))
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+
+        #expect(monitor.powerMenuText == "21.3W")
+    }
+
+    @Test("powerMenuText is unavailable when power telemetry is unavailable")
+    func powerMenuTextWithoutPowerTelemetry() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(battery: BatteryUsage(
+            percentage: 61, isCharging: false, isPluggedIn: false,
+            timeRemaining: nil, cycleCount: 88,
+            designCapacity: 5000, maxCapacity: 4700, health: 94
+        ))
+
+        #expect(monitor.powerMenuText == "N/A")
+    }
+
     // MARK: - batteryStatus branching
 
     @Test("batteryStatus is Charging when isCharging")
@@ -490,6 +544,14 @@ struct SystemMonitorPresentationTests {
         defer { monitor.stop() }
         #expect(monitor.formatProcessDisk(1_048_576) == "1.0 MB/s")
         #expect(monitor.formatProcessDisk(0)         == "0 KB/s")
+    }
+
+    @Test("formatProcessPower formats one decimal energy impact score")
+    func formatProcessPower() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        let process = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 14.16)
+        #expect(monitor.formatProcessPower(process) == "14.2 impact")
     }
 }
 
@@ -723,13 +785,12 @@ struct DetailPanelTests {
             MemoryDetailView.panelTitle,
             DiskDetailView.panelTitle,
             NetworkDetailView.panelTitle,
-            BatteryDetailView.panelTitle,
             ThermalDetailView.panelTitle,
             PowerDetailView.panelTitle,
             FansDetailView.panelTitle,
         ]
 
-        #expect(titles == ["CPU", "GPU", "Memory", "Disk", "Network", "Battery", "Thermal", "Power", "Fans"])
+        #expect(titles == ["CPU", "GPU", "Memory", "Disk", "Network", "Thermal", "Power", "Fans"])
         #expect(Set(titles).count == PanelID.allCases.count)
     }
 }
@@ -775,7 +836,46 @@ struct StatusBarTests {
             "25.0%",
             "50.0%",
             "2 KB/s",
-            "80%",
+        ])
+        #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings).map(\.panel) == [
+            .cpu,
+            .memory,
+            .network,
+        ])
+    }
+
+    @Test("status bar merges battery and power into one power segment")
+    func statusBarRendererMergesBatteryAndPower() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = true
+        settings.showThermal = false
+        settings.showPower = true
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(battery: BatteryUsage(
+            percentage: 78,
+            isCharging: false,
+            isPluggedIn: false,
+            timeRemaining: 165,
+            cycleCount: 132,
+            designCapacity: 5000,
+            maxCapacity: 4630,
+            health: 92.6
+        ))
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+
+        #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
+            StatusBarLabelRenderer.Segment(panel: .power, symbol: "bolt.fill", text: "21.3W")
         ])
     }
 
@@ -805,16 +905,21 @@ struct StatusBarTests {
             maxCapacity: 4800,
             health: 96
         ))
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 7_400,
+            gpuMilliWatts: 1_200,
+            totalMilliWatts: 9_800
+        ))
 
         let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
-        #expect(segments.map(\.panel) == [.cpu, .network, .battery])
+        #expect(segments.map(\.panel) == [.cpu, .network, .power])
 
         let firstBoundary = StatusBarLabelRenderer.measuredTitleWidth(for: Array(segments.prefix(1)))
         let secondBoundary = StatusBarLabelRenderer.measuredTitleWidth(for: Array(segments.prefix(2)))
 
         #expect(StatusBarLabelRenderer.panel(at: firstBoundary / 2 + 6, in: segments) == .cpu)
         #expect(StatusBarLabelRenderer.panel(at: (firstBoundary + secondBoundary) / 2 + 6, in: segments) == .network)
-        #expect(StatusBarLabelRenderer.panel(at: secondBoundary + 12, in: segments) == .battery)
+        #expect(StatusBarLabelRenderer.panel(at: secondBoundary + 12, in: segments) == .power)
     }
 
     @Test("status bar button handles click on mouse down to avoid popover click-through")

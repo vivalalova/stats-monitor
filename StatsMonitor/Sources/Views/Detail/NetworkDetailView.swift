@@ -13,10 +13,6 @@ struct NetworkDetailView: View {
                 ("↑ Out", monitor.networkOutText),
                 ("Total", monitor.networkTotalText),
             ])
-            DetailMetricSection(title: "System", rows: availableDetailMetrics([
-                ("Temperature", monitor.cpuTempText),
-                ("System Power", monitor.powerText),
-            ]))
             DetailListSection(
                 "Top Processes",
                 data: Array(monitor.topNetworkProcesses.enumerated()),

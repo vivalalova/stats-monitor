@@ -61,9 +61,7 @@ struct DashboardView: View {
                             title: "Battery",
                             value: "\(monitor.batteryPercent)  \(monitor.batteryStatusText)",
                             statusColor: batteryStatusColor(monitor.battery),
-                            lines: monitor.paddedBatteryHistory.count >= 2
-                                ? [(history: monitor.paddedBatteryHistory, color: .green)]
-                                : [],
+                            lines: [],
                             maxValue: histMax(monitor.paddedBatteryHistory)
                         )
                     }

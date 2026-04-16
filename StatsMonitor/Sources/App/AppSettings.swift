@@ -37,6 +37,8 @@ final class AppSettings {
     var showPower:   Bool = true { didSet { persist("showPower",   showPower) } }
     var showFans:    Bool = true { didSet { persist("showFans",    showFans) } }
 
+    var showPowerPanel: Bool { showBattery || showPower }
+
     var launchAtLogin: Bool = false {
         didSet {
             guard !isHydrating else { return }
@@ -82,6 +84,11 @@ final class AppSettings {
     private func persist(_ key: String, _ value: Any) {
         guard !isHydrating else { return }
         defaults.set(value, forKey: key)
+    }
+
+    func setPowerPanelVisible(_ isVisible: Bool) {
+        showBattery = isVisible
+        showPower = isVisible
     }
 
     private static func clampDashboardColumns(_ value: Int) -> Int {

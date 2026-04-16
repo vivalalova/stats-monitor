@@ -7,17 +7,18 @@ struct ProcessMonitor: Sendable {
     // pid -> (cumulative disk read bytes, cumulative disk write bytes, timestamp)
     private var previousDiskSamples: [Int32: (read: UInt64, write: UInt64, date: Date)] = [:]
 
-    mutating func sample(processCount: Int = 10) -> (cpuTop: [ProcInfo], memoryTop: [ProcInfo], diskTop: [ProcInfo]) {
+    mutating func sample(processCount: Int = 10) -> (cpuTop: [ProcInfo], memoryTop: [ProcInfo], diskTop: [ProcInfo], powerTop: [ProcInfo]) {
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size = 0
-        guard sysctl(&mib, 4, nil, &size, nil, 0) == 0, size > 0 else { return ([], [], []) }
+        guard sysctl(&mib, 4, nil, &size, nil, 0) == 0, size > 0 else { return ([], [], [], []) }
 
         let count = size / MemoryLayout<kinfo_proc>.size
         var procs = [kinfo_proc](repeating: kinfo_proc(), count: count)
-        guard sysctl(&mib, 4, &procs, &size, nil, 0) == 0 else { return ([], [], []) }
+        guard sysctl(&mib, 4, &procs, &size, nil, 0) == 0 else { return ([], [], [], []) }
 
         var infos: [ProcInfo] = []
         let now = Date.now
+        let powerByPID = Self.samplePowerImpactByPID()
 
         for proc in procs {
             let pid = proc.kp_proc.p_pid
@@ -71,10 +72,14 @@ struct ProcessMonitor: Sendable {
                 previousDiskSamples[pid] = (curRead, curWrite, now)
             }
 
-            infos.append(ProcInfo(name: name, cpuPercent: cpuPercent,
-                                  memoryBytes: memBytes,
-                                  diskReadBPS: max(0, diskReadBPS),
-                                  diskWriteBPS: max(0, diskWriteBPS)))
+            infos.append(ProcInfo(
+                name: name,
+                cpuPercent: cpuPercent,
+                memoryBytes: memBytes,
+                diskReadBPS: max(0, diskReadBPS),
+                diskWriteBPS: max(0, diskWriteBPS),
+                powerImpact: powerByPID[pid] ?? 0
+            ))
         }
 
         // Prune stale PIDs
@@ -86,6 +91,68 @@ struct ProcessMonitor: Sendable {
         let memTop  = Array(infos.sorted { $0.memoryBytes   > $1.memoryBytes   }.prefix(processCount))
         let diskTop = Array(infos.filter { $0.diskTotalBPS  > 0 }
                                  .sorted { $0.diskTotalBPS  > $1.diskTotalBPS  }.prefix(processCount))
-        return (cpuTop, memTop, diskTop)
+        let powerTop = Array(infos.filter { $0.powerImpact > 0 }
+                                 .sorted { lhs, rhs in
+                                     if lhs.powerImpact == rhs.powerImpact {
+                                         return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+                                     }
+                                     return lhs.powerImpact > rhs.powerImpact
+                                 }
+                                 .prefix(processCount))
+        return (cpuTop, memTop, diskTop, powerTop)
+    }
+
+    private static func samplePowerImpactByPID() -> [Int32: Double] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/top")
+        process.arguments = ["-l", "2", "-s", "0", "-o", "power", "-stats", "pid,command,power"]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return [:]
+        }
+
+        guard process.terminationStatus == 0,
+              let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)
+        else {
+            return [:]
+        }
+
+        return parseTopPowerOutput(output)
+    }
+
+    static func parseTopPowerOutput(_ output: String) -> [Int32: Double] {
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        guard let lastHeaderIndex = lines.lastIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("PID") }) else {
+            return [:]
+        }
+
+        var powerByPID: [Int32: Double] = [:]
+        let pattern = #"^\s*(\d+)\s+.+\s+([0-9]+(?:\.[0-9]+)?)\s*$"#
+        let regex = try? NSRegularExpression(pattern: pattern)
+
+        for line in lines[(lastHeaderIndex + 1)...] {
+            let rawLine = String(line)
+            guard let regex else { break }
+            let range = NSRange(rawLine.startIndex..<rawLine.endIndex, in: rawLine)
+            guard let match = regex.firstMatch(in: rawLine, range: range),
+                  let pidRange = Range(match.range(at: 1), in: rawLine),
+                  let powerRange = Range(match.range(at: 2), in: rawLine),
+                  let pid = Int32(rawLine[pidRange]),
+                  let powerImpact = Double(rawLine[powerRange])
+            else {
+                continue
+            }
+
+            powerByPID[pid] = powerImpact
+        }
+
+        return powerByPID
     }
 }

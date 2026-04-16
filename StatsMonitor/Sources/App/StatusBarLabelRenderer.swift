@@ -33,9 +33,14 @@ enum StatusBarLabelRenderer {
         appendSegment(to: &segments, isVisible: settings.showMemory, panel: .memory, symbol: "memorychip", text: monitor.memoryPercent)
         appendSegment(to: &segments, isVisible: settings.showDisk, panel: .disk, symbol: "internaldrive", text: monitor.diskPercent)
         appendSegment(to: &segments, isVisible: settings.showNetwork, panel: .network, symbol: "network", text: monitor.networkInText)
-        appendSegment(to: &segments, isVisible: settings.showBattery && monitor.hasBattery, panel: .battery, symbol: "battery.100", text: monitor.batteryPercent)
+        appendSegment(
+            to: &segments,
+            isVisible: settings.showPowerPanel && monitor.hasPowerPanel,
+            panel: .power,
+            symbol: monitor.powerMenuSymbol,
+            text: monitor.powerMenuText
+        )
         appendSegment(to: &segments, isVisible: settings.showThermal && monitor.hasThermal, panel: .thermal, symbol: "thermometer.medium", text: monitor.cpuTempText)
-        appendSegment(to: &segments, isVisible: settings.showPower && monitor.hasPower, panel: .power, symbol: "bolt.fill", text: monitor.powerText)
         appendSegment(to: &segments, isVisible: settings.showFans && monitor.hasFans, panel: .fans, symbol: "wind", text: monitor.fansSummaryText)
         return segments
     }
@@ -122,3 +127,5 @@ enum StatusBarLabelRenderer {
         separatorString.size().width
     }
 }
+
+extension StatusBarLabelRenderer.Segment: Equatable {}

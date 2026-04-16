@@ -77,14 +77,6 @@ struct StatsMonitorSnapshotTests {
         }
     }
 
-    @Test("Battery detail panel renders a stable screenshot")
-    func batteryDetailPanelScreenshot() {
-        let monitor = makeSeededMonitor()
-        assertDetailPanelSnapshot(named: "battery-detail-panel") {
-            BatteryDetailView(monitor: monitor)
-        }
-    }
-
     @Test("Thermal detail panel renders a stable screenshot")
     func thermalDetailPanelScreenshot() {
         let monitor = makeSeededMonitor()
@@ -377,6 +369,11 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
     monitor.topNetworkProcesses = [
         ProcInfo(name: "Safari", cpuPercent: 3.1, memoryBytes: 640_000_000, networkInBPS: 1_572_864, networkOutBPS: 196_608),
         ProcInfo(name: "curl", cpuPercent: 0.4, memoryBytes: 18_000_000, networkInBPS: 262_144, networkOutBPS: 131_072),
+    ]
+    monitor.topPowerProcesses = [
+        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000, powerImpact: 45.1),
+        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, powerImpact: 14.1),
+        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, powerImpact: 12.7),
     ]
 }
 

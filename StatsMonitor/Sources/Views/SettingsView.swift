@@ -99,6 +99,13 @@ private struct SidebarToggleButton: View {
 private struct GeneralSettingsView: View {
     @Bindable var settings: AppSettings
 
+    private var powerPanelBinding: Binding<Bool> {
+        Binding(
+            get: { settings.showPowerPanel },
+            set: { settings.setPowerPanelVisible($0) }
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -146,9 +153,8 @@ private struct GeneralSettingsView: View {
                         Toggle("Memory", isOn: $settings.showMemory)
                         Toggle("Disk", isOn: $settings.showDisk)
                         Toggle("Network", isOn: $settings.showNetwork)
-                        Toggle("Battery", isOn: $settings.showBattery)
+                        Toggle("Power", isOn: powerPanelBinding)
                         Toggle("Thermal", isOn: $settings.showThermal)
-                        Toggle("Power", isOn: $settings.showPower)
                         Toggle("Fans", isOn: $settings.showFans)
                     }
                     Text("Keep at least one item to avoid hiding the app completely.")
