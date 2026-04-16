@@ -6,6 +6,27 @@ struct MenuBarItemLabel: View {
     var textColor: Color = .primary
     var iconPaletteColors: [Color]? = nil
 
+    init(
+        icon: String,
+        text: String,
+        textColor: Color = .primary,
+        iconPaletteColors: [Color]? = nil
+    ) {
+        self.icon = icon
+        self.text = text
+        self.textColor = textColor
+        self.iconPaletteColors = iconPaletteColors
+    }
+
+    init(item: MenuBarItem) {
+        self.init(
+            icon: item.symbol,
+            text: item.text,
+            textColor: Color(nsColor: item.color),
+            iconPaletteColors: item.symbolPaletteColors?.map(Color.init(nsColor:))
+        )
+    }
+
     var body: some View {
         HStack(spacing: 4) {
             iconView
@@ -35,34 +56,8 @@ struct CombinedMenuBarLabel: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            if settings.showCPU {
-                MenuBarItemLabel(icon: "cpu", text: monitor.cpuPercent)
-            }
-            if settings.showGPU {
-                MenuBarItemLabel(icon: "display", text: monitor.gpuPercent)
-            }
-            if settings.showMemory {
-                MenuBarItemLabel(icon: "memorychip", text: monitor.memoryPercent)
-            }
-            if settings.showDisk {
-                MenuBarItemLabel(icon: "internaldrive", text: monitor.diskMenuText)
-            }
-            if settings.showNetwork {
-                MenuBarItemLabel(icon: "network", text: monitor.networkInText)
-            }
-            if settings.showPowerPanel, monitor.hasPowerPanel {
-                MenuBarItemLabel(icon: monitor.powerMenuSymbol, text: monitor.powerMenuText)
-            }
-            if settings.showThermal, monitor.hasThermal {
-                MenuBarItemLabel(
-                    icon: "thermometer.medium",
-                    text: monitor.thermalMenuText,
-                    textColor: Color(nsColor: monitor.thermalMenuColor),
-                    iconPaletteColors: monitor.thermalMenuSymbolPaletteColors?.map(Color.init(nsColor:))
-                )
-            }
-            if settings.showFans, monitor.hasFans {
-                MenuBarItemLabel(icon: "wind", text: monitor.fansSummaryText)
+            ForEach(monitor.menuBarItems(settings: settings)) { item in
+                MenuBarItemLabel(item: item)
             }
         }
         .allowsHitTesting(false)

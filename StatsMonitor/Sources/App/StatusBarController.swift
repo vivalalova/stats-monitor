@@ -61,16 +61,8 @@ final class StatusBarController: NSObject {
 
     /// 觀察所有影響 label 寬度的值（指標數值 + show 設定），任一改變就重算 length
     private func observeForLength() {
-        let s = settings
-        let m = monitor
         withObservationTracking {
-            _ = s.showCPU; _ = s.showGPU; _ = s.showMemory
-            _ = s.showDisk; _ = s.showNetwork
-            _ = s.showBattery; _ = s.showThermal; _ = s.showPower; _ = s.showFans
-            _ = m.cpuPercent; _ = m.gpuPercent; _ = m.memoryPercent
-            _ = m.diskMenuText; _ = m.networkInText
-            _ = m.hasBattery; _ = m.hasThermal; _ = m.hasPower; _ = m.hasFans
-            _ = m.powerMenuText; _ = m.cpuTempText; _ = m.thermalMenuText; _ = m.thermalPressureText; _ = m.fansSummaryText
+            _ = currentSegments
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.renderButtonLabel()
@@ -124,7 +116,7 @@ final class StatusBarController: NSObject {
         .environment(monitor)
     }
 
-    private var currentSegments: [StatusBarLabelRenderer.Segment] {
+    private var currentSegments: [MenuBarItem] {
         StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
     }
 

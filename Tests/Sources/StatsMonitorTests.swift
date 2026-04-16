@@ -1065,6 +1065,71 @@ struct DetailPanelTests {
 @MainActor
 struct StatusBarTests {
 
+    @Test("menu bar items follow settings visibility and ordering")
+    func menuBarItemsFollowVisibilityAndOrdering() {
+        let settings = makeTestSettings()
+        settings.showCPU = true
+        settings.showGPU = false
+        settings.showMemory = true
+        settings.showDisk = false
+        settings.showNetwork = true
+        settings.showBattery = true
+        settings.showThermal = false
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(cpu: CPUUsage(user: 20, system: 5, idle: 75, perCore: [], coreFrequencies: []))
+        monitor.record(memory: MemoryUsage(
+            active: 2_147_483_648,
+            wired: 1_073_741_824,
+            compressed: 1_073_741_824,
+            total: 8_589_934_592
+        ))
+        monitor.record(network: NetworkUsage(bytesInPerSec: 2_048, bytesOutPerSec: 1_024))
+        monitor.record(battery: BatteryUsage(
+            percentage: 80,
+            isCharging: false,
+            isPluggedIn: true,
+            timeRemaining: nil,
+            cycleCount: 100,
+            designCapacity: 5000,
+            maxCapacity: 4800,
+            health: 96
+        ))
+
+        let items = monitor.menuBarItems(settings: settings)
+        #expect(items.map(\.panel) == [.cpu, .memory, .network])
+        #expect(items.map(\.text) == ["25.0%", "50.0%", "2 KB/s"])
+    }
+
+    @Test("menu bar items carry thermal critical styling")
+    func menuBarItemsCarryThermalCriticalStyling() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = true
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(thermalPressureState: .critical)
+
+        #expect(monitor.menuBarItems(settings: settings) == [
+            MenuBarItem(
+                panel: .thermal,
+                symbol: "thermometer.medium",
+                text: "Critical",
+                color: .systemRed,
+                symbolPaletteColors: [NSColor.systemRed, NSColor.systemOrange]
+            )
+        ])
+    }
+
     @Test("status bar label renderer builds one segment per enabled monitor")
     func statusBarLabelRendererBuildsExpectedSegments() {
         let settings = makeTestSettings()
@@ -1132,7 +1197,7 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            StatusBarLabelRenderer.Segment(panel: .disk, symbol: "internaldrive", text: "10.0 MB/s", color: .labelColor)
+            MenuBarItem(panel: .disk, symbol: "internaldrive", text: "10.0 MB/s", color: .labelColor)
         ])
     }
 
@@ -1167,7 +1232,7 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            StatusBarLabelRenderer.Segment(panel: .power, symbol: "bolt.fill", text: "21.3W", color: .labelColor)
+            MenuBarItem(panel: .power, symbol: "bolt.fill", text: "21.3W", color: .labelColor)
         ])
     }
 
@@ -1188,7 +1253,7 @@ struct StatusBarTests {
         monitor.record(thermalPressureState: .nominal)
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            StatusBarLabelRenderer.Segment(panel: .thermal, symbol: "thermometer.medium", text: "Nominal", color: .labelColor)
+            MenuBarItem(panel: .thermal, symbol: "thermometer.medium", text: "Nominal", color: .labelColor)
         ])
     }
 
@@ -1210,7 +1275,7 @@ struct StatusBarTests {
 
         let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
         #expect(segments == [
-            StatusBarLabelRenderer.Segment(
+            MenuBarItem(
                 panel: .thermal,
                 symbol: "thermometer.medium",
                 text: "Critical",
