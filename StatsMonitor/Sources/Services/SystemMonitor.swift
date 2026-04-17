@@ -34,10 +34,11 @@ final class SystemMonitor {
     var topNetworkProcesses: [ProcInfo] = []
     var topPowerProcesses: [ProcInfo] = []
 
-    private var cpuMonitor      = CPUMonitor()
-    private var gpuMonitor      = GPUMonitor()
-    private var aneMonitor      = ANEMonitor()
-    private var memoryMonitor   = MemoryMonitor()
+    private var cpuMonitor          = CPUMonitor()
+    private var gpuMonitor          = GPUMonitor()
+    private var gpuFrequencyMonitor = GPUFrequencyMonitor()
+    private var aneMonitor          = ANEMonitor()
+    private var memoryMonitor       = MemoryMonitor()
     private var diskMonitor     = DiskMonitor()
     private var networkMonitor  = NetworkMonitor()
     private var processMonitor  = ProcessMonitor()
@@ -110,6 +111,7 @@ final class SystemMonitor {
         let cpu     = cpuMonitor.sample()
         var gpu     = gpuMonitor.sample()
         gpu.anePowerMilliWatts = aneMonitor.sample(intervalSeconds: settings.pollInterval)
+        gpu.frequency = gpuFrequencyMonitor.sample()
         let memory  = memoryMonitor.sample()
         let disk    = diskMonitor.sample()
         let network = networkMonitor.sample()

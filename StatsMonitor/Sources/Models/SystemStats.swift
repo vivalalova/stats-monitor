@@ -104,6 +104,7 @@ struct GPUUsage: Sendable {
     var driverMemoryBytes: UInt64 = 0
     var allocatedMemoryBytes: UInt64 = 0
     var anePowerMilliWatts: Double = 0   // IOReport Energy Model; 0 = idle / unavailable
+    var frequency: CPUCoreFrequency? = nil  // DVFS-weighted GPU clock; nil when unavailable
 
     var used: Double { deviceUtilization }
 

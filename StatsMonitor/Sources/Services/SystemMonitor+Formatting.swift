@@ -58,6 +58,24 @@ extension SystemMonitor {
             return (name: name, history: history)
         }
     }
+    var gpuFrequency: CPUCoreFrequency? { currentGPU.frequency }
+    var gpuFrequencyText: String {
+        guard let freq = gpuFrequency, freq.maxHz > 0 else { return "N/A" }
+        return freq.currentHz > 0 ? ghzString(freq.currentHz) : ghzString(0)
+    }
+    var hasGPUFrequency: Bool {
+        gpuSamples.values.contains { ($0.frequency?.maxHz ?? 0) > 0 }
+    }
+    var gpuFrequencyMaxHz: Double {
+        Double(gpuSamples.values.compactMap(\.frequency?.maxHz).max() ?? 0)
+    }
+    var paddedGPUFrequencyHistory: [Double] {
+        padded(
+            gpuSamples.values.map { Double($0.frequency?.currentHz ?? 0) },
+            capacity: gpuSamples.capacity
+        )
+    }
+
     var gpuMediaEngineWatts: Double { (power?.mediaEngineMilliWatts ?? 0) / 1000 }
     var hasMediaEngine: Bool {
         powerSamples.values.contains { $0.mediaEngineMilliWatts > 0 }

@@ -10,6 +10,15 @@ struct GPUEnginesView: View {
     var body: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 8) {
+                if monitor.hasGPUFrequency {
+                    MetricChartCard(
+                        title: "Frequency",
+                        value: monitor.gpuFrequencyText,
+                        statusColor: .orange,
+                        lines: [(history: monitor.paddedGPUFrequencyHistory, color: .orange)],
+                        maxValue: max(monitor.gpuFrequencyMaxHz, 1)
+                    )
+                }
                 if monitor.hasMediaEngine {
                     MetricChartCard(
                         title: "Media Engine",

@@ -504,7 +504,8 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         engines: ["Compute": 42, "Tiler": 28, "Vertex": 17],
         vramUsed: 4_294_967_296,
         driverMemoryBytes: 268_435_456,
-        allocatedMemoryBytes: 6_442_450_944
+        allocatedMemoryBytes: 6_442_450_944,
+        frequency: CPUCoreFrequency(currentHz: 860_000_000, maxHz: 1_398_000_000)
     ))
     monitor.record(memory: MemoryUsage(
         active: 9_663_676_416,
