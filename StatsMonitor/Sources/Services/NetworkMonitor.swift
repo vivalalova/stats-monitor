@@ -1,10 +1,17 @@
 import Foundation
 import Darwin
 
-struct NetworkMonitor {
+struct NetworkMonitor: Sendable {
+    struct ProcessSnapshot: Sendable {
+        var bytesIn: UInt64
+        var bytesOut: UInt64
+        var date: Date
+    }
+
     private var previousBytesIn: UInt64 = 0
     private var previousBytesOut: UInt64 = 0
     private var previousInterfaceCounters: [String: (bytesIn: UInt64, bytesOut: UInt64)] = [:]
+    private var previousProcessSnapshots: [String: ProcessSnapshot] = [:]
     private var previousDate: Date = .now
 
     mutating func sample() -> NetworkUsage {
@@ -40,6 +47,23 @@ struct NetworkMonitor {
             bytesOutPerSec: max(0, outPerSec),
             interfaces: interfaceUsage
         )
+    }
+
+    mutating func sampleTopProcesses(processCount: Int = 10) -> [ProcInfo] {
+        guard let currentCounters = Self.readProcessCounters() else { return [] }
+        let now = Date.now
+        let processes = Self.computeTopProcesses(
+            currentCounters: currentCounters,
+            previousSnapshots: previousProcessSnapshots,
+            now: now,
+            processCount: processCount
+        )
+        previousProcessSnapshots = Dictionary(
+            uniqueKeysWithValues: currentCounters.map { key, value in
+                (key, ProcessSnapshot(bytesIn: value.bytesIn, bytesOut: value.bytesOut, date: now))
+            }
+        )
+        return processes
     }
 
     private func interfaceCounters() -> [String: (bytesIn: UInt64, bytesOut: UInt64)] {
@@ -96,6 +120,37 @@ struct NetworkMonitor {
         }
     }
 
+    static func computeTopProcesses(
+        currentCounters: [String: (bytesIn: UInt64, bytesOut: UInt64)],
+        previousSnapshots: [String: ProcessSnapshot],
+        now: Date,
+        processCount: Int
+    ) -> [ProcInfo] {
+        let processes = currentCounters.compactMap { key, current -> ProcInfo? in
+            guard let previous = previousSnapshots[key] else { return nil }
+            let elapsed = now.timeIntervalSince(previous.date)
+            guard elapsed > 0 else { return nil }
+
+            let bytesInDelta = current.bytesIn >= previous.bytesIn ? current.bytesIn - previous.bytesIn : 0
+            let bytesOutDelta = current.bytesOut >= previous.bytesOut ? current.bytesOut - previous.bytesOut : 0
+            guard bytesInDelta > 0 || bytesOutDelta > 0 else { return nil }
+
+            return ProcInfo(
+                name: processName(from: key),
+                cpuPercent: 0,
+                memoryBytes: 0,
+                networkInBPS: Double(bytesInDelta) / elapsed,
+                networkOutBPS: Double(bytesOutDelta) / elapsed
+            )
+        }
+
+        return Array(
+            processes
+                .sorted { $0.networkTotalBPS > $1.networkTotalBPS }
+                .prefix(processCount)
+        )
+    }
+
     static func displayName(for interface: String) -> String {
         switch interface {
         case let name where name.hasPrefix("utun"):
@@ -109,5 +164,54 @@ struct NetworkMonitor {
         default:
             interface
         }
+    }
+
+    private static func processName(from key: String) -> String {
+        guard let lastDot = key.lastIndex(of: ".") else { return key }
+        return String(key[..<lastDot])
+    }
+
+    private static func readProcessCounters() -> [String: (bytesIn: UInt64, bytesOut: UInt64)]? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/nettop")
+        task.arguments = [
+            "-P", "-L", "1", "-n",
+            "-k", "time,interface,state,rx_dupe,rx_ooo,re-tx,rtt_avg," +
+                  "rcvsize,tx_win,tc_class,tc_mgt,cc_algo,P,C,R,W,arch"
+        ]
+
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+
+        do {
+            try task.run()
+        } catch {
+            return nil
+        }
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+
+        guard task.terminationStatus == 0,
+              let output = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+
+        var counters: [String: (bytesIn: UInt64, bytesOut: UInt64)] = [:]
+        for line in output.components(separatedBy: "\n").dropFirst() {
+            let parts = line.components(separatedBy: ",")
+            guard parts.count >= 3 else { continue }
+
+            let key = parts[0].trimmingCharacters(in: .whitespaces)
+            guard !key.isEmpty else { continue }
+
+            counters[key] = (
+                bytesIn: UInt64(parts[1].trimmingCharacters(in: .whitespaces)) ?? 0,
+                bytesOut: UInt64(parts[2].trimmingCharacters(in: .whitespaces)) ?? 0
+            )
+        }
+
+        return counters
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 import Darwin
 
-struct MemoryMonitor {
+struct MemoryMonitor: Sendable {
     func sample() -> MemoryUsage {
         let total = ProcessInfo.processInfo.physicalMemory
 
@@ -33,6 +33,25 @@ struct MemoryMonitor {
             swapUsed:   swapUsage?.used ?? 0,
             swapTotal:  swapUsage?.total ?? 0,
             availablePercent: availablePercent
+        )
+    }
+
+    func sampleTopProcesses(from snapshot: ProcessCountersSnapshot, processCount: Int = 10) -> [ProcInfo] {
+        Self.computeTopProcesses(snapshot: snapshot, processCount: processCount)
+    }
+
+    static func computeTopProcesses(snapshot: ProcessCountersSnapshot, processCount: Int) -> [ProcInfo] {
+        Array(
+            snapshot.entries
+                .map { entry in
+                    ProcInfo(
+                        name: entry.name,
+                        cpuPercent: 0,
+                        memoryBytes: entry.memoryBytes
+                    )
+                }
+                .sorted { $0.memoryBytes > $1.memoryBytes }
+                .prefix(processCount)
         )
     }
 

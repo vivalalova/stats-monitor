@@ -1,10 +1,17 @@
 import Foundation
 import IOKit
 
-struct DiskMonitor {
+struct DiskMonitor: Sendable {
+    struct ProcessSnapshot: Sendable {
+        var readBytes: UInt64
+        var writeBytes: UInt64
+        var date: Date
+    }
+
     private var previousRead:  UInt64 = 0
     private var previousWrite: UInt64 = 0
     private var previousDate:  Date   = .now
+    private let processSampler = DiskProcessSampler()
 
     mutating func sample() -> DiskUsage {
         // Disk space — use volumeAvailableCapacityForImportantUsage to include
@@ -40,6 +47,36 @@ struct DiskMonitor {
                          writeBPS: writeBPS)
     }
 
+    func sampleTopProcesses(from snapshot: ProcessCountersSnapshot, processCount: Int = 10) -> [ProcInfo] {
+        processSampler.sampleTopProcesses(from: snapshot, processCount: processCount)
+    }
+
+    static func computeTopProcesses(
+        snapshot: ProcessCountersSnapshot,
+        previousSnapshots: [Int32: ProcessSnapshot],
+        processCount: Int
+    ) -> [ProcInfo] {
+        let processes = snapshot.entries.compactMap { entry -> ProcInfo? in
+            guard let previous = previousSnapshots[entry.pid] else { return nil }
+            let elapsed = snapshot.date.timeIntervalSince(previous.date)
+            guard elapsed > 0 else { return nil }
+
+            let readDelta = entry.diskReadBytes >= previous.readBytes ? entry.diskReadBytes - previous.readBytes : 0
+            let writeDelta = entry.diskWriteBytes >= previous.writeBytes ? entry.diskWriteBytes - previous.writeBytes : 0
+            guard readDelta > 0 || writeDelta > 0 else { return nil }
+
+            return ProcInfo(
+                name: entry.name,
+                cpuPercent: 0,
+                memoryBytes: entry.memoryBytes,
+                diskReadBPS: Double(readDelta) / elapsed,
+                diskWriteBPS: Double(writeDelta) / elapsed
+            )
+        }
+
+        return Array(processes.sorted { $0.diskTotalBPS > $1.diskTotalBPS }.prefix(processCount))
+    }
+
     private func ioBytes() -> (read: UInt64, write: UInt64) {
         var totalRead:  UInt64 = 0
         var totalWrite: UInt64 = 0
@@ -65,5 +102,30 @@ struct DiskMonitor {
         }
 
         return (totalRead, totalWrite)
+    }
+}
+
+private final class DiskProcessSampler: @unchecked Sendable {
+    private var previousSnapshots: [Int32: DiskMonitor.ProcessSnapshot] = [:]
+
+    func sampleTopProcesses(from snapshot: ProcessCountersSnapshot, processCount: Int) -> [ProcInfo] {
+        let processes = DiskMonitor.computeTopProcesses(
+            snapshot: snapshot,
+            previousSnapshots: previousSnapshots,
+            processCount: processCount
+        )
+        previousSnapshots = Dictionary(
+            uniqueKeysWithValues: snapshot.entries.map { entry in
+                (
+                    entry.pid,
+                    DiskMonitor.ProcessSnapshot(
+                        readBytes: entry.diskReadBytes,
+                        writeBytes: entry.diskWriteBytes,
+                        date: snapshot.date
+                    )
+                )
+            }
+        )
+        return processes
     }
 }

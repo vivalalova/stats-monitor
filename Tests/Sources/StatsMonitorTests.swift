@@ -33,6 +33,18 @@ struct StatsMonitorTests {
         #expect(freq.displayText.contains("3.2G"))
     }
 
+    @Test("CPUCoreFrequency arrays treat leading higher-max cores as performance cores")
+    func coreFreqArrayInfersLeadingPerformanceCluster() {
+        let frequencies = [
+            CPUCoreFrequency(currentHz: 3_400_000_000, maxHz: 3_500_000_000),
+            CPUCoreFrequency(currentHz: 3_300_000_000, maxHz: 3_500_000_000),
+            CPUCoreFrequency(currentHz: 2_400_000_000, maxHz: 2_420_000_000),
+            CPUCoreFrequency(currentHz: 2_300_000_000, maxHz: 2_420_000_000),
+        ]
+
+        #expect(frequencies.pCoreCount == 2)
+    }
+
     // MARK: - Memory
 
     @Test("Memory fraction is zero when total is zero")
@@ -95,8 +107,8 @@ struct StatsMonitorTests {
         #expect(p.powerImpact == 8.4)
     }
 
-    @Test("ProcessMonitor parses top POWER output into per-process energy impact")
-    func processMonitorParsesTopPowerOutput() {
+    @Test("PowerMonitor parses top POWER output into per-process energy impact")
+    func powerMonitorParsesTopPowerOutput() {
         let output = """
         Processes: 653 total, 5 running, 648 sleeping, 3730 threads
         PID    COMMAND          POWER
@@ -110,7 +122,7 @@ struct StatsMonitorTests {
         83863  Codex Helper     13.8
         """
 
-        let powerByPID = ProcessMonitor.parseTopPowerOutput(output)
+        let powerByPID = PowerMonitor.parseTopPowerOutput(output)
 
         #expect(powerByPID[601] == 45.1)
         #expect(powerByPID[72166] == 14.1)
@@ -249,6 +261,25 @@ struct MemoryMonitorTests {
         #expect(MemoryMonitor.pressureLevel(forAvailablePercent: 5) == .critical)
         #expect(MemoryMonitor.pressureLevel(forAvailablePercent: nil) == .unknown)
     }
+
+    @Test("computes top memory processes from process snapshots")
+    func computesTopMemoryProcesses() {
+        let snapshot = ProcessCountersSnapshot(
+            entries: [
+                .init(pid: 601, name: "WindowServer", cpuTicks: 2_000, memoryBytes: 4_000, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0),
+                .init(pid: 72166, name: "iTerm2", cpuTicks: 1_000, memoryBytes: 9_000, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0),
+                .init(pid: 83863, name: "Codex Helper", cpuTicks: 500, memoryBytes: 7_000, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0),
+            ],
+            date: Date(timeIntervalSince1970: 1_000)
+        )
+
+        let processes = MemoryMonitor.computeTopProcesses(snapshot: snapshot, processCount: 2)
+
+        #expect(processes.count == 2)
+        #expect(processes[0].name == "iTerm2")
+        #expect(processes[0].memoryBytes == 9_000)
+        #expect(processes[1].name == "Codex Helper")
+    }
 }
 
 @Suite("ThermalMonitor")
@@ -321,6 +352,93 @@ struct PowerMonitorTests {
         ])
 
         #expect(milliWatts == 24_085)
+    }
+
+    @Test("computes top power processes sorted by impact then name")
+    func computesTopPowerProcesses() {
+        let snapshot = ProcessCountersSnapshot(
+            entries: [
+                .init(pid: 601, name: "WindowServer", cpuTicks: 0, memoryBytes: 0, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 45.1),
+                .init(pid: 72166, name: "iTerm2", cpuTicks: 0, memoryBytes: 0, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 14.1),
+                .init(pid: 83863, name: "Codex Helper", cpuTicks: 0, memoryBytes: 0, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 14.1),
+                .init(pid: 99935, name: "idle", cpuTicks: 0, memoryBytes: 0, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0),
+            ],
+            date: Date(timeIntervalSince1970: 1_000)
+        )
+
+        let processes = PowerMonitor.computeTopProcesses(snapshot: snapshot, processCount: 3)
+
+        #expect(processes.count == 3)
+        #expect(processes[0].name == "WindowServer")
+        #expect(processes[1].name == "Codex Helper")
+        #expect(processes[2].name == "iTerm2")
+    }
+}
+
+@Suite("CPUMonitor")
+struct CPUMonitorTests {
+
+    @Test("computes top cpu processes from tick deltas")
+    func computesTopCPUProcesses() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let snapshot = ProcessCountersSnapshot(
+            entries: [
+                .init(pid: 601, name: "WindowServer", cpuTicks: 5_000_000_000, memoryBytes: 0, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0),
+                .init(pid: 72166, name: "iTerm2", cpuTicks: 3_000_000_000, memoryBytes: 0, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0),
+                .init(pid: 83863, name: "Codex Helper", cpuTicks: 2_500_000_000, memoryBytes: 0, diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0),
+            ],
+            date: now
+        )
+
+        let processes = CPUMonitor.computeTopProcesses(
+            snapshot: snapshot,
+            previousSnapshots: [
+                601: CPUMonitor.ProcessSnapshot(ticks: 3_000_000_000, date: now.addingTimeInterval(-2)),
+                72166: CPUMonitor.ProcessSnapshot(ticks: 2_000_000_000, date: now.addingTimeInterval(-2)),
+                83863: CPUMonitor.ProcessSnapshot(ticks: 2_400_000_000, date: now.addingTimeInterval(-2)),
+            ],
+            processCount: 2
+        )
+
+        #expect(processes.count == 2)
+        #expect(processes[0].name == "WindowServer")
+        #expect(processes[0].cpuPercent == 100)
+        #expect(processes[1].name == "iTerm2")
+        #expect(processes[1].cpuPercent == 50)
+    }
+}
+
+@Suite("DiskMonitor")
+struct DiskMonitorProcessTests {
+
+    @Test("computes top disk processes from cumulative io deltas")
+    func computesTopDiskProcesses() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let snapshot = ProcessCountersSnapshot(
+            entries: [
+                .init(pid: 601, name: "WindowServer", cpuTicks: 0, memoryBytes: 0, diskReadBytes: 5_000, diskWriteBytes: 1_000, powerImpact: 0),
+                .init(pid: 72166, name: "iTerm2", cpuTicks: 0, memoryBytes: 0, diskReadBytes: 2_000, diskWriteBytes: 4_000, powerImpact: 0),
+                .init(pid: 83863, name: "Codex Helper", cpuTicks: 0, memoryBytes: 0, diskReadBytes: 100, diskWriteBytes: 100, powerImpact: 0),
+            ],
+            date: now
+        )
+
+        let processes = DiskMonitor.computeTopProcesses(
+            snapshot: snapshot,
+            previousSnapshots: [
+                601: DiskMonitor.ProcessSnapshot(readBytes: 1_000, writeBytes: 500, date: now.addingTimeInterval(-2)),
+                72166: DiskMonitor.ProcessSnapshot(readBytes: 1_000, writeBytes: 1_000, date: now.addingTimeInterval(-2)),
+                83863: DiskMonitor.ProcessSnapshot(readBytes: 100, writeBytes: 100, date: now.addingTimeInterval(-2)),
+            ],
+            processCount: 2
+        )
+
+        #expect(processes.count == 2)
+        #expect(processes[0].name == "WindowServer")
+        #expect(processes[0].diskReadBPS == 2_000)
+        #expect(processes[0].diskWriteBPS == 250)
+        #expect(processes[1].name == "iTerm2")
+        #expect(processes[1].diskTotalBPS == 2_000)
     }
 }
 
@@ -415,6 +533,32 @@ struct NetworkMonitorTests {
         #expect(usage[0].bytesInPerSec == 1_048_576)
         #expect(usage[0].bytesOutPerSec == 524_288)
         #expect(usage[1].displayName == "VPN (utun4)")
+    }
+
+    @Test("computes top network processes from cumulative samples")
+    func computesTopNetworkProcesses() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let previous = [
+            "Safari.123": NetworkMonitor.ProcessSnapshot(bytesIn: 1_000, bytesOut: 500, date: now.addingTimeInterval(-2)),
+            "Slack.456": NetworkMonitor.ProcessSnapshot(bytesIn: 500, bytesOut: 500, date: now.addingTimeInterval(-2)),
+        ]
+
+        let processes = NetworkMonitor.computeTopProcesses(
+            currentCounters: [
+                "Safari.123": (bytesIn: 5_000, bytesOut: 1_500),
+                "Slack.456": (bytesIn: 700, bytesOut: 700),
+            ],
+            previousSnapshots: previous,
+            now: now,
+            processCount: 2
+        )
+
+        #expect(processes.count == 2)
+        #expect(processes[0].name == "Safari")
+        #expect(processes[0].networkInBPS == 2_000)
+        #expect(processes[0].networkOutBPS == 500)
+        #expect(processes[1].name == "Slack")
+        #expect(processes[1].networkTotalBPS == 200)
     }
 }
 
@@ -618,6 +762,23 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.gpuDriverMemoryText == "50 MB")
         #expect(monitor.gpuAllocatedMemoryText == "10.0 GB")
         #expect(monitor.formatProcessGPU(monitor.topGPUProcesses[0]) == "23.5%")
+    }
+
+    @Test("gpu detail exposes frequency when available")
+    func gpuDetailFormattingShowsFrequency() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(gpu: GPUUsage(
+            deviceUtilization: 20,
+            renderUtilization: 19,
+            tilerUtilization: 17,
+            engines: ["Device": 20],
+            vramUsed: 685_047_808,
+            frequency: CPUCoreFrequency(currentHz: 860_000_000, maxHz: 1_398_000_000)
+        ))
+
+        #expect(monitor.gpuFrequencyText == "860M")
+        #expect(monitor.gpuFrequencyMaxHz == 1_398_000_000)
     }
 
     @Test("memory detail exposes pressure and swap summary")

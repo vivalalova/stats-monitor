@@ -36,12 +36,9 @@ final class SystemMonitor {
 
     private var cpuMonitor          = CPUMonitor()
     private var gpuMonitor          = GPUMonitor()
-    private var gpuFrequencyMonitor = GPUFrequencyMonitor()
-    private var aneMonitor          = ANEMonitor()
     private var memoryMonitor       = MemoryMonitor()
     private var diskMonitor     = DiskMonitor()
     private var networkMonitor  = NetworkMonitor()
-    private var processMonitor  = ProcessMonitor()
     private var powerMonitor    = PowerMonitor()
 
     private let smcClient                         = SMCClient()
@@ -49,7 +46,7 @@ final class SystemMonitor {
     private var thermalMonitor: ThermalMonitor
     private var fanMonitor: FanMonitor
 
-    private var networkProcPrev: [String: NetworkProcessMonitor.Snapshot] = [:]
+    private var isNetworkProcessPollInFlight = false
     private var isProcessPollInFlight = false
     private var isRunning = false
 
@@ -109,15 +106,12 @@ final class SystemMonitor {
 
     private func poll() {
         let cpu     = cpuMonitor.sample()
-        var gpu     = gpuMonitor.sample()
-        gpu.anePowerMilliWatts = aneMonitor.sample(intervalSeconds: settings.pollInterval)
-        gpu.frequency = gpuFrequencyMonitor.sample()
+        let gpu     = gpuMonitor.sample(intervalSeconds: settings.pollInterval)
         let memory  = memoryMonitor.sample()
         let disk    = diskMonitor.sample()
         let network = networkMonitor.sample()
         let battery = batteryMonitor.sample()
-        let thermal = thermalMonitor.sample()
-        let thermalPressureState = ProcessInfo.processInfo.thermalState
+        let thermalSample = thermalMonitor.sample()
         let fans    = fanMonitor.sample()
         let power   = powerMonitor.sample(intervalSeconds: settings.pollInterval)
         let count   = settings.processCount
@@ -128,14 +122,14 @@ final class SystemMonitor {
         record(disk: disk)
         record(network: network)
         record(battery: battery)
-        record(thermal: thermal)
-        record(thermalPressureState: thermalPressureState)
+        record(thermal: thermalSample.usage)
+        record(thermalPressureState: thermalSample.pressureState)
         record(power: power)
         record(fans: fans)
         topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: settings.pollInterval, processCount: count)
 
         pollNetworkProcesses(processCount: count)
-        pollProcesses(processCount: count)
+        pollProcessDetails(processCount: count)
     }
 
     private func observePollInterval() {
@@ -163,34 +157,47 @@ final class SystemMonitor {
     }
 
     private func pollNetworkProcesses(processCount: Int) {
-        let prev = networkProcPrev
+        guard !isNetworkProcessPollInFlight else { return }
+        isNetworkProcessPollInFlight = true
+        let previousMonitor = networkMonitor
         Task { [weak self] in
             guard let self else { return }
-            let (procs, updated) = await Task.detached(priority: .utility) {
-                NetworkProcessMonitor.run(previous: prev, processCount: processCount)
+            let (processes, updatedMonitor) = await Task.detached(priority: .utility) {
+                var monitor = previousMonitor
+                let processes = monitor.sampleTopProcesses(processCount: processCount)
+                return (processes, monitor)
             }.value
-            self.networkProcPrev = updated
-            self.topNetworkProcesses = procs
+            self.isNetworkProcessPollInFlight = false
+            self.networkMonitor = updatedMonitor
+            self.topNetworkProcesses = processes
         }
     }
 
-    private func pollProcesses(processCount: Int) {
+    private func pollProcessDetails(processCount: Int) {
         guard !isProcessPollInFlight else { return }
         isProcessPollInFlight = true
-        let prevMonitor = processMonitor
+        let cpuMonitor = self.cpuMonitor
+        let memoryMonitor = self.memoryMonitor
+        let diskMonitor = self.diskMonitor
+        let powerMonitor = self.powerMonitor
         Task { [weak self] in
             guard let self else { return }
-            let (result, updated) = await Task.detached(priority: .utility) {
-                var monitor = prevMonitor
-                let result = monitor.sample(processCount: processCount)
-                return (result, monitor)
+            let result = await Task.detached(priority: .utility) {
+                guard let snapshot = ProcessCountersReader.sample() else {
+                    return (cpu: [ProcInfo](), memory: [ProcInfo](), disk: [ProcInfo](), power: [ProcInfo]())
+                }
+                return (
+                    cpu: cpuMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
+                    memory: memoryMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
+                    disk: diskMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
+                    power: powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)
+                )
             }.value
             self.isProcessPollInFlight = false
-            self.processMonitor = updated
-            self.topCPUProcesses    = result.cpuTop
-            self.topMemoryProcesses = result.memoryTop
-            self.topDiskProcesses   = result.diskTop
-            self.topPowerProcesses  = result.powerTop
+            self.topCPUProcesses = result.cpu
+            self.topMemoryProcesses = result.memory
+            self.topDiskProcesses = result.disk
+            self.topPowerProcesses = result.power
         }
     }
 

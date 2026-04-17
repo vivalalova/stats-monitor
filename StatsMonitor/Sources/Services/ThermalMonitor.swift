@@ -1,13 +1,25 @@
 import Foundation
 
 struct ThermalMonitor {
+    struct Sample {
+        var usage: ThermalUsage?
+        var pressureState: ProcessInfo.ThermalState
+    }
+
     private let smc: SMCClient
     private static let plausibleTemperatureRange = 10.0...130.0
 
     init(smc: SMCClient) { self.smc = smc }
 
+    func sample() -> Sample {
+        Sample(
+            usage: sampleUsage(),
+            pressureState: ProcessInfo.processInfo.thermalState
+        )
+    }
+
     /// Returns nil when SMC is unavailable or all known keys fail.
-    func sample() -> ThermalUsage? {
+    private func sampleUsage() -> ThermalUsage? {
         guard smc.isAvailable else { return nil }
         // Apple Silicon does not expose a verified public CPU/GPU temperature map here.
         // Returning nil is more honest than rendering unvalidated SMC guesses as real values.

@@ -10,8 +10,10 @@ struct GPUMonitor {
     }
 
     private var previousAppTotalsByPID: [Int: UInt64] = [:]
+    private let frequencySampler = FrequencySampler()
+    private let neuralEnginePowerSampler = NeuralEnginePowerSampler()
 
-    func sample() -> GPUUsage {
+    func sample(intervalSeconds: Double) -> GPUUsage {
         var usage = GPUUsage.zero
 
         let matchingDict = IOServiceMatching("IOAccelerator")
@@ -36,6 +38,8 @@ struct GPUMonitor {
             service = IOIteratorNext(iterator)
         }
 
+        usage.anePowerMilliWatts = neuralEnginePowerSampler.sample(intervalSeconds: intervalSeconds)
+        usage.frequency = frequencySampler.sample()
         return usage
     }
 
@@ -217,4 +221,296 @@ struct GPUMonitor {
         if let value = value as? NSNumber { return value.intValue }
         return nil
     }
+}
+
+private final class FrequencySampler: @unchecked Sendable {
+    private var subscription: OpaquePointer?
+    private var previousSample: CFDictionary?
+    private var optionsDict: CFMutableDictionary?
+
+    private var freqTable: [UInt64] = []
+    private let lib: UnsafeMutableRawPointer?
+
+    private let copyChannels: CopyChannelsFn?
+    private let createSubscription: CreateSubFn?
+    private let createSamples: CreateSamplesFn?
+    private let createDelta: CreateDeltaFn?
+    private let stateGetCount: StateCountFn?
+    private let stateGetResidency: StateResidencyFn?
+
+    init() {
+        lib = dlopen("/usr/lib/libIOReport.dylib", RTLD_LAZY)
+
+        guard let lib else {
+            copyChannels = nil
+            createSubscription = nil
+            createSamples = nil
+            createDelta = nil
+            stateGetCount = nil
+            stateGetResidency = nil
+            return
+        }
+
+        copyChannels = Self.loadFn(lib, "IOReportCopyChannelsInGroup")
+        createSubscription = Self.loadFn(lib, "IOReportCreateSubscription")
+        createSamples = Self.loadFn(lib, "IOReportCreateSamples")
+        createDelta = Self.loadFn(lib, "IOReportCreateSamplesDelta")
+        stateGetCount = Self.loadFn(lib, "IOReportStateGetCount")
+        stateGetResidency = Self.loadFn(lib, "IOReportStateGetResidency")
+
+        guard copyChannels != nil,
+              createSubscription != nil,
+              createSamples != nil,
+              createDelta != nil,
+              stateGetCount != nil,
+              stateGetResidency != nil else {
+            return
+        }
+
+        readFrequencyTable()
+        setupSubscription()
+    }
+
+    deinit {
+        if let lib { dlclose(lib) }
+    }
+
+    func sample() -> CPUCoreFrequency? {
+        guard let subscription,
+              let createSamples,
+              let createDelta,
+              let stateGetCount,
+              let stateGetResidency,
+              !freqTable.isEmpty else {
+            return nil
+        }
+
+        guard let newSampleRef = createSamples(subscription, optionsDict, nil) else { return nil }
+        let newSample = newSampleRef.takeRetainedValue()
+        defer { previousSample = newSample }
+
+        guard let previousSample,
+              let deltaRef = createDelta(previousSample, newSample, nil) else {
+            return nil
+        }
+        let delta = deltaRef.takeRetainedValue()
+
+        let channelsKey = "IOReportChannels" as CFString
+        guard let rawArray = CFDictionaryGetValue(delta, Unmanaged.passUnretained(channelsKey).toOpaque()) else {
+            return nil
+        }
+        let channels = Unmanaged<CFArray>.fromOpaque(rawArray).takeUnretainedValue()
+
+        var activeResidency: Int64 = 0
+        var weightedHz: Double = 0
+
+        for index in 0..<CFArrayGetCount(channels) {
+            let channel = Unmanaged<CFDictionary>.fromOpaque(CFArrayGetValueAtIndex(channels, index)!).takeUnretainedValue()
+            let stateCount = stateGetCount(channel)
+            guard stateCount > 1 else { continue }
+
+            let upperBound = min(Int(stateCount), freqTable.count)
+            for stateIndex in 1..<upperBound {
+                let residency = stateGetResidency(channel, Int32(stateIndex))
+                guard residency > 0 else { continue }
+                activeResidency += residency
+                weightedHz += Double(freqTable[stateIndex]) * Double(residency)
+            }
+        }
+
+        let currentHz = activeResidency > 0 ? UInt64(weightedHz / Double(activeResidency)) : 0
+        return CPUCoreFrequency(currentHz: currentHz, maxHz: freqTable.last ?? 0)
+    }
+
+    private func setupSubscription() {
+        guard let copyChannels,
+              let createSubscription else {
+            return
+        }
+
+        guard let channelReference = copyChannels(
+            "GPU Stats" as CFString,
+            "GPU Performance States" as CFString,
+            0,
+            nil,
+            nil
+        ) else {
+            return
+        }
+        let channels = channelReference.takeRetainedValue() as! CFMutableDictionary
+
+        var optionsReference: Unmanaged<CFMutableDictionary>?
+        subscription = createSubscription(nil, channels, &optionsReference, 0, nil)
+        optionsDict = optionsReference?.takeUnretainedValue()
+    }
+
+    private func readFrequencyTable() {
+        let powerManager = IORegistryEntryFromPath(kIOMainPortDefault, "IODeviceTree:/arm-io/pmgr")
+        guard powerManager != 0 else { return }
+        defer { IOObjectRelease(powerManager) }
+
+        var bestTable: [UInt64] = []
+        for index in 0..<16 {
+            let key = "voltage-states\(index)-sram"
+            guard let data = IORegistryEntryCreateCFProperty(powerManager, key as CFString, kCFAllocatorDefault, 0)?
+                .takeRetainedValue() as? Data else {
+                continue
+            }
+
+            let entryCount = data.count / 8
+            guard entryCount > 1 else { continue }
+
+            let frequencies = (0..<entryCount).map { offset in
+                UInt64(data.withUnsafeBytes { $0.load(fromByteOffset: offset * 8, as: UInt32.self) })
+            }
+
+            guard frequencies.first == 0, frequencies.count > bestTable.count else { continue }
+            bestTable = frequencies
+        }
+        freqTable = bestTable
+    }
+
+    private static func loadFn<T>(_ library: UnsafeMutableRawPointer, _ name: String) -> T? {
+        guard let symbol = dlsym(library, name) else { return nil }
+        return unsafeBitCast(symbol, to: T.self)
+    }
+
+    private typealias CopyChannelsFn = @convention(c) (
+        CFString, CFString?, UInt64, UnsafeMutableRawPointer?, UnsafeMutableRawPointer?
+    ) -> Unmanaged<CFDictionary>?
+
+    private typealias CreateSubFn = @convention(c) (
+        UnsafeMutableRawPointer?, CFMutableDictionary,
+        UnsafeMutablePointer<Unmanaged<CFMutableDictionary>?>, UInt64, UnsafeMutableRawPointer?
+    ) -> OpaquePointer?
+
+    private typealias CreateSamplesFn = @convention(c) (
+        OpaquePointer, CFMutableDictionary?, UnsafeMutableRawPointer?
+    ) -> Unmanaged<CFDictionary>?
+
+    private typealias CreateDeltaFn = @convention(c) (
+        CFDictionary, CFDictionary, UnsafeMutableRawPointer?
+    ) -> Unmanaged<CFDictionary>?
+
+    private typealias StateCountFn = @convention(c) (CFDictionary) -> Int32
+    private typealias StateResidencyFn = @convention(c) (CFDictionary, Int32) -> Int64
+}
+
+private final class NeuralEnginePowerSampler: @unchecked Sendable {
+    private var subscription: OpaquePointer?
+    private var previousSample: CFDictionary?
+    private var optionsDict: CFMutableDictionary?
+    private let lib: UnsafeMutableRawPointer?
+
+    private let createSamples: CreateSamplesFn?
+    private let createDelta: CreateDeltaFn?
+    private let channelName: GetStringFn?
+    private let getInt: SimpleGetIntFn?
+
+    init() {
+        lib = dlopen("/usr/lib/libIOReport.dylib", RTLD_LAZY)
+
+        guard let lib else {
+            createSamples = nil
+            createDelta = nil
+            channelName = nil
+            getInt = nil
+            return
+        }
+
+        createSamples = Self.loadFn(lib, "IOReportCreateSamples")
+        createDelta = Self.loadFn(lib, "IOReportCreateSamplesDelta")
+        channelName = Self.loadFn(lib, "IOReportChannelGetChannelName")
+        getInt = Self.loadFn(lib, "IOReportSimpleGetIntegerValue")
+
+        guard createSamples != nil,
+              createDelta != nil,
+              channelName != nil,
+              getInt != nil else {
+            return
+        }
+
+        setupSubscription()
+    }
+
+    deinit {
+        if let lib { dlclose(lib) }
+    }
+
+    func sample(intervalSeconds: Double) -> Double {
+        guard let subscription,
+              let createSamples,
+              let createDelta,
+              let channelName,
+              let getInt,
+              intervalSeconds > 0 else {
+            return 0
+        }
+
+        guard let newSampleRef = createSamples(subscription, optionsDict, nil) else { return 0 }
+        let newSample = newSampleRef.takeRetainedValue()
+        defer { previousSample = newSample }
+
+        guard let previousSample,
+              let deltaRef = createDelta(previousSample, newSample, nil) else {
+            return 0
+        }
+        let delta = deltaRef.takeRetainedValue()
+
+        let channelsKey = "IOReportChannels" as CFString
+        guard let rawArray = CFDictionaryGetValue(delta, Unmanaged.passUnretained(channelsKey).toOpaque()) else {
+            return 0
+        }
+        let channels = Unmanaged<CFArray>.fromOpaque(rawArray).takeUnretainedValue()
+
+        var totalMilliJoules: Int64 = 0
+        for index in 0..<CFArrayGetCount(channels) {
+            let channel = Unmanaged<CFDictionary>.fromOpaque(CFArrayGetValueAtIndex(channels, index)!).takeUnretainedValue()
+            let name = channelName(channel)?.takeUnretainedValue() as String? ?? ""
+            guard name == "ANE" || name.hasPrefix("ANE0") else { continue }
+            totalMilliJoules += getInt(channel, 0)
+        }
+
+        return Double(max(0, totalMilliJoules)) / intervalSeconds
+    }
+
+    private func setupSubscription() {
+        guard let lib else { return }
+        guard let copyChannels: CopyChannelsFn = Self.loadFn(lib, "IOReportCopyChannelsInGroup"),
+              let createSubscription: CreateSubFn = Self.loadFn(lib, "IOReportCreateSubscription") else {
+            return
+        }
+
+        guard let channelReference = copyChannels("Energy Model" as CFString, nil, 0, nil, nil) else { return }
+        let channels = channelReference.takeRetainedValue() as! CFMutableDictionary
+
+        var optionsReference: Unmanaged<CFMutableDictionary>?
+        subscription = createSubscription(nil, channels, &optionsReference, 0, nil)
+        optionsDict = optionsReference?.takeUnretainedValue()
+    }
+
+    private static func loadFn<T>(_ library: UnsafeMutableRawPointer, _ name: String) -> T? {
+        guard let symbol = dlsym(library, name) else { return nil }
+        return unsafeBitCast(symbol, to: T.self)
+    }
+
+    private typealias CopyChannelsFn = @convention(c) (
+        CFString, CFString?, UInt64, UnsafeMutableRawPointer?, UnsafeMutableRawPointer?
+    ) -> Unmanaged<CFDictionary>?
+
+    private typealias CreateSubFn = @convention(c) (
+        UnsafeMutableRawPointer?, CFMutableDictionary,
+        UnsafeMutablePointer<Unmanaged<CFMutableDictionary>?>, UInt64, UnsafeMutableRawPointer?
+    ) -> OpaquePointer?
+
+    private typealias CreateSamplesFn = @convention(c) (
+        OpaquePointer, CFMutableDictionary?, UnsafeMutableRawPointer?
+    ) -> Unmanaged<CFDictionary>?
+
+    private typealias CreateDeltaFn = @convention(c) (
+        CFDictionary, CFDictionary, UnsafeMutableRawPointer?
+    ) -> Unmanaged<CFDictionary>?
+
+    private typealias GetStringFn = @convention(c) (CFDictionary) -> Unmanaged<CFString>?
+    private typealias SimpleGetIntFn = @convention(c) (CFDictionary, Int32) -> Int64
 }

@@ -2,7 +2,6 @@ import Foundation
 import IOKit
 
 /// Reads CPU / GPU / total package power from IOReport Energy Model.
-/// Same IOReport subscription pattern as ANEMonitor.
 /// Returns milliwatts. First call returns zero (needs two samples for delta).
 final class PowerMonitor: @unchecked Sendable {
 
@@ -83,6 +82,32 @@ final class PowerMonitor: @unchecked Sendable {
         let batteryContribution = signedDouble(from: telemetry["BatteryPower"]).map { min($0, 0).magnitude } ?? 0
         let derivedTotal = systemPowerIn + batteryContribution
         return derivedTotal > 0 ? derivedTotal : nil
+    }
+
+    func sampleTopProcesses(from snapshot: ProcessCountersSnapshot, processCount: Int = 10) -> [ProcInfo] {
+        Self.computeTopProcesses(snapshot: snapshot, processCount: processCount)
+    }
+
+    static func computeTopProcesses(snapshot: ProcessCountersSnapshot, processCount: Int) -> [ProcInfo] {
+        Array(
+            snapshot.entries
+                .filter { $0.powerImpact > 0 }
+                .map { entry in
+                    ProcInfo(
+                        name: entry.name,
+                        cpuPercent: 0,
+                        memoryBytes: entry.memoryBytes,
+                        powerImpact: entry.powerImpact
+                    )
+                }
+                .sorted { lhs, rhs in
+                    if lhs.powerImpact == rhs.powerImpact {
+                        return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+                    }
+                    return lhs.powerImpact > rhs.powerImpact
+                }
+                .prefix(processCount)
+        )
     }
 
     private func sampleIOReport(intervalSeconds: Double) -> PowerUsage? {
@@ -218,6 +243,58 @@ final class PowerMonitor: @unchecked Sendable {
         if let value = value as? UInt64 { return Double(value) }
         if let number = value as? NSNumber { return Double(number.stringValue) }
         return nil
+    }
+
+    static func samplePowerImpactByPID() -> [Int32: Double] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/top")
+        process.arguments = ["-l", "2", "-s", "0", "-o", "power", "-stats", "pid,command,power"]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return [:]
+        }
+
+        guard process.terminationStatus == 0,
+              let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)
+        else {
+            return [:]
+        }
+
+        return parseTopPowerOutput(output)
+    }
+
+    private static let topPowerRegex = try! NSRegularExpression(pattern: #"^\s*(\d+)\s+.+\s+([0-9]+(?:\.[0-9]+)?)\s*$"#)
+
+    static func parseTopPowerOutput(_ output: String) -> [Int32: Double] {
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        guard let lastHeaderIndex = lines.lastIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("PID") }) else {
+            return [:]
+        }
+
+        var powerByPID: [Int32: Double] = [:]
+        for line in lines[(lastHeaderIndex + 1)...] {
+            let rawLine = String(line)
+            let range = NSRange(rawLine.startIndex..<rawLine.endIndex, in: rawLine)
+            guard let match = topPowerRegex.firstMatch(in: rawLine, range: range),
+                  let pidRange = Range(match.range(at: 1), in: rawLine),
+                  let powerRange = Range(match.range(at: 2), in: rawLine),
+                  let pid = Int32(rawLine[pidRange]),
+                  let powerImpact = Double(rawLine[powerRange])
+            else {
+                continue
+            }
+
+            powerByPID[pid] = powerImpact
+        }
+
+        return powerByPID
     }
 
     // MARK: - C function types
