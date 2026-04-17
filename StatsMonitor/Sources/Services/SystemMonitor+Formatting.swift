@@ -48,6 +48,16 @@ extension SystemMonitor {
     }
     var gpuEngines: [String: Double] { currentGPU.engines }
     var paddedGPUHistory: [Double] { padded(gpuSamples.values.map(\.used), capacity: gpuSamples.capacity) }
+    var paddedGPUEngineHistories: [(name: String, history: [Double])] {
+        let names = gpuEngines.keys.sorted()
+        return names.map { name in
+            let history = padded(
+                gpuSamples.values.map { $0.engines[name] ?? 0 },
+                capacity: gpuSamples.capacity
+            )
+            return (name: name, history: history)
+        }
+    }
     var gpuVramUsed: UInt64 { currentGPU.vramUsed }
     var gpuVramUsedText: String {
         currentGPU.vramUsed > 0 ? formatBytes(currentGPU.vramUsed) : ""
