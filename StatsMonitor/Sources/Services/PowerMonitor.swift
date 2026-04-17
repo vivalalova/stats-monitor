@@ -45,6 +45,7 @@ final class PowerMonitor: @unchecked Sendable {
             return PowerUsage(
                 cpuMilliWatts: ioReportUsage?.cpuMilliWatts ?? 0,
                 gpuMilliWatts: ioReportUsage?.gpuMilliWatts ?? 0,
+                mediaEngineMilliWatts: ioReportUsage?.mediaEngineMilliWatts ?? 0,
                 totalMilliWatts: telemetryTotal,
                 externalInputMilliWatts: Self.telemetryExternalInputMilliWatts(from: telemetry),
                 batteryMilliWatts: Self.telemetryBatteryMilliWatts(from: telemetry) ?? 0
@@ -110,13 +111,15 @@ final class PowerMonitor: @unchecked Sendable {
         // that share the same group but return data in different units.
         let cpuNames: Set<String> = ["CPU", "ECPU", "PCPU", "ECORE", "PCORE"]
         let gpuNames: Set<String> = ["GPU"]
+        let mediaNames: Set<String> = ["AVE", "AVD", "VENC", "VDEC"]
         let otherNames: Set<String> = [
-            "AMCC", "AVE", "DCS", "DISP", "DISPEXT", "DRAM", "GPU SRAM",
+            "AMCC", "DCS", "DISP", "DISPEXT", "DRAM", "GPU SRAM",
             "ISP", "MSR", "NAND", "Pbridge0", "Pbridge1", "SEP", "SOC_AON", "SOC_REST"
         ]
 
         var cpuMJ:   Int64 = 0
         var gpuMJ:   Int64 = 0
+        var mediaMJ: Int64 = 0
         var totalMJ: Int64 = 0
 
         for i in 0..<CFArrayGetCount(arr) {
@@ -131,6 +134,9 @@ final class PowerMonitor: @unchecked Sendable {
             } else if gpuNames.contains(name) {
                 gpuMJ  += val
                 totalMJ += val
+            } else if mediaNames.contains(name) {
+                mediaMJ += val
+                totalMJ += val
             } else if otherNames.contains(name) {
                 totalMJ += val
             }
@@ -138,9 +144,10 @@ final class PowerMonitor: @unchecked Sendable {
 
         let inv = 1.0 / intervalSeconds   // mJ / s = mW
         return PowerUsage(
-            cpuMilliWatts:   Double(cpuMJ)   * inv,
-            gpuMilliWatts:   Double(gpuMJ)   * inv,
-            totalMilliWatts: Double(totalMJ) * inv
+            cpuMilliWatts:      Double(cpuMJ)   * inv,
+            gpuMilliWatts:      Double(gpuMJ)   * inv,
+            mediaEngineMilliWatts: Double(mediaMJ) * inv,
+            totalMilliWatts:    Double(totalMJ) * inv
         )
     }
 

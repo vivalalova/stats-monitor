@@ -150,6 +150,7 @@ struct ThermalUsage: Sendable {
 struct PowerUsage: Sendable {
     var cpuMilliWatts:   Double   // CPU cluster(s) power
     var gpuMilliWatts:   Double   // GPU power
+    var mediaEngineMilliWatts: Double = 0  // AVE/AVD video/media engines
     var totalMilliWatts: Double   // all Energy Model channels
     var externalInputMilliWatts: Double? = nil   // charger / adapter input
     var batteryMilliWatts: Double = 0            // signed: +charging, -discharging
@@ -157,6 +158,7 @@ struct PowerUsage: Sendable {
     var totalWatts: Double { totalMilliWatts / 1000 }
     var cpuWatts:   Double { cpuMilliWatts   / 1000 }
     var gpuWatts:   Double { gpuMilliWatts   / 1000 }
+    var mediaEngineWatts: Double { mediaEngineMilliWatts / 1000 }
     var externalInputWatts: Double? { externalInputMilliWatts.map { $0 / 1000 } }
     var batteryChargeWatts: Double? { batteryMilliWatts > 0 ? batteryMilliWatts / 1000 : nil }
     var batteryDischargeWatts: Double? { batteryMilliWatts < 0 ? abs(batteryMilliWatts) / 1000 : nil }

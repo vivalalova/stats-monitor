@@ -10,6 +10,15 @@ struct GPUEnginesView: View {
     var body: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 8) {
+                if monitor.hasMediaEngine {
+                    MetricChartCard(
+                        title: "Media Engine",
+                        value: monitor.gpuMediaEnginePowerText,
+                        statusColor: .red,
+                        lines: [(history: monitor.paddedGPUMediaEngineHistory, color: .red)],
+                        maxValue: max(monitor.paddedGPUMediaEngineHistory.max() ?? 0, 0.5)
+                    )
+                }
                 ForEach(Array(monitor.paddedGPUEngineHistories.enumerated()), id: \.offset) { _, entry in
                     MetricChartCard(
                         title: entry.name,

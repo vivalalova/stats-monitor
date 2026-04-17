@@ -58,6 +58,22 @@ extension SystemMonitor {
             return (name: name, history: history)
         }
     }
+    var gpuMediaEngineWatts: Double { (power?.mediaEngineMilliWatts ?? 0) / 1000 }
+    var hasMediaEngine: Bool {
+        powerSamples.values.contains { $0.mediaEngineMilliWatts > 0 }
+    }
+    var gpuMediaEnginePowerText: String {
+        let mW = power?.mediaEngineMilliWatts ?? 0
+        return mW >= 1000
+            ? String(format: "%.1f W", mW / 1000)
+            : String(format: "%.0f mW", mW)
+    }
+    var paddedGPUMediaEngineHistory: [Double] {
+        padded(
+            powerSamples.values.map { $0.mediaEngineMilliWatts / 1000 },
+            capacity: powerSamples.capacity
+        )
+    }
     var gpuVramUsed: UInt64 { currentGPU.vramUsed }
     var gpuVramUsedText: String {
         currentGPU.vramUsed > 0 ? formatBytes(currentGPU.vramUsed) : ""

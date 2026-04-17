@@ -21,6 +21,9 @@ struct MainWindowView: View {
         case general
         case about
 
+        static let chartTabs: [Tab] = [.cpuCores, .gpuEngines]
+        static let textTabs: [Tab] = [.dashboard, .general, .about]
+
         var localizedTitle: LocalizedStringKey {
             switch self {
             case .cpuCores:   "CPU"
@@ -62,7 +65,13 @@ struct MainWindowView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                ForEach(Tab.allCases, id: \.self) { tab in
+                ForEach(Tab.chartTabs, id: \.self) { tab in
+                    sidebarRow(for: tab)
+                        .tag(tab)
+                }
+                Divider()
+                    .listRowSeparator(.hidden)
+                ForEach(Tab.textTabs, id: \.self) { tab in
                     sidebarRow(for: tab)
                         .tag(tab)
                 }

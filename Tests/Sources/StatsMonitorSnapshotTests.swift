@@ -547,6 +547,7 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
     monitor.record(power: PowerUsage(
         cpuMilliWatts: 12_400,
         gpuMilliWatts: 4_200,
+        mediaEngineMilliWatts: 1_450,
         totalMilliWatts: 21_300,
         externalInputMilliWatts: 18_000,
         batteryMilliWatts: -3_300
