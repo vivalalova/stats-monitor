@@ -876,6 +876,21 @@ struct SystemMonitorTests {
         #expect(monitor.paddedNetworkOutHistory == [0, 0, 0, 4_096])
     }
 
+    @Test("cpu per-core histories stay aligned with recorded samples")
+    func paddedCPUPerCoreHistoriesStayAligned() {
+        let settings = makeTestSettings()
+        settings.historyCapacity = 4
+        let monitor = SystemMonitor(settings: settings)
+
+        monitor.record(cpu: CPUUsage(user: 8, system: 4, idle: 88, perCore: [10, 20], coreFrequencies: []))
+        monitor.record(cpu: CPUUsage(user: 20, system: 10, idle: 70, perCore: [30, 40], coreFrequencies: []))
+
+        #expect(monitor.paddedCPUPerCoreHistories == [
+            [0, 0, 10, 30],
+            [0, 0, 20, 40],
+        ])
+    }
+
     @Test("historyCapacity changes recreate buffers without a view-model adapter")
     func historyCapacityChangeRecreatesBuffersViaSettingsObservation() async throws {
         let settings = makeTestSettings()

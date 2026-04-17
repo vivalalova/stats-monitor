@@ -15,12 +15,14 @@ enum SettingsWindowLayout {
 
 struct MainWindowView: View {
     enum Tab: CaseIterable, Hashable {
+        case cpuCores
         case dashboard
         case general
         case about
 
         var localizedTitle: LocalizedStringKey {
             switch self {
+            case .cpuCores:  "CPU"
             case .dashboard: "Dashboard"
             case .general:   "General"
             case .about:     "About"
@@ -29,6 +31,7 @@ struct MainWindowView: View {
 
         var icon: String {
             switch self {
+            case .cpuCores:  "cpu"
             case .dashboard: "square.grid.2x2"
             case .general:   "gearshape"
             case .about:     "info.circle"
@@ -55,8 +58,11 @@ struct MainWindowView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(Tab.allCases, id: \.self, selection: $selection) { tab in
-                Label(tab.localizedTitle, systemImage: tab.icon)
+            List(selection: $selection) {
+                ForEach(Tab.allCases, id: \.self) { tab in
+                    sidebarRow(for: tab)
+                        .tag(tab)
+                }
             }
             .navigationSplitViewColumnWidth(
                 min: SettingsWindowLayout.sidebarWidth,
@@ -71,6 +77,7 @@ struct MainWindowView: View {
             .toolbar(removing: .sidebarToggle)
         } detail: {
             switch selection {
+            case .cpuCores:  CPUCoreChartsView(monitor: monitor)
             case .dashboard: DashboardView(settings: settings, monitor: monitor)
             case .general:   GeneralSettingsView(settings: settings)
             case .about:     AboutView(data: aboutData)
@@ -80,6 +87,28 @@ struct MainWindowView: View {
             minWidth: SettingsWindowLayout.defaultWidth,
             minHeight: SettingsWindowLayout.defaultHeight
         )
+    }
+
+    @ViewBuilder
+    private func sidebarRow(for tab: Tab) -> some View {
+        switch tab {
+        case .cpuCores:
+            MetricChartCard(
+                title: "CPU",
+                value: monitor.cpuPercent,
+                statusColor: progressColor(monitor.cpuFraction),
+                lines: [(history: monitor.paddedCPUHistory, color: .blue)],
+                maxValue: max(monitor.paddedCPUHistory.max() ?? 0, 1),
+                height: 50
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(selection == .cpuCores ? Color.accentColor : .clear, lineWidth: 2)
+            }
+            .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
+        default:
+            Label(tab.localizedTitle, systemImage: tab.icon)
+        }
     }
 }
 

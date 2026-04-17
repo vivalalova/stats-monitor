@@ -18,28 +18,28 @@ struct DashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 LazyVGrid(columns: columns, spacing: 4) {
-                    MetricCard(
+                    MetricChartCard(
                         title: "CPU",
                         value: monitor.cpuPercent,
                         statusColor: progressColor(monitor.cpuFraction),
                         lines: [(history: monitor.paddedCPUHistory, color: .blue)],
                         maxValue: histMax(monitor.paddedCPUHistory)
                     )
-                    MetricCard(
+                    MetricChartCard(
                         title: "GPU",
                         value: monitor.gpuPercent,
                         statusColor: progressColor(monitor.gpuFraction),
                         lines: [(history: monitor.paddedGPUHistory, color: .purple)],
                         maxValue: histMax(monitor.paddedGPUHistory)
                     )
-                    MetricCard(
+                    MetricChartCard(
                         title: "Memory",
                         value: monitor.memoryPercent,
                         statusColor: progressColor(monitor.memoryFraction),
                         lines: [(history: monitor.paddedMemoryHistory, color: .cyan)],
                         maxValue: histMax(monitor.paddedMemoryHistory)
                     )
-                    MetricCard(
+                    MetricChartCard(
                         title: "Network",
                         value: "↓\(monitor.networkInText)  ↑\(monitor.networkOutText)",
                         statusColor: .blue,
@@ -49,7 +49,7 @@ struct DashboardView: View {
                         ],
                         maxValue: histMax(monitor.paddedNetworkInHistory + monitor.paddedNetworkOutHistory)
                     )
-                    MetricCard(
+                    MetricChartCard(
                         title: "Disk I/O",
                         value: "↓\(monitor.diskReadText)  ↑\(monitor.diskWriteText)",
                         statusColor: .blue,
@@ -60,7 +60,7 @@ struct DashboardView: View {
                         maxValue: histMax(monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory)
                     )
                     if monitor.hasPower {
-                        MetricCard(
+                        MetricChartCard(
                             title: "Power",
                             value: monitor.powerText,
                             statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
@@ -69,7 +69,7 @@ struct DashboardView: View {
                         )
                     }
                     if monitor.hasFans {
-                        MetricCard(
+                        MetricChartCard(
                             title: "Fans",
                             value: monitor.fansSummaryText,
                             statusColor: .blue,
@@ -135,76 +135,6 @@ func dashboardCardHasChart(lines: [(history: [Double], color: Color)]) -> Bool {
 
 func dashboardCardHeight(lines: [(history: [Double], color: Color)]) -> CGFloat {
     dashboardCardHasChart(lines: lines) ? 100 : 52
-}
-
-// MARK: - MetricCard
-
-private struct MetricCard: View {
-    let title: LocalizedStringKey
-    let value: String
-    let statusColor: Color
-    let lines: [(history: [Double], color: Color)]
-    let maxValue: Double
-
-    var body: some View {
-        Group {
-            if dashboardCardHasChart(lines: lines) {
-                ZStack(alignment: .topLeading) {
-                    LineChartView(lines: lines, maxValue: maxValue, height: nil, cornerRadius: 8)
-
-                    HStack {
-                        titleLabel
-                        Spacer()
-                        statusIndicator
-                    }
-                    .padding(4)
-
-                    VStack {
-                        Spacer()
-                        valueLabel
-                            .padding(4)
-                    }
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        titleLabel
-                        Spacer()
-                        statusIndicator
-                    }
-                    valueLabel
-                }
-                .padding(8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-            }
-        }
-        .frame(height: dashboardCardHeight(lines: lines))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var titleLabel: some View {
-        Text(title)
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .shadow(color: .white.opacity(0.7), radius: 3, x: 0, y: 0)
-    }
-
-    private var statusIndicator: some View {
-        Circle()
-            .fill(statusColor)
-            .frame(width: 8, height: 8)
-    }
-
-    private var valueLabel: some View {
-        Text(value)
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
-            .lineLimit(1)
-            .shadow(color: .white.opacity(0.7), radius: 3, x: 0, y: 0)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
 }
 
 // MARK: - DashboardProcessTable

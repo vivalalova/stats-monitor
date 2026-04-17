@@ -17,6 +17,16 @@ struct CPUCoreFrequency: Sendable {
 
 }
 
+extension Array where Element == CPUCoreFrequency {
+    /// Count of leading P-cores (highest `maxHz`). Returns `nil` when cluster distinction is unavailable.
+    var pCoreCount: Int? {
+        guard !isEmpty else { return nil }
+        let distinctMax = Set(map(\.maxHz).filter { $0 > 0 })
+        guard distinctMax.count >= 2, let highMax = distinctMax.max() else { return nil }
+        return prefix(while: { $0.maxHz == highMax }).count
+    }
+}
+
 struct CPUUsage: Sendable {
     var user: Double
     var system: Double

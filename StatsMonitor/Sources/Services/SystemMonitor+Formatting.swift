@@ -25,6 +25,20 @@ extension SystemMonitor {
     var cpuAverageFrequencyText: String { formatAverageFrequency(cpuCoreFrequencies) }
     var cpuPeakFrequencyText: String { formatPeakFrequency(cpuCoreFrequencies) }
     var paddedCPUHistory: [Double] { padded(cpuSamples.values.map(\.used), capacity: cpuSamples.capacity) }
+    var paddedCPUPerCoreHistories: [[Double]] {
+        let coreCount = cpuSamples.values.map(\.perCore.count).max() ?? 0
+        guard coreCount > 0 else { return [] }
+
+        return (0..<coreCount).map { index in
+            padded(
+                cpuSamples.values.map { sample in
+                    guard sample.perCore.indices.contains(index) else { return 0 }
+                    return sample.perCore[index]
+                },
+                capacity: cpuSamples.capacity
+            )
+        }
+    }
 
     var gpuPercent: String { formatPercent(currentGPU.used) }
     var gpuMenuText: String { formatMenuPercent(currentGPU.used) }

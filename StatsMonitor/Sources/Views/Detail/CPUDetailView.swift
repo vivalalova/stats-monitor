@@ -61,18 +61,8 @@ private struct CoreGridView: View {
         }
     }
 
-    // P-cores (blue) come first in the frequencies array with higher maxHz;
-    // E-cores (green) follow with lower maxHz.
-    // Returns nil when cluster distinction is unavailable.
-    private var pCoreCount: Int? {
-        guard !frequencies.isEmpty else { return nil }
-        let distinctMax = Set(frequencies.map(\.maxHz).filter { $0 > 0 })
-        guard distinctMax.count >= 2, let highMax = distinctMax.max() else { return nil }
-        return frequencies.prefix(while: { $0.maxHz == highMax }).count
-    }
-
     private func barColor(for index: Int) -> Color {
-        guard let pCount = pCoreCount else { return progressColor(cores[index] / 100) }
+        guard let pCount = frequencies.pCoreCount else { return progressColor(cores[index] / 100) }
         return index < pCount ? .blue : .green
     }
 

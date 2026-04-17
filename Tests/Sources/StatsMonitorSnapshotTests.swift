@@ -206,6 +206,35 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    @Test("CPU cores main window tab renders a stable screenshot")
+    func cpuCoresMainWindowScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        seedMonitorSnapshotData(into: snapshotContext.monitor)
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .cpuCores,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: .image(size: view.frame.size),
+            named: "main-window-cpu-cores",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("About main window tab renders a stable screenshot")
     func aboutMainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()
