@@ -94,8 +94,8 @@ struct MainWindowView: View {
             .toolbar(removing: .sidebarToggle)
         } detail: {
             switch selection {
-            case .cpuCores:   CPUCoreChartsView(monitor: monitor)
-            case .gpuEngines: GPUEnginesView(monitor: monitor)
+            case .cpuCores:   CPUCoreChartsView(settings: settings, monitor: monitor)
+            case .gpuEngines: GPUEnginesView(settings: settings, monitor: monitor)
             case .dashboard:  DashboardView(settings: settings, monitor: monitor)
             case .general:    GeneralSettingsView(settings: settings)
             case .about:      AboutView(data: aboutData)
