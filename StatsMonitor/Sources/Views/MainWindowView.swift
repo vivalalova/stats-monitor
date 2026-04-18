@@ -66,8 +66,13 @@ struct MainWindowView: View {
         NavigationSplitView {
             List(selection: $selection) {
                 ForEach(Tab.chartTabs, id: \.self) { tab in
-                    sidebarRow(for: tab)
-                        .tag(tab)
+                    Button {
+                        selection = tab
+                    } label: {
+                        sidebarRow(for: tab)
+                    }
+                    .buttonStyle(.plain)
+                    .selectionDisabled()
                 }
                 Divider()
                     .listRowSeparator(.hidden)
@@ -134,6 +139,7 @@ struct MainWindowView: View {
         lines: [(history: [Double], color: Color)]
     ) -> some View {
         let maxValue = max(lines.flatMap(\.history).max() ?? 0, 1)
+        let isSelected = selection == tab
         return MetricChartCard(
             title: title,
             value: value,
@@ -144,7 +150,10 @@ struct MainWindowView: View {
         )
         .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(selection == tab ? Color.accentColor : .clear, lineWidth: 2)
+                .strokeBorder(
+                    isSelected ? Color.accentColor : .clear,
+                    lineWidth: 2
+                )
         }
         .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
     }
