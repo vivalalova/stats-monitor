@@ -405,6 +405,35 @@ struct StatsMonitorSnapshotTests {
             record: snapshotRecordMode
         )
     }
+
+    @Test("Main window shows GPU-only processes in Top Processes table")
+    func mainWindowGPUHeavyScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        snapshotContext.settings.processCount = 5
+        seedGPUHeavyMonitorSnapshotData(into: snapshotContext.monitor)
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: .image(size: view.frame.size),
+            named: "main-window-gpu-heavy",
+            record: snapshotRecordMode
+        )
+    }
 }
 
 @MainActor
@@ -581,6 +610,57 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, powerImpact: 14.1),
         ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, powerImpact: 12.7),
     ]
+}
+
+@MainActor
+private func seedGPUHeavyMonitorSnapshotData(into monitor: SystemMonitor) {
+    monitor.record(cpu: CPUUsage(
+        user: 18,
+        system: 9,
+        idle: 73,
+        perCore: [30, 22, 10, 8],
+        coreFrequencies: [
+            CPUCoreFrequency(currentHz: 3_000_000_000, maxHz: 3_500_000_000),
+            CPUCoreFrequency(currentHz: 2_800_000_000, maxHz: 3_500_000_000),
+            CPUCoreFrequency(currentHz: 2_000_000_000, maxHz: 2_420_000_000),
+            CPUCoreFrequency(currentHz: 1_900_000_000, maxHz: 2_420_000_000),
+        ]
+    ))
+    monitor.record(gpu: GPUUsage(
+        deviceUtilization: 62,
+        renderUtilization: 55,
+        tilerUtilization: 48,
+        engines: ["Compute": 62],
+        vramUsed: 3_200_000_000,
+        driverMemoryBytes: 120_000_000,
+        allocatedMemoryBytes: 5_500_000_000
+    ))
+    monitor.record(memory: MemoryUsage(
+        active: 6_000_000_000,
+        wired: 2_000_000_000,
+        compressed: 500_000_000,
+        total: 16_000_000_000,
+        swapUsed: 0,
+        swapTotal: 0,
+        availablePercent: 47
+    ))
+    monitor.record(disk: DiskUsage(used: 400_000_000_000, total: 1_000_000_000_000, readBPS: 0, writeBPS: 0))
+    monitor.record(network: NetworkUsage(bytesInPerSec: 0, bytesOutPerSec: 0, interfaces: []))
+    monitor.topCPUProcesses = [
+        ProcInfo(name: "Xcode", cpuPercent: 42.1, memoryBytes: 1_600_000_000),
+        ProcInfo(name: "clang", cpuPercent: 18.4, memoryBytes: 320_000_000),
+        ProcInfo(name: "StatsMonitor", cpuPercent: 6.7, memoryBytes: 90_000_000),
+    ]
+    monitor.topMemoryProcesses = monitor.topCPUProcesses
+    monitor.topGPUProcesses = [
+        GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 34.8, commandQueueCount: 4),
+        GPUProcessInfo(pid: 2050, name: "com.apple.WebKit", utilizationPercent: 21.2, commandQueueCount: 3),
+        GPUProcessInfo(pid: 1240, name: "Finder", utilizationPercent: 6.5, commandQueueCount: 1),
+        GPUProcessInfo(pid: 1268, name: "com.apple.dock.e", utilizationPercent: 3.1, commandQueueCount: 1),
+    ]
+    monitor.topDiskProcesses = []
+    monitor.topNetworkProcesses = []
+    monitor.topPowerProcesses = []
 }
 
 private extension AboutView.SnapshotData {

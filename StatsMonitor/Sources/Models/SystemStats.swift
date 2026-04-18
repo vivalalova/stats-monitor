@@ -127,6 +127,7 @@ struct ProcInfo: Sendable {
     var networkInBPS: Double = 0
     var networkOutBPS: Double = 0
     var powerImpact: Double = 0
+    var gpuPercent: Double = 0
 
     var diskTotalBPS: Double { diskReadBPS + diskWriteBPS }
     var networkTotalBPS: Double { networkInBPS + networkOutBPS }

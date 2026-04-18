@@ -143,17 +143,21 @@ private struct DashboardProcessTable: View {
     let settings: AppSettings
     var monitor: SystemMonitor
 
-    enum SortColumn { case name, cpu, memory, disk, network }
+    enum SortColumn { case name, cpu, gpu, memory, disk, network }
 
     @State private var sortColumn: SortColumn = .cpu
     @State private var ascending: Bool = false
 
     private var mergedProcesses: [ProcInfo] {
         var byName: [String: ProcInfo] = [:]
+        let gpuAsProcInfo = monitor.topGPUProcesses.map { gpu in
+            ProcInfo(name: gpu.name, cpuPercent: 0, memoryBytes: 0, gpuPercent: gpu.utilizationPercent)
+        }
         let all = monitor.topCPUProcesses
             + monitor.topMemoryProcesses
             + monitor.topDiskProcesses
             + monitor.topNetworkProcesses
+            + gpuAsProcInfo
         for proc in all {
             if let existing = byName[proc.name] {
                 byName[proc.name] = ProcInfo(
@@ -163,7 +167,8 @@ private struct DashboardProcessTable: View {
                     diskReadBPS:   max(existing.diskReadBPS,   proc.diskReadBPS),
                     diskWriteBPS:  max(existing.diskWriteBPS,  proc.diskWriteBPS),
                     networkInBPS:  max(existing.networkInBPS,  proc.networkInBPS),
-                    networkOutBPS: max(existing.networkOutBPS, proc.networkOutBPS)
+                    networkOutBPS: max(existing.networkOutBPS, proc.networkOutBPS),
+                    gpuPercent:    max(existing.gpuPercent,    proc.gpuPercent)
                 )
             } else {
                 byName[proc.name] = proc
@@ -211,6 +216,7 @@ private struct DashboardProcessTable: View {
                     .buttonStyle(.plain)
                     Spacer()
                     colHeader("CPU%",    col: .cpu,     width: 60)
+                    colHeader("GPU%",    col: .gpu,     width: 60)
                     colHeader("Memory",  col: .memory,  width: 72)
                     colHeader("Disk",    col: .disk,    width: 72)
                     colHeader("Network", col: .network, width: 80)
@@ -222,16 +228,16 @@ private struct DashboardProcessTable: View {
 
                 Divider()
 
-                ForEach(
-                    Array(mergedProcesses.prefix(settings.processCount)),
-                    id: \.name
-                ) { proc in
+                ForEach(mergedProcesses, id: \.name) { proc in
                     HStack {
                         Text(proc.name)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Spacer()
                         Text(monitor.formatProcessCPU(proc.cpuPercent))
+                            .frame(width: 60, alignment: .trailing)
+                        Text(proc.gpuPercent > 0
+                             ? monitor.formatProcessGPU(proc.gpuPercent) : "—")
                             .frame(width: 60, alignment: .trailing)
                         Text(monitor.formatProcessMemory(proc.memoryBytes))
                             .frame(width: 72, alignment: .trailing)
@@ -258,15 +264,17 @@ private struct DashboardProcessTable: View {
 private extension Array where Element == ProcInfo {
     func sorted(using col: DashboardProcessTable.SortColumn, ascending: Bool) -> [ProcInfo] {
         sorted { a, b in
-            let less: Bool
+            let primary: Bool?
             switch col {
-            case .name:    less = a.name < b.name
-            case .cpu:     less = a.cpuPercent < b.cpuPercent
-            case .memory:  less = a.memoryBytes < b.memoryBytes
-            case .disk:    less = a.diskTotalBPS < b.diskTotalBPS
-            case .network: less = a.networkTotalBPS < b.networkTotalBPS
+            case .name:    primary = a.name == b.name ? nil : a.name < b.name
+            case .cpu:     primary = a.cpuPercent == b.cpuPercent ? nil : a.cpuPercent < b.cpuPercent
+            case .gpu:     primary = a.gpuPercent == b.gpuPercent ? nil : a.gpuPercent < b.gpuPercent
+            case .memory:  primary = a.memoryBytes == b.memoryBytes ? nil : a.memoryBytes < b.memoryBytes
+            case .disk:    primary = a.diskTotalBPS == b.diskTotalBPS ? nil : a.diskTotalBPS < b.diskTotalBPS
+            case .network: primary = a.networkTotalBPS == b.networkTotalBPS ? nil : a.networkTotalBPS < b.networkTotalBPS
             }
-            return ascending ? less : !less
+            if let primary { return ascending ? primary : !primary }
+            return a.name < b.name
         }
     }
 }

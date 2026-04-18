@@ -128,39 +128,47 @@ struct GPUMonitor {
     }
 
     private mutating func readAppUsageSnapshots() -> [AppUsageSnapshot] {
-        let matchingDict = IOServiceMatching("AGXDeviceUserClient")
+        // AGXDeviceUserClient entries are not registered in IOService lookup table
+        // (they appear with `!registered` in ioreg), so IOServiceGetMatchingServices
+        // returns an empty iterator. Walk the IOService plane recursively and filter
+        // by class conformance instead.
         var iterator: io_iterator_t = 0
-
-        guard IOServiceGetMatchingServices(kIOMainPortDefault, matchingDict, &iterator) == KERN_SUCCESS else {
+        guard IORegistryCreateIterator(
+            kIOMainPortDefault,
+            kIOServicePlane,
+            IOOptionBits(kIORegistryIterateRecursively),
+            &iterator
+        ) == KERN_SUCCESS else {
             return []
         }
         defer { IOObjectRelease(iterator) }
 
         var snapshots: [AppUsageSnapshot] = []
-        var service: io_object_t = IOIteratorNext(iterator)
-        while service != IO_OBJECT_NULL {
-            defer { IOObjectRelease(service) }
-
-            var props: Unmanaged<CFMutableDictionary>?
-            if IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-               let dict = props?.takeRetainedValue() as? [String: Any],
-               let snapshot = Self.parseAppUsageSnapshot(from: dict) {
-                snapshots.append(snapshot)
+        var entry = IOIteratorNext(iterator)
+        while entry != IO_OBJECT_NULL {
+            if IOObjectConformsTo(entry, "AGXDeviceUserClient") != 0 {
+                var props: Unmanaged<CFMutableDictionary>?
+                if IORegistryEntryCreateCFProperties(entry, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
+                   let dict = props?.takeRetainedValue() as? [String: Any],
+                   let snapshot = Self.parseAppUsageSnapshot(from: dict) {
+                    snapshots.append(snapshot)
+                }
             }
-
-            service = IOIteratorNext(iterator)
+            IOObjectRelease(entry)
+            entry = IOIteratorNext(iterator)
         }
 
         return snapshots
     }
 
-    private static func parseAppUsageSnapshot(from properties: [String: Any]) -> AppUsageSnapshot? {
+    static func parseAppUsageSnapshot(from properties: [String: Any]) -> AppUsageSnapshot? {
         guard
             let creator = properties["IOUserClientCreator"] as? String,
-            let (pid, name) = parseCreator(creator),
-            let appUsage = properties["AppUsage"] as? [[String: Any]],
-            !appUsage.isEmpty
+            let (pid, name) = parseCreator(creator)
         else { return nil }
+
+        let appUsage = coerceAppUsageArray(properties["AppUsage"])
+        guard !appUsage.isEmpty else { return nil }
 
         let accumulatedGPUTime = appUsage.reduce(into: UInt64(0)) { total, entry in
             total += numericUInt64(from: entry["accumulatedGPUTime"]) ?? 0
@@ -173,6 +181,11 @@ struct GPUMonitor {
             accumulatedGPUTime: accumulatedGPUTime,
             commandQueueCount: numericInt(from: properties["CommandQueueCount"]) ?? 0
         )
+    }
+
+    static func coerceAppUsageArray(_ value: Any?) -> [[String: Any]] {
+        guard let raw = value as? [Any] else { return [] }
+        return raw.compactMap { $0 as? [String: Any] }
     }
 
     private static func parseCreator(_ creator: String) -> (pid: Int, name: String)? {

@@ -329,6 +329,7 @@ extension SystemMonitor {
 
     func formatProcessCPU(_ percent: Double) -> String { formatPercent(percent) }
     func formatProcessGPU(_ process: GPUProcessInfo) -> String { formatPercent(process.utilizationPercent) }
+    func formatProcessGPU(_ percent: Double) -> String { formatPercent(percent) }
     func formatProcessMemory(_ bytes: UInt64) -> String { formatBytes(bytes) }
     func formatProcessDisk(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }
     func formatNetworkInterface(_ interface: NetworkInterfaceUsage) -> String {

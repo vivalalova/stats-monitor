@@ -100,11 +100,12 @@ struct StatsMonitorTests {
 
     @Test("ProcessInfo stores name and metrics")
     func processInfoFields() {
-        let p = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 8.4)
+        let p = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 8.4, gpuPercent: 42.5)
         #expect(p.name == "Xcode")
         #expect(p.cpuPercent == 12.5)
         #expect(p.memoryBytes == 500_000_000)
         #expect(p.powerImpact == 8.4)
+        #expect(p.gpuPercent == 42.5)
     }
 
     @Test("PowerMonitor parses top POWER output into per-process energy impact")
@@ -508,6 +509,78 @@ struct GPUMonitorTests {
         #expect(result.updatedTotalsByPID[83863] == 1_250_000_000)
         #expect(result.updatedTotalsByPID[72166] == 1_020_000_000)
     }
+
+    @Test("parses AppUsage snapshot when value is strongly typed [[String: Any]]")
+    func parsesSnapshotFromStrictlyTypedDict() {
+        let snapshot = GPUMonitor.parseAppUsageSnapshot(from: [
+            "IOUserClientCreator": "pid 601, WindowServer",
+            "AppUsage": [
+                ["accumulatedGPUTime": UInt64(1_500_000_000), "API": "Metal"] as [String: Any],
+                ["accumulatedGPUTime": UInt64(500_000_000), "API": "Metal"] as [String: Any],
+            ],
+            "CommandQueueCount": 4,
+        ])
+
+        #expect(snapshot?.pid == 601)
+        #expect(snapshot?.name == "WindowServer")
+        #expect(snapshot?.accumulatedGPUTime == 2_000_000_000)
+        #expect(snapshot?.commandQueueCount == 4)
+    }
+
+    @Test("parses AppUsage snapshot when value arrives type-erased as [Any]")
+    func parsesSnapshotFromTypeErasedArray() {
+        let rawEntries: [Any] = [
+            ["accumulatedGPUTime": UInt64(3_000_000_000), "API": "Metal"] as [String: Any]
+        ]
+        let snapshot = GPUMonitor.parseAppUsageSnapshot(from: [
+            "IOUserClientCreator": "pid 1240, Finder",
+            "AppUsage": rawEntries,
+        ])
+
+        #expect(snapshot?.pid == 1240)
+        #expect(snapshot?.name == "Finder")
+        #expect(snapshot?.accumulatedGPUTime == 3_000_000_000)
+        #expect(snapshot?.commandQueueCount == 0)
+    }
+
+    @Test("returns nil when AppUsage is empty")
+    func returnsNilForEmptyAppUsage() {
+        let snapshot = GPUMonitor.parseAppUsageSnapshot(from: [
+            "IOUserClientCreator": "pid 606, runningboardd",
+            "AppUsage": [] as [Any],
+        ])
+        #expect(snapshot == nil)
+    }
+
+    @Test("returns nil when AppUsage key is missing")
+    func returnsNilWhenAppUsageMissing() {
+        let snapshot = GPUMonitor.parseAppUsageSnapshot(from: [
+            "IOUserClientCreator": "pid 606, runningboardd",
+        ])
+        #expect(snapshot == nil)
+    }
+
+    @Test("returns nil when accumulated GPU time is zero")
+    func returnsNilForZeroAccumulatedTime() {
+        let snapshot = GPUMonitor.parseAppUsageSnapshot(from: [
+            "IOUserClientCreator": "pid 601, WindowServer",
+            "AppUsage": [
+                ["accumulatedGPUTime": UInt64(0), "API": "Metal"] as [String: Any],
+            ],
+        ])
+        #expect(snapshot == nil)
+    }
+
+    @Test("coerces heterogeneous AppUsage elements to typed dicts")
+    func coercesHeterogeneousElements() {
+        let mixed: [Any] = [
+            ["accumulatedGPUTime": UInt64(100)] as [String: Any],
+            "unexpected string",
+            ["accumulatedGPUTime": UInt64(200)] as [String: Any],
+        ]
+        let coerced = GPUMonitor.coerceAppUsageArray(mixed)
+        #expect(coerced.count == 2)
+    }
 }
 
 @Suite("NetworkMonitor")
@@ -762,6 +835,8 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.gpuDriverMemoryText == "50 MB")
         #expect(monitor.gpuAllocatedMemoryText == "10.0 GB")
         #expect(monitor.formatProcessGPU(monitor.topGPUProcesses[0]) == "23.5%")
+        #expect(monitor.formatProcessGPU(42.5) == "42.5%")
+        #expect(monitor.formatProcessGPU(0) == "0.0%")
     }
 
     @Test("gpu detail exposes frequency when available")
