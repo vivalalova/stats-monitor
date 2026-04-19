@@ -49,62 +49,74 @@ struct MainWindowView: View {
     let monitor: SystemMonitor
     private let aboutData: AboutView.SnapshotData
     @State private var selection: Tab = .dashboard
+    @State private var isSidebarVisible: Bool = true
 
     init(
         settings: AppSettings,
         monitor: SystemMonitor,
         selection: Tab = .dashboard,
+        sidebarVisible: Bool = true,
         aboutData: AboutView.SnapshotData = .live
     ) {
         self.settings = settings
         self.monitor = monitor
         self.aboutData = aboutData
         _selection = State(initialValue: selection)
+        _isSidebarVisible = State(initialValue: sidebarVisible)
     }
 
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selection) {
-                ForEach(Tab.chartTabs, id: \.self) { tab in
-                    Button {
-                        selection = tab
-                    } label: {
-                        sidebarRow(for: tab)
-                    }
-                    .buttonStyle(.plain)
-                    .selectionDisabled()
+        HStack(spacing: 0) {
+            if isSidebarVisible {
+                ZStack(alignment: .top) {
+                    Rectangle().fill(.ultraThickMaterial)
+                    sidebar.padding(8)
                 }
-                Divider()
-                    .listRowSeparator(.hidden)
-                ForEach(Tab.textTabs, id: \.self) { tab in
-                    sidebarRow(for: tab)
-                        .tag(tab)
-                }
+                .frame(width: SettingsWindowLayout.sidebarWidth)
+                .frame(maxHeight: .infinity)
+                .transition(.move(edge: .leading).combined(with: .opacity))
             }
-            .navigationSplitViewColumnWidth(
-                min: SettingsWindowLayout.sidebarWidth,
-                ideal: SettingsWindowLayout.sidebarWidth,
-                max: SettingsWindowLayout.sidebarWidth
-            )
-            .toolbar {
-                ToolbarItem(placement: .navigation) {
-                    SidebarToggleButton()
-                }
-            }
-            .toolbar(removing: .sidebarToggle)
-        } detail: {
-            switch selection {
-            case .cpuCores:   CPUCoreChartsView(settings: settings, monitor: monitor)
-            case .gpuEngines: GPUEnginesView(settings: settings, monitor: monitor)
-            case .dashboard:  DashboardView(settings: settings, monitor: monitor)
-            case .general:    GeneralSettingsView(settings: settings)
-            case .about:      AboutView(data: aboutData)
-            }
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .frame(
             minWidth: SettingsWindowLayout.defaultWidth,
             minHeight: SettingsWindowLayout.defaultHeight
         )
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                SidebarToggleButton(isVisible: $isSidebarVisible)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var sidebar: some View {
+        VStack(spacing: 4) {
+            ForEach(Tab.chartTabs, id: \.self) { tab in
+                sidebarRow(for: tab)
+                    .contentShape(Rectangle())
+                    .onTapGesture { selection = tab }
+            }
+            Divider()
+                .padding(.vertical, 4)
+            ForEach(Tab.textTabs, id: \.self) { tab in
+                sidebarTextRow(for: tab)
+                    .onTapGesture { selection = tab }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch selection {
+        case .cpuCores:   CPUCoreChartsView(settings: settings, monitor: monitor)
+        case .gpuEngines: GPUEnginesView(settings: settings, monitor: monitor)
+        case .dashboard:  DashboardView(settings: settings, monitor: monitor)
+        case .general:    GeneralSettingsView(settings: settings)
+        case .about:      AboutView(data: aboutData)
+        }
     }
 
     @ViewBuilder
@@ -127,7 +139,7 @@ struct MainWindowView: View {
                 lines: [(history: monitor.paddedGPUHistory, color: .purple)]
             )
         default:
-            Label(tab.localizedTitle, systemImage: tab.icon)
+            sidebarTextRow(for: tab)
         }
     }
 
@@ -155,14 +167,31 @@ struct MainWindowView: View {
                     lineWidth: 2
                 )
         }
-        .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
+        .contentShape(Rectangle())
+    }
+
+    private func sidebarTextRow(for tab: Tab) -> some View {
+        let isSelected = selection == tab
+        return Label(tab.localizedTitle, systemImage: tab.icon)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isSelected ? Color.accentColor.opacity(0.18) : .clear)
+            )
+            .contentShape(Rectangle())
     }
 }
 
 private struct SidebarToggleButton: View {
+    @Binding var isVisible: Bool
+
     var body: some View {
         Button {
-            NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+            withAnimation(.easeInOut(duration: 0.22)) {
+                isVisible.toggle()
+            }
         } label: {
             Image(systemName: "sidebar.left")
         }
@@ -257,7 +286,7 @@ private struct GeneralSettingsView: View {
 
 // MARK: - Preview
 
-#Preview {
+#Preview(traits: .sizeThatFitsLayout) {
     let settings = AppSettings()
     let monitor = SystemMonitor(settings: settings).start()
     MainWindowView(settings: settings, monitor: monitor)
