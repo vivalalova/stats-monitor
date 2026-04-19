@@ -27,6 +27,10 @@ struct MainWindowView: View {
         static let chartTabs: [Tab] = [.cpuCores, .gpuEngines, .memory, .disk, .power]
         static let textTabs: [Tab] = [.dashboard, .general, .about]
 
+        var showsGridSizeSlider: Bool {
+            Self.chartTabs.contains(self) || self == .dashboard
+        }
+
         var localizedTitle: LocalizedStringKey {
             switch self {
             case .cpuCores:   "CPU"
@@ -96,6 +100,11 @@ struct MainWindowView: View {
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 SidebarToggleButton(isVisible: $isSidebarVisible)
+            }
+            if selection.showsGridSizeSlider {
+                ToolbarItem(placement: .primaryAction) {
+                    DashboardColumnsSlider(settings: settings)
+                }
             }
         }
     }

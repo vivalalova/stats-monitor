@@ -7,7 +7,10 @@ struct CPUCoreChartsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(columns: mainWindowChartColumns, spacing: 8) {
+                LazyVGrid(
+                    columns: MainWindowMetricGridLayout.columns(for: settings.dashboardColumns),
+                    spacing: MainWindowMetricGridLayout.spacing
+                ) {
                     ForEach(Array(monitor.paddedCPUPerCoreHistories.enumerated()), id: \.offset) { index, history in
                         MetricChartCard(
                             title: "Core \(index + 1)",

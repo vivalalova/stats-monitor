@@ -86,11 +86,6 @@ struct DashboardView: View {
             .padding(8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                DashboardColumnsSlider(settings: settings)
-            }
-        }
     }
 }
 

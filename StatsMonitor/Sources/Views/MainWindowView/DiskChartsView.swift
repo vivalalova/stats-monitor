@@ -7,7 +7,10 @@ struct DiskChartsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(columns: mainWindowChartColumns, spacing: 8) {
+                LazyVGrid(
+                    columns: MainWindowMetricGridLayout.columns(for: settings.dashboardColumns),
+                    spacing: MainWindowMetricGridLayout.spacing
+                ) {
                     MetricChartCard(
                         title: "Capacity",
                         value: monitor.diskPercent,

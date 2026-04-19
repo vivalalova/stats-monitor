@@ -1198,6 +1198,14 @@ struct SettingsWindowTests {
         #expect(MainWindowView.Tab.memory.icon == "memorychip.fill")
         #expect(MainWindowView.Tab.disk.icon == "internaldrive")
         #expect(MainWindowView.Tab.power.icon == "bolt.fill")
+        #expect(MainWindowView.Tab.cpuCores.showsGridSizeSlider)
+        #expect(MainWindowView.Tab.gpuEngines.showsGridSizeSlider)
+        #expect(MainWindowView.Tab.memory.showsGridSizeSlider)
+        #expect(MainWindowView.Tab.disk.showsGridSizeSlider)
+        #expect(MainWindowView.Tab.power.showsGridSizeSlider)
+        #expect(MainWindowView.Tab.dashboard.showsGridSizeSlider)
+        #expect(!MainWindowView.Tab.general.showsGridSizeSlider)
+        #expect(!MainWindowView.Tab.about.showsGridSizeSlider)
     }
 }
 
@@ -1273,6 +1281,16 @@ struct DashboardToolbarTests {
 
         binding.wrappedValue = 7.2
         #expect(settings.dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
+    }
+
+    @Test("chart tabs derive grid item width from the shared dashboard slider")
+    func chartTabsUseSharedDashboardSliderValue() {
+        #expect(MainWindowMetricGridLayout.minimumCardWidth(for: 3) == 219)
+        #expect(MainWindowMetricGridLayout.minimumCardWidth(for: 6) == 120)
+        #expect(
+            MainWindowMetricGridLayout.minimumCardWidth(for: 3)
+                > MainWindowMetricGridLayout.minimumCardWidth(for: 6)
+        )
     }
 
     @Test("isolated settings writes do not leak into standard defaults")

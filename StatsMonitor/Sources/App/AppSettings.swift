@@ -2,14 +2,19 @@ import Foundation
 import Observation
 import ServiceManagement
 
+enum DashboardGridSizing {
+    static let defaultColumnCount = 4
+    static let columnRange = 3...6
+}
+
 @Observable
 @MainActor
 final class AppSettings {
     typealias LaunchAtLoginStateProvider = @MainActor () -> Bool
     typealias LaunchAtLoginHandler = @MainActor (Bool) -> Void
 
-    static let defaultDashboardColumns = 4
-    static let dashboardColumnRange = 3...6
+    static let defaultDashboardColumns = DashboardGridSizing.defaultColumnCount
+    static let dashboardColumnRange = DashboardGridSizing.columnRange
 
     static let pollIntervalOptions: [TimeInterval] = [1, 2, 5, 10]
     static let historyCapacityOptions: [(label: String, value: Int)] = [
