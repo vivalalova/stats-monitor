@@ -5,28 +5,22 @@ struct CPUCoreChartsView: View {
     var monitor: SystemMonitor
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(
-                    columns: MainWindowMetricGridLayout.columns(for: settings.dashboardColumns),
-                    spacing: MainWindowMetricGridLayout.spacing
-                ) {
-                    ForEach(Array(monitor.paddedCPUPerCoreHistories.enumerated()), id: \.offset) { index, history in
-                        MetricChartCard(
-                            title: "Core \(index + 1)",
-                            value: coreValue(for: index),
-                            statusColor: progressColor(currentCoreUsage(for: index) / 100),
-                            lines: [(history: history, color: coreColor(for: index))],
-                            maxValue: 100
-                        )
-                    }
-                }
-
-                TopProcessesTable(settings: settings, monitor: monitor, initialSort: .cpu)
+        MetricGridPage(
+            columns: MainWindowMetricGridLayout.columns(for: settings.dashboardColumns),
+            gridSpacing: MainWindowMetricGridLayout.spacing
+        ) {
+            ForEach(Array(monitor.paddedCPUPerCoreHistories.enumerated()), id: \.offset) { index, history in
+                MetricChartCard(
+                    title: "Core \(index + 1)",
+                    value: coreValue(for: index),
+                    statusColor: progressColor(currentCoreUsage(for: index) / 100),
+                    lines: [(history: history, color: coreColor(for: index))],
+                    maxValue: 100
+                )
             }
-            .padding(8)
+        } footer: {
+            TopProcessesTable(settings: settings, monitor: monitor, initialSort: .cpu)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func coreColor(for index: Int) -> Color {

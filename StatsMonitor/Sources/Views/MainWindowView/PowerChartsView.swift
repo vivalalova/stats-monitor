@@ -5,67 +5,61 @@ struct PowerChartsView: View {
     var monitor: SystemMonitor
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(
-                    columns: MainWindowMetricGridLayout.columns(for: settings.dashboardColumns),
-                    spacing: MainWindowMetricGridLayout.spacing
-                ) {
-                    MetricChartCard(
-                        title: "Total",
-                        value: monitor.powerText,
-                        statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
-                        lines: [(history: monitor.paddedPowerHistory, color: .red)],
-                        maxValue: powerChartMax
-                    )
-                    MetricChartCard(
-                        title: "CPU",
-                        value: monitor.cpuPowerText,
-                        statusColor: .orange,
-                        lines: [(history: monitor.paddedCPUPowerHistory, color: .orange)],
-                        maxValue: powerChartMax
-                    )
-                    MetricChartCard(
-                        title: "GPU",
-                        value: monitor.gpuPowerText,
-                        statusColor: .purple,
-                        lines: [(history: monitor.paddedGPUPowerHistory, color: .purple)],
-                        maxValue: powerChartMax
-                    )
-                    if monitor.hasMediaEngine {
-                        MetricChartCard(
-                            title: "Media Engine",
-                            value: monitor.gpuMediaEnginePowerText,
-                            statusColor: .pink,
-                            lines: [(history: monitor.paddedGPUMediaEngineHistory, color: .pink)],
-                            maxValue: powerChartMax
-                        )
-                    }
-                    if monitor.hasExternalInputPower {
-                        MetricChartCard(
-                            title: "External Input",
-                            value: monitor.externalInputPowerText,
-                            statusColor: .blue,
-                            lines: [(history: monitor.paddedExternalInputPowerHistory, color: .blue)],
-                            maxValue: powerChartMax
-                        )
-                    }
-                    if monitor.hasBatteryFlowPower {
-                        MetricChartCard(
-                            title: "Battery Flow",
-                            value: monitor.batteryFlowPowerText,
-                            statusColor: batteryFlowStatusColor,
-                            lines: [(history: monitor.paddedBatteryFlowPowerHistory, color: .green)],
-                            maxValue: powerChartMax
-                        )
-                    }
-                }
-
-                TopPowerProcessesTable(monitor: monitor)
+        MetricGridPage(
+            columns: MainWindowMetricGridLayout.columns(for: settings.dashboardColumns),
+            gridSpacing: MainWindowMetricGridLayout.spacing
+        ) {
+            MetricChartCard(
+                title: "Total",
+                value: monitor.powerText,
+                statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
+                lines: [(history: monitor.paddedPowerHistory, color: .red)],
+                maxValue: powerChartMax
+            )
+            MetricChartCard(
+                title: "CPU",
+                value: monitor.cpuPowerText,
+                statusColor: .orange,
+                lines: [(history: monitor.paddedCPUPowerHistory, color: .orange)],
+                maxValue: powerChartMax
+            )
+            MetricChartCard(
+                title: "GPU",
+                value: monitor.gpuPowerText,
+                statusColor: .purple,
+                lines: [(history: monitor.paddedGPUPowerHistory, color: .purple)],
+                maxValue: powerChartMax
+            )
+            if monitor.hasMediaEngine {
+                MetricChartCard(
+                    title: "Media Engine",
+                    value: monitor.gpuMediaEnginePowerText,
+                    statusColor: .pink,
+                    lines: [(history: monitor.paddedGPUMediaEngineHistory, color: .pink)],
+                    maxValue: powerChartMax
+                )
             }
-            .padding(8)
+            if monitor.hasExternalInputPower {
+                MetricChartCard(
+                    title: "External Input",
+                    value: monitor.externalInputPowerText,
+                    statusColor: .blue,
+                    lines: [(history: monitor.paddedExternalInputPowerHistory, color: .blue)],
+                    maxValue: powerChartMax
+                )
+            }
+            if monitor.hasBatteryFlowPower {
+                MetricChartCard(
+                    title: "Battery Flow",
+                    value: monitor.batteryFlowPowerText,
+                    statusColor: batteryFlowStatusColor,
+                    lines: [(history: monitor.paddedBatteryFlowPowerHistory, color: .green)],
+                    maxValue: powerChartMax
+                )
+            }
+        } footer: {
+            TopPowerProcessesTable(monitor: monitor)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var powerChartMax: Double {

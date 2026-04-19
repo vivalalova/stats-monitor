@@ -15,77 +15,71 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(columns: columns, spacing: 4) {
-                    MetricChartCard(
-                        title: "CPU",
-                        value: monitor.cpuPercent,
-                        statusColor: progressColor(monitor.cpuFraction),
-                        lines: [(history: monitor.paddedCPUHistory, color: .blue)],
-                        maxValue: histMax(monitor.paddedCPUHistory)
-                    )
-                    MetricChartCard(
-                        title: "GPU",
-                        value: monitor.gpuPercent,
-                        statusColor: progressColor(monitor.gpuFraction),
-                        lines: [(history: monitor.paddedGPUHistory, color: .purple)],
-                        maxValue: histMax(monitor.paddedGPUHistory)
-                    )
-                    MetricChartCard(
-                        title: "Memory",
-                        value: monitor.memoryPercent,
-                        statusColor: progressColor(monitor.memoryFraction),
-                        lines: [(history: monitor.paddedMemoryHistory, color: .cyan)],
-                        maxValue: histMax(monitor.paddedMemoryHistory)
-                    )
-                    MetricChartCard(
-                        title: "Network",
-                        value: "↓\(monitor.networkInText)  ↑\(monitor.networkOutText)",
-                        statusColor: .blue,
-                        lines: [
-                            (history: monitor.paddedNetworkInHistory,  color: .blue),
-                            (history: monitor.paddedNetworkOutHistory, color: .green),
-                        ],
-                        maxValue: histMax(monitor.paddedNetworkInHistory + monitor.paddedNetworkOutHistory)
-                    )
-                    MetricChartCard(
-                        title: "Disk I/O",
-                        value: "↓\(monitor.diskReadText)  ↑\(monitor.diskWriteText)",
-                        statusColor: .blue,
-                        lines: [
-                            (history: monitor.paddedDiskReadHistory,  color: .teal),
-                            (history: monitor.paddedDiskWriteHistory, color: .orange),
-                        ],
-                        maxValue: histMax(monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory)
-                    )
-                    if monitor.hasPower {
-                        MetricChartCard(
-                            title: "Power",
-                            value: monitor.powerText,
-                            statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
-                            lines: [(history: monitor.paddedPowerHistory, color: .red)],
-                            maxValue: histMax(monitor.paddedPowerHistory)
-                        )
-                    }
-                    if monitor.hasFans {
-                        MetricChartCard(
-                            title: "Fans",
-                            value: monitor.fansSummaryText,
-                            statusColor: .blue,
-                            lines: monitor.paddedFanAverageHistory.count >= 2
-                                ? [(history: monitor.paddedFanAverageHistory, color: .blue)]
-                                : [],
-                            maxValue: monitor.fanChartMaxRPM
-                        )
-                    }
-                }
-
-                TopProcessesTable(settings: settings, monitor: monitor, initialSort: .cpu)
+        MetricGridPage(columns: columns, gridSpacing: 4) {
+            MetricChartCard(
+                title: "CPU",
+                value: monitor.cpuPercent,
+                statusColor: progressColor(monitor.cpuFraction),
+                lines: [(history: monitor.paddedCPUHistory, color: .blue)],
+                maxValue: histMax(monitor.paddedCPUHistory)
+            )
+            MetricChartCard(
+                title: "GPU",
+                value: monitor.gpuPercent,
+                statusColor: progressColor(monitor.gpuFraction),
+                lines: [(history: monitor.paddedGPUHistory, color: .purple)],
+                maxValue: histMax(monitor.paddedGPUHistory)
+            )
+            MetricChartCard(
+                title: "Memory",
+                value: monitor.memoryPercent,
+                statusColor: progressColor(monitor.memoryFraction),
+                lines: [(history: monitor.paddedMemoryHistory, color: .cyan)],
+                maxValue: histMax(monitor.paddedMemoryHistory)
+            )
+            MetricChartCard(
+                title: "Network",
+                value: "↓\(monitor.networkInText)  ↑\(monitor.networkOutText)",
+                statusColor: .blue,
+                lines: [
+                    (history: monitor.paddedNetworkInHistory,  color: .blue),
+                    (history: monitor.paddedNetworkOutHistory, color: .green),
+                ],
+                maxValue: histMax(monitor.paddedNetworkInHistory + monitor.paddedNetworkOutHistory)
+            )
+            MetricChartCard(
+                title: "Disk I/O",
+                value: "↓\(monitor.diskReadText)  ↑\(monitor.diskWriteText)",
+                statusColor: .blue,
+                lines: [
+                    (history: monitor.paddedDiskReadHistory,  color: .teal),
+                    (history: monitor.paddedDiskWriteHistory, color: .orange),
+                ],
+                maxValue: histMax(monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory)
+            )
+            if monitor.hasPower {
+                MetricChartCard(
+                    title: "Power",
+                    value: monitor.powerText,
+                    statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
+                    lines: [(history: monitor.paddedPowerHistory, color: .red)],
+                    maxValue: histMax(monitor.paddedPowerHistory)
+                )
             }
-            .padding(8)
+            if monitor.hasFans {
+                MetricChartCard(
+                    title: "Fans",
+                    value: monitor.fansSummaryText,
+                    statusColor: .blue,
+                    lines: monitor.paddedFanAverageHistory.count >= 2
+                        ? [(history: monitor.paddedFanAverageHistory, color: .blue)]
+                        : [],
+                    maxValue: monitor.fanChartMaxRPM
+                )
+            }
+        } footer: {
+            TopProcessesTable(settings: settings, monitor: monitor, initialSort: .cpu)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
