@@ -96,6 +96,22 @@ final class AppSettings {
         showPower = isVisible
     }
 
+    static func anyMenuBarItemChecked(
+        settings: AppSettings,
+        hasPower: Bool,
+        hasThermal: Bool,
+        hasFans: Bool
+    ) -> Bool {
+        settings.showCPU
+            || settings.showGPU
+            || settings.showMemory
+            || settings.showDisk
+            || settings.showNetwork
+            || (hasPower && settings.showPowerPanel)
+            || (hasThermal && settings.showThermal)
+            || (hasFans && settings.showFans)
+    }
+
     private static func clampDashboardColumns(_ value: Int) -> Int {
         min(max(value, dashboardColumnRange.lowerBound), dashboardColumnRange.upperBound)
     }

@@ -206,6 +206,72 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    @Test("General tab shows warning hint only when every menu bar item is unchecked")
+    func generalMainWindowHintVisibleScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        seedMonitorSnapshotData(into: snapshotContext.monitor)
+        snapshotContext.settings.showCPU = false
+        snapshotContext.settings.showGPU = false
+        snapshotContext.settings.showMemory = false
+        snapshotContext.settings.showDisk = false
+        snapshotContext.settings.showNetwork = false
+        snapshotContext.settings.showBattery = false
+        snapshotContext.settings.showPower = false
+        snapshotContext.settings.showThermal = false
+        snapshotContext.settings.showFans = false
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .general,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: .image(size: view.frame.size),
+            named: "main-window-general-hint-visible",
+            record: snapshotRecordMode
+        )
+    }
+
+    @Test("General tab hides unsupported hardware toggles on desktop-class Mac")
+    func generalMainWindowDesktopSubsetScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .general,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: .image(size: view.frame.size),
+            named: "main-window-general-desktop-subset",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("CPU cores main window tab renders a stable screenshot")
     func cpuCoresMainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()
@@ -630,7 +696,9 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         total: 18_253_611_008,
         swapUsed: 1_367_261_184,
         swapTotal: 2_147_483_648,
-        availablePercent: 30
+        availablePercent: 30,
+        pageInsPerSec: 524_288,
+        pageOutsPerSec: 131_072
     ))
     monitor.record(disk: DiskUsage(
         used: 512_000_000_000,
@@ -644,7 +712,17 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         interfaces: [
             NetworkInterfaceUsage(name: "en0", displayName: "Network (en0)", bytesInPerSec: 2_097_152, bytesOutPerSec: 393_216),
             NetworkInterfaceUsage(name: "utun4", displayName: "VPN (utun4)", bytesInPerSec: 524_288, bytesOutPerSec: 131_072),
-        ]
+        ],
+        wifi: WiFiLinkInfo(
+            rssiDBm: -58,
+            noiseDBm: -92,
+            linkRateMbps: 1_200,
+            channelNumber: 149,
+            band: "5 GHz",
+            hardwareAddress: "a4:83:e7:00:11:22"
+        ),
+        tcpConnectionCount: 84,
+        udpConnectionCount: 12
     ))
     monitor.record(battery: BatteryUsage(
         percentage: 78,
@@ -654,7 +732,10 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         cycleCount: 132,
         designCapacity: 5000,
         maxCapacity: 4630,
-        health: 92.6
+        health: 92.6,
+        voltageMilliVolts: 11_840,
+        amperageMilliAmps: -1_240,
+        temperatureCelsius: 31.4
     ))
     monitor.record(thermal: ThermalUsage(
         cpuTemperature: 68.4,
@@ -673,6 +754,12 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
         FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
     ])
+    monitor.record(isLowPowerModeEnabled: false)
+    monitor.record(displayInfo: DisplayInfo(
+        widthPixels: 3456,
+        heightPixels: 2234,
+        refreshRateHz: 120
+    ))
     monitor.topCPUProcesses = [
         ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000),
         ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000),
@@ -760,7 +847,10 @@ private extension AboutView.SnapshotData {
         chipName: "Apple M1 Pro",
         osVersion: "macOS 15.5 (24F74)",
         totalRAM: "32 GB",
-        uptime: "2d 5h 18m"
+        uptime: "2d 5h 18m",
+        loadAverage: "1.24, 1.02, 0.87",
+        processCount: "412",
+        display: "3456 × 2234 @ 120 Hz"
     )
 }
 

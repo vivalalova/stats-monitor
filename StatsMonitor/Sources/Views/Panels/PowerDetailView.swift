@@ -15,6 +15,7 @@ struct PowerDetailView: View {
                 ("CPU", monitor.cpuPowerText),
                 ("GPU", monitor.gpuPowerText),
                 ("Neural Engine", monitor.anePowerText),
+                ("Low Power Mode", monitor.lowPowerModeText),
             ]))
             DetailMetricSection(title: "Battery", rows: availableDetailMetrics([
                 ("Charge Power", monitor.batteryChargePowerText),
@@ -22,6 +23,9 @@ struct PowerDetailView: View {
                 ("Charge", monitor.batteryPercent),
                 ("Status", monitor.batteryStatusText),
                 ("Time", monitor.batteryTimeRemainingText),
+                ("Voltage", monitor.batteryVoltageText),
+                ("Current", monitor.batteryCurrentText),
+                ("Temperature", monitor.batteryTemperatureText),
                 ("Health", monitor.batteryHealthText),
                 ("Cycles", monitor.batteryCyclesText),
                 ("Max Capacity", monitor.batteryMaxCapacityText),

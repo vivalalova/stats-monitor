@@ -13,6 +13,12 @@ struct NetworkMonitor: Sendable {
     private var previousInterfaceCounters: [String: (bytesIn: UInt64, bytesOut: UInt64)] = [:]
     private var previousProcessSnapshots: [String: ProcessSnapshot] = [:]
     private var previousDate: Date = .now
+    private var connectionTick: UInt8 = 0
+    private var cachedConnections: (tcp: Int, udp: Int) = (0, 0)
+
+    /// Refresh netstat-derived TCP/UDP connection counts every N samples to bound
+    /// process-spawning cost. At default 2 s poll interval this ≈ every 6 s.
+    private static let connectionRefreshEveryNSamples: UInt8 = 3
 
     mutating func sample() -> NetworkUsage {
         let interfaces = interfaceCounters()
@@ -21,12 +27,19 @@ struct NetworkMonitor: Sendable {
         let now = Date.now
         let elapsed = now.timeIntervalSince(previousDate)
 
+        let connections = sampleConnectionCounts()
+
         guard elapsed > 0, previousBytesIn > 0 || previousBytesOut > 0 else {
             previousBytesIn = bytesIn
             previousBytesOut = bytesOut
             previousInterfaceCounters = interfaces
             previousDate = now
-            return .zero
+            return NetworkUsage(
+                bytesInPerSec: 0,
+                bytesOutPerSec: 0,
+                tcpConnectionCount: connections.tcp,
+                udpConnectionCount: connections.udp
+            )
         }
 
         let inPerSec  = Double(bytesIn  - previousBytesIn)  / elapsed
@@ -45,8 +58,20 @@ struct NetworkMonitor: Sendable {
         return NetworkUsage(
             bytesInPerSec:  max(0, inPerSec),
             bytesOutPerSec: max(0, outPerSec),
-            interfaces: interfaceUsage
+            interfaces: interfaceUsage,
+            tcpConnectionCount: connections.tcp,
+            udpConnectionCount: connections.udp
         )
+    }
+
+    mutating func sampleConnectionCounts() -> (tcp: Int, udp: Int) {
+        defer { connectionTick = (connectionTick &+ 1) % Self.connectionRefreshEveryNSamples }
+        if connectionTick == 0 || cachedConnections == (0, 0) {
+            if let counts = Self.readConnectionCounts() {
+                cachedConnections = counts
+            }
+        }
+        return cachedConnections
     }
 
     mutating func sampleTopProcesses(processCount: Int = 10) -> [ProcInfo] {
@@ -169,6 +194,49 @@ struct NetworkMonitor: Sendable {
     private static func processName(from key: String) -> String {
         guard let lastDot = key.lastIndex(of: ".") else { return key }
         return String(key[..<lastDot])
+    }
+
+    static func readConnectionCounts() -> (tcp: Int, udp: Int)? {
+        guard let tcp = runNetstatCount(protocolFlag: "tcp"),
+              let udp = runNetstatCount(protocolFlag: "udp")
+        else { return nil }
+        return (tcp, udp)
+    }
+
+    static func parseConnectionCount(output: String) -> Int {
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: true)
+        // netstat prints two header lines for TCP/UDP: "Active ..." and column header.
+        let dataLines = lines.filter { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { return false }
+            if trimmed.hasPrefix("Active ") { return false }
+            if trimmed.hasPrefix("Proto ") { return false }
+            if trimmed.hasPrefix("Socket ") { return false }
+            return true
+        }
+        return dataLines.count
+    }
+
+    private static func runNetstatCount(protocolFlag: String) -> Int? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/sbin/netstat")
+        task.arguments = ["-an", "-p", protocolFlag]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+
+        do {
+            try task.run()
+        } catch {
+            return nil
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        guard task.terminationStatus == 0,
+              let output = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return parseConnectionCount(output: output)
     }
 
     private static func readProcessCounters() -> [String: (bytesIn: UInt64, bytesOut: UInt64)]? {

@@ -2,7 +2,12 @@ import Foundation
 import Darwin
 
 struct MemoryMonitor: Sendable {
-    func sample() -> MemoryUsage {
+    private var previousPageIns: UInt64 = 0
+    private var previousPageOuts: UInt64 = 0
+    private var previousDate: Date = .now
+    private var hasPreviousSample = false
+
+    mutating func sample() -> MemoryUsage {
         let total = ProcessInfo.processInfo.physicalMemory
 
         var stats = vm_statistics64()
@@ -25,6 +30,34 @@ struct MemoryMonitor: Sendable {
         let swapUsage = Self.readSwapUsage()
         let availablePercent = Self.readAvailablePercent()
 
+        let now = Date.now
+        let currentPageIns = UInt64(stats.pageins)
+        let currentPageOuts = UInt64(stats.pageouts)
+        var pageInsPerSec: Double = 0
+        var pageOutsPerSec: Double = 0
+
+        if hasPreviousSample {
+            let elapsed = now.timeIntervalSince(previousDate)
+            if elapsed > 0 {
+                pageInsPerSec = Self.rate(
+                    current: currentPageIns,
+                    previous: previousPageIns,
+                    elapsed: elapsed,
+                    pageSize: pageSize
+                )
+                pageOutsPerSec = Self.rate(
+                    current: currentPageOuts,
+                    previous: previousPageOuts,
+                    elapsed: elapsed,
+                    pageSize: pageSize
+                )
+            }
+        }
+        previousPageIns = currentPageIns
+        previousPageOuts = currentPageOuts
+        previousDate = now
+        hasPreviousSample = true
+
         return MemoryUsage(
             active:     min(active, total),
             wired:      min(wired, total),
@@ -32,7 +65,9 @@ struct MemoryMonitor: Sendable {
             total:      total,
             swapUsed:   swapUsage?.used ?? 0,
             swapTotal:  swapUsage?.total ?? 0,
-            availablePercent: availablePercent
+            availablePercent: availablePercent,
+            pageInsPerSec: pageInsPerSec,
+            pageOutsPerSec: pageOutsPerSec
         )
     }
 
@@ -77,6 +112,12 @@ struct MemoryMonitor: Sendable {
         }
         guard result == 0, value >= 0 else { return nil }
         return Double(value)
+    }
+
+    static func rate(current: UInt64, previous: UInt64, elapsed: Double, pageSize: UInt64) -> Double {
+        guard elapsed > 0, current >= previous else { return 0 }
+        let deltaPages = current - previous
+        return Double(deltaPages) * Double(pageSize) / elapsed
     }
 
     private static func readSwapUsage() -> (used: UInt64, total: UInt64)? {

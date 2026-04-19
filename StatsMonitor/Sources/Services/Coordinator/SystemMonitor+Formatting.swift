@@ -174,6 +174,28 @@ extension SystemMonitor {
     var paddedMemorySwapHistory: [Double] {
         padded(memorySamples.values.map { Double($0.swapUsed) }, capacity: memorySamples.capacity)
     }
+    var memoryPageInsPerSec: Double { currentMemory.pageInsPerSec }
+    var memoryPageOutsPerSec: Double { currentMemory.pageOutsPerSec }
+    var memoryPageInsText: String { formatThroughput(currentMemory.pageInsPerSec) }
+    var memoryPageOutsText: String { formatThroughput(currentMemory.pageOutsPerSec) }
+    var memoryPagingSummaryText: String {
+        "↓\(memoryPageInsText) ↑\(memoryPageOutsText)"
+    }
+    var paddedMemoryPageInHistory: [Double] {
+        padded(memorySamples.values.map(\.pageInsPerSec), capacity: memorySamples.capacity)
+    }
+    var paddedMemoryPageOutHistory: [Double] {
+        padded(memorySamples.values.map(\.pageOutsPerSec), capacity: memorySamples.capacity)
+    }
+    var memoryPagingChartMaxBytes: Double {
+        max(
+            (paddedMemoryPageInHistory + paddedMemoryPageOutHistory).max() ?? 0,
+            1_048_576
+        )
+    }
+    var hasMemoryPaging: Bool {
+        memorySamples.values.contains { $0.pageInsPerSec > 0 || $0.pageOutsPerSec > 0 }
+    }
 
     var diskUsedText: String { formatBytes(currentDisk.used) }
     var diskFreeText: String { formatBytes(currentDisk.total - currentDisk.used) }
@@ -200,6 +222,42 @@ extension SystemMonitor {
     var activeNetworkInterfaces: [NetworkInterfaceUsage] { currentNetwork.interfaces }
     var paddedNetworkInHistory: [Double] { padded(networkSamples.values.map(\.bytesInPerSec), capacity: networkSamples.capacity) }
     var paddedNetworkOutHistory: [Double] { padded(networkSamples.values.map(\.bytesOutPerSec), capacity: networkSamples.capacity) }
+    var wifiLink: WiFiLinkInfo? { currentNetwork.wifi }
+    var hasWiFi: Bool { wifiLink != nil }
+    var wifiSignalText: String {
+        guard let rssi = wifiLink?.rssiDBm else { return "" }
+        return "\(rssi) dBm"
+    }
+    var wifiNoiseText: String {
+        guard let noise = wifiLink?.noiseDBm else { return "" }
+        return "\(noise) dBm"
+    }
+    var wifiLinkRateText: String {
+        guard let rate = wifiLink?.linkRateMbps else { return "" }
+        if rate >= 1_000 {
+            return String(format: "%.2f Gbps", rate / 1_000)
+        }
+        return String(format: "%.0f Mbps", rate)
+    }
+    var wifiChannelText: String {
+        guard let link = wifiLink, let number = link.channelNumber else { return "" }
+        guard let band = link.band, band != "—" else { return "Channel \(number)" }
+        return "Channel \(number) (\(band))"
+    }
+    var wifiAddressText: String {
+        wifiLink?.hardwareAddress ?? ""
+    }
+    var tcpConnectionCountText: String {
+        guard currentNetwork.tcpConnectionCount > 0 else { return "" }
+        return "\(currentNetwork.tcpConnectionCount)"
+    }
+    var udpConnectionCountText: String {
+        guard currentNetwork.udpConnectionCount > 0 else { return "" }
+        return "\(currentNetwork.udpConnectionCount)"
+    }
+    var hasConnectionCounts: Bool {
+        currentNetwork.tcpConnectionCount > 0 || currentNetwork.udpConnectionCount > 0
+    }
 
     var power: PowerUsage? { powerSamples.current }
     var hasPower: Bool { power != nil }
@@ -273,6 +331,22 @@ extension SystemMonitor {
     var batteryDesignCapacityText: String {
         guard let battery else { return "" }
         return "\(battery.designCapacity) mAh"
+    }
+    var batteryVoltageText: String {
+        guard let battery, battery.voltageMilliVolts > 0 else { return "" }
+        return String(format: "%.2f V", Double(battery.voltageMilliVolts) / 1_000)
+    }
+    var batteryCurrentText: String {
+        guard let battery, battery.amperageMilliAmps != 0 else { return "" }
+        let amps = Double(battery.amperageMilliAmps) / 1_000
+        return String(format: "%+.2f A", amps)
+    }
+    var batteryTemperatureText: String {
+        guard let temp = battery?.temperatureCelsius else { return "" }
+        return String(format: "%.1f °C", temp)
+    }
+    var lowPowerModeText: String {
+        isLowPowerModeEnabled ? "On" : "Off"
     }
     var powerMenuText: String {
         guard hasPower else { return "N/A" }
@@ -383,6 +457,11 @@ extension SystemMonitor {
     }
     var fanChartMaxRPM: Double {
         max(fans.map(\.maxRPM).max() ?? 0, paddedFanAverageHistory.max() ?? 0, 1)
+    }
+
+    var displayInfoText: String { displayInfo.text }
+    var hasDisplayInfo: Bool {
+        displayInfo.widthPixels > 0 && displayInfo.heightPixels > 0
     }
 
     func formatProcessCPU(_ percent: Double) -> String { formatPercent(percent) }

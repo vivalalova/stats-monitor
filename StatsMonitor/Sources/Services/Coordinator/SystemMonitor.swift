@@ -26,6 +26,8 @@ final class SystemMonitor {
     private(set) var powerSamples: MetricHistory<PowerUsage>
     private(set) var fansSamples: MetricHistory<[FanUsage]>
     private(set) var thermalPressureState: ProcessInfo.ThermalState? = nil
+    private(set) var isLowPowerModeEnabled: Bool = false
+    private(set) var displayInfo: DisplayInfo = .zero
 
     var topCPUProcesses: [ProcInfo] = []
     var topGPUProcesses: [GPUProcessInfo] = []
@@ -40,6 +42,11 @@ final class SystemMonitor {
     private var diskMonitor     = DiskMonitor()
     private var networkMonitor  = NetworkMonitor()
     private var powerMonitor    = PowerMonitor()
+    private var wifiMonitor     = WiFiMonitor()
+    private let displayInfoMonitor = DisplayInfoMonitor()
+    private var pollTick: UInt = 0
+    /// Re-read display mode every N polls — resolution rarely changes.
+    private static let displayInfoRefreshEveryNSamples: UInt = 30
 
     private let smcClient                         = SMCClient()
     private var batteryMonitor                    = BatteryMonitor()
@@ -109,11 +116,13 @@ final class SystemMonitor {
         let gpu     = gpuMonitor.sample(intervalSeconds: settings.pollInterval)
         let memory  = memoryMonitor.sample()
         let disk    = diskMonitor.sample()
-        let network = networkMonitor.sample()
+        var network = networkMonitor.sample()
+        network.wifi = wifiMonitor.sample()
         let battery = batteryMonitor.sample()
         let thermalSample = thermalMonitor.sample()
         let fans    = fanMonitor.sample()
         let power   = powerMonitor.sample(intervalSeconds: settings.pollInterval)
+        let lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         let count   = settings.processCount
 
         record(cpu: cpu)
@@ -126,6 +135,11 @@ final class SystemMonitor {
         record(thermalPressureState: thermalSample.pressureState)
         record(power: power)
         record(fans: fans)
+        isLowPowerModeEnabled = lowPowerMode
+        if pollTick % Self.displayInfoRefreshEveryNSamples == 0 {
+            displayInfo = displayInfoMonitor.sample()
+        }
+        pollTick &+= 1
         topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: settings.pollInterval, processCount: count)
 
         pollNetworkProcesses(processCount: count)
@@ -241,6 +255,14 @@ final class SystemMonitor {
 
     func record(thermalPressureState state: ProcessInfo.ThermalState?) {
         thermalPressureState = state
+    }
+
+    func record(isLowPowerModeEnabled enabled: Bool) {
+        isLowPowerModeEnabled = enabled
+    }
+
+    func record(displayInfo info: DisplayInfo) {
+        displayInfo = info
     }
 
     func record(power sample: PowerUsage?) {

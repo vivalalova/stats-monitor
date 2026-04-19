@@ -42,6 +42,12 @@ struct BatteryMonitor {
         let rawRemain   = dict["TimeRemaining"]     as? Int
         let timeRemaining = validTimeRemaining(rawRemain)
 
+        let voltage = (dict["Voltage"] as? Int) ?? 0
+        let instantAmperage = dict["InstantAmperage"] as? Int
+        let steadyAmperage = dict["Amperage"] as? Int
+        let amperage = instantAmperage ?? steadyAmperage ?? 0
+        let temperature = temperatureCelsius(from: dict["Temperature"] as? Int)
+
         return BatteryUsage(
             percentage:     clamp(Double(current) / Double(reportedMax) * 100.0),
             isCharging:     isCharging,
@@ -50,8 +56,27 @@ struct BatteryMonitor {
             cycleCount:     cycleCount,
             designCapacity: safeDesign,
             maxCapacity:    maxCap,
-            health:         clamp(Double(maxCap) / Double(safeDesign) * 100.0)
+            health:         clamp(Double(maxCap) / Double(safeDesign) * 100.0),
+            voltageMilliVolts: max(voltage, 0),
+            amperageMilliAmps: signedAmperage(amperage, isCharging: isCharging),
+            temperatureCelsius: temperature
         )
+    }
+
+    /// AppleSmartBattery encodes amperage as unsigned 16-bit while charging and signed
+    /// (as Int) while discharging. Normalise so that charging is positive, discharging
+    /// is negative, and zero remains zero.
+    static func signedAmperage(_ raw: Int, isCharging: Bool) -> Int {
+        guard raw != 0 else { return 0 }
+        // Raw Int may come through as negative already (discharging on Apple Silicon).
+        if raw < 0 { return raw }
+        return isCharging ? raw : -raw
+    }
+
+    /// AppleSmartBattery reports temperature in 0.01 °C units (e.g. 3010 → 30.10 °C).
+    static func temperatureCelsius(from raw: Int?) -> Double? {
+        guard let raw, raw > 0 else { return nil }
+        return Double(raw) / 100.0
     }
 
     private static func positiveInt(from value: Any?) -> Int? {

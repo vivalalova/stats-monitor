@@ -135,7 +135,7 @@ struct MainWindowView: View {
         case .disk:       DiskChartsView(settings: settings, monitor: monitor)
         case .power:      PowerChartsView(settings: settings, monitor: monitor)
         case .dashboard:  DashboardView(settings: settings, monitor: monitor)
-        case .general:    GeneralSettingsView(settings: settings)
+        case .general:    GeneralSettingsView(settings: settings, monitor: monitor)
         case .about:      AboutView(data: aboutData)
         }
     }
@@ -251,12 +251,34 @@ private struct SidebarToggleButton: View {
 
 private struct GeneralSettingsView: View {
     @Bindable var settings: AppSettings
+    let monitor: SystemMonitor
 
     private var powerPanelBinding: Binding<Bool> {
         Binding(
             get: { settings.showPowerPanel },
             set: { settings.setPowerPanelVisible($0) }
         )
+    }
+
+    private var anyMenuBarItemChecked: Bool {
+        AppSettings.anyMenuBarItemChecked(
+            settings: settings,
+            hasPower: monitor.hasPower,
+            hasThermal: monitor.hasThermal,
+            hasFans: monitor.hasFans
+        )
+    }
+
+    @ViewBuilder
+    private var menuBarToggles: some View {
+        Toggle("CPU",     isOn: $settings.showCPU)
+        Toggle("GPU",     isOn: $settings.showGPU)
+        Toggle("Memory",  isOn: $settings.showMemory)
+        Toggle("Disk",    isOn: $settings.showDisk)
+        Toggle("Network", isOn: $settings.showNetwork)
+        if monitor.hasPower   { Toggle("Power",   isOn: powerPanelBinding) }
+        if monitor.hasThermal { Toggle("Thermal", isOn: $settings.showThermal) }
+        if monitor.hasFans    { Toggle("Fans",    isOn: $settings.showFans) }
     }
 
     var body: some View {
@@ -300,19 +322,15 @@ private struct GeneralSettingsView: View {
                 }
 
                 settingsSection("Menu Bar Items") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle("CPU", isOn: $settings.showCPU)
-                        Toggle("GPU", isOn: $settings.showGPU)
-                        Toggle("Memory", isOn: $settings.showMemory)
-                        Toggle("Disk", isOn: $settings.showDisk)
-                        Toggle("Network", isOn: $settings.showNetwork)
-                        Toggle("Power", isOn: powerPanelBinding)
-                        Toggle("Thermal", isOn: $settings.showThermal)
-                        Toggle("Fans", isOn: $settings.showFans)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 16) { menuBarToggles }
+                        VStack(alignment: .leading, spacing: 8) { menuBarToggles }
                     }
-                    Text("Keep at least one item to avoid hiding the app completely.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if !anyMenuBarItemChecked {
+                        Text("Keep at least one item to avoid hiding the app completely.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
             }

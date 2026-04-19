@@ -47,6 +47,8 @@ struct MemoryUsage: Sendable {
     var swapUsed: UInt64 = 0
     var swapTotal: UInt64 = 0
     var availablePercent: Double? = nil
+    var pageInsPerSec: Double = 0
+    var pageOutsPerSec: Double = 0
 
     var used: UInt64 { active + wired + compressed }
 
@@ -74,8 +76,20 @@ struct NetworkUsage: Sendable {
     var bytesInPerSec: Double
     var bytesOutPerSec: Double
     var interfaces: [NetworkInterfaceUsage] = []
+    var wifi: WiFiLinkInfo? = nil
+    var tcpConnectionCount: Int = 0
+    var udpConnectionCount: Int = 0
 
     static let zero = NetworkUsage(bytesInPerSec: 0, bytesOutPerSec: 0)
+}
+
+struct WiFiLinkInfo: Sendable, Equatable {
+    var rssiDBm: Int?
+    var noiseDBm: Int?
+    var linkRateMbps: Double?
+    var channelNumber: Int?
+    var band: String?
+    var hardwareAddress: String?
 }
 
 enum MemoryPressureLevel: String, Sendable {
@@ -142,6 +156,9 @@ struct BatteryUsage: Sendable {
     var designCapacity: Int     // mAh
     var maxCapacity: Int        // mAh (current maximum)
     var health: Double          // maxCapacity / designCapacity × 100
+    var voltageMilliVolts: Int = 0       // 0 = unavailable
+    var amperageMilliAmps: Int = 0       // signed; + = charging, − = discharging; 0 = idle/unavailable
+    var temperatureCelsius: Double? = nil
 }
 
 struct ThermalUsage: Sendable {
@@ -167,6 +184,26 @@ struct PowerUsage: Sendable {
     var balanceWatts: Double? {
         guard let externalInputMilliWatts else { return nil }
         return (externalInputMilliWatts - totalMilliWatts) / 1000
+    }
+}
+
+
+struct DisplayInfo: Sendable, Equatable {
+    var widthPixels: Int
+    var heightPixels: Int
+    var refreshRateHz: Double
+
+    static let zero = DisplayInfo(widthPixels: 0, heightPixels: 0, refreshRateHz: 0)
+
+    var text: String {
+        guard widthPixels > 0, heightPixels > 0 else { return "—" }
+        let refreshText: String
+        if refreshRateHz > 0 {
+            refreshText = " @ \(Int(refreshRateHz.rounded())) Hz"
+        } else {
+            refreshText = ""
+        }
+        return "\(widthPixels) × \(heightPixels)\(refreshText)"
     }
 }
 

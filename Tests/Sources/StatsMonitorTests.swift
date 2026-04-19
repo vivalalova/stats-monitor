@@ -1179,6 +1179,66 @@ struct SystemMonitorTests {
     }
 }
 
+@Suite("AppSettings Menu Bar Predicate")
+@MainActor
+struct AppSettingsMenuBarPredicateTests {
+
+    private func makeSettings(allOff: Bool = false) -> AppSettings {
+        let defaults = UserDefaults(suiteName: "menu-bar-predicate-\(UUID().uuidString)")!
+        let settings = AppSettings(defaults: defaults, launchAtLoginStateProvider: { false }, launchAtLoginHandler: { _ in })
+        if allOff {
+            settings.showCPU = false
+            settings.showGPU = false
+            settings.showMemory = false
+            settings.showDisk = false
+            settings.showNetwork = false
+            settings.showBattery = false
+            settings.showPower = false
+            settings.showThermal = false
+            settings.showFans = false
+        }
+        return settings
+    }
+
+    @Test("hint hidden when an always-available item is checked")
+    func alwaysAvailableCheckedHidesHint() {
+        let settings = makeSettings(allOff: true)
+        settings.showCPU = true
+        #expect(AppSettings.anyMenuBarItemChecked(settings: settings, hasPower: false, hasThermal: false, hasFans: false))
+    }
+
+    @Test("hint shown when every available item is unchecked on full-hardware Mac")
+    func allUncheckedShowsHint() {
+        let settings = makeSettings(allOff: true)
+        #expect(!AppSettings.anyMenuBarItemChecked(settings: settings, hasPower: true, hasThermal: true, hasFans: true))
+    }
+
+    @Test("hardware-gated toggle does not suppress hint when hardware absent")
+    func hardwareAbsentIgnoresGatedToggles() {
+        let settings = makeSettings(allOff: true)
+        settings.showFans = true
+        settings.showPower = true
+        settings.showThermal = true
+        #expect(!AppSettings.anyMenuBarItemChecked(settings: settings, hasPower: false, hasThermal: false, hasFans: false))
+    }
+
+    @Test("hint hidden when the only checked item is supported hardware")
+    func supportedHardwareOnlyCheckedHidesHint() {
+        let settings = makeSettings(allOff: true)
+        settings.showFans = true
+        #expect(AppSettings.anyMenuBarItemChecked(settings: settings, hasPower: false, hasThermal: false, hasFans: true))
+    }
+
+    @Test("Power toggle counted via showPowerPanel when battery-only is enabled")
+    func powerPanelBatteryOnlyHidesHint() {
+        let settings = makeSettings(allOff: true)
+        settings.showBattery = true
+        settings.showPower = false
+        #expect(settings.showPowerPanel)
+        #expect(AppSettings.anyMenuBarItemChecked(settings: settings, hasPower: true, hasThermal: false, hasFans: false))
+    }
+}
+
 @Suite("Settings Window")
 struct SettingsWindowTests {
 
@@ -1966,12 +2026,14 @@ struct MemoryMonitorIntegrationTests {
 
     @Test("sample() total is positive")
     func totalIsPositive() {
-        #expect(MemoryMonitor().sample().total > 0)
+        var monitor = MemoryMonitor()
+        #expect(monitor.sample().total > 0)
     }
 
     @Test("sample() usedFraction is in 0...1")
     func usedFractionInRange() {
-        let result = MemoryMonitor().sample()
+        var monitor = MemoryMonitor()
+        let result = monitor.sample()
         #expect(result.usedFraction >= 0)
         #expect(result.usedFraction <= 1)
     }
@@ -2007,5 +2069,269 @@ struct NetworkMonitorIntegrationTests {
     func bytesOutNonNegative() {
         var m = NetworkMonitor()
         #expect(m.sample().bytesOutPerSec >= 0)
+    }
+}
+
+@Suite("SystemLoadMonitor")
+struct SystemLoadMonitorTests {
+
+    @Test("readProcessCount returns a positive value on the host")
+    func processCountIsPositive() {
+        #expect(SystemLoadMonitor.readProcessCount() > 0)
+    }
+
+    @Test("readLoadAverage returns non-negative values")
+    func loadAverageNonNegative() {
+        let load = SystemLoadMonitor.readLoadAverage()
+        #expect(load.one >= 0)
+        #expect(load.five >= 0)
+        #expect(load.fifteen >= 0)
+    }
+
+}
+
+@Suite("DisplayInfo")
+struct DisplayInfoTests {
+
+    @Test("renders text with resolution and refresh rate")
+    func rendersFullText() {
+        let info = DisplayInfo(widthPixels: 3456, heightPixels: 2234, refreshRateHz: 120)
+        #expect(info.text == "3456 × 2234 @ 120 Hz")
+    }
+
+    @Test("rounds refresh rate to nearest integer")
+    func roundsRefreshRate() {
+        let info = DisplayInfo(widthPixels: 2560, heightPixels: 1440, refreshRateHz: 59.94)
+        #expect(info.text == "2560 × 1440 @ 60 Hz")
+    }
+
+    @Test("omits refresh section when rate is zero (variable or unknown)")
+    func omitsRefreshWhenZero() {
+        let info = DisplayInfo(widthPixels: 3024, heightPixels: 1964, refreshRateHz: 0)
+        #expect(info.text == "3024 × 1964")
+    }
+
+    @Test("returns dash when dimensions are zero")
+    func dashWhenZero() {
+        #expect(DisplayInfo.zero.text == "—")
+    }
+
+    @Test("live monitor reports positive width and height on attached display")
+    func liveMonitorProducesRealDisplay() {
+        let info = DisplayInfoMonitor().sample()
+        #expect(info.widthPixels > 0)
+        #expect(info.heightPixels > 0)
+    }
+}
+
+@Suite("BatteryMonitor Electrical")
+struct BatteryMonitorElectricalTests {
+
+    @Test("reads voltage and signed amperage while charging")
+    func readsWhileCharging() {
+        let usage = BatteryMonitor.parseUsage(from: [
+            "CurrentCapacity": 3000,
+            "MaxCapacity": 5000,
+            "DesignCapacity": 5200,
+            "IsCharging": true,
+            "ExternalConnected": true,
+            "CycleCount": 42,
+            "Voltage": 12_340,
+            "InstantAmperage": 1_230,
+            "Temperature": 3_015,
+        ])
+
+        #expect(usage?.voltageMilliVolts == 12_340)
+        #expect(usage?.amperageMilliAmps == 1_230)
+        #expect(usage?.temperatureCelsius != nil)
+        #expect(((usage?.temperatureCelsius ?? 0) - 30.15).magnitude < 0.001)
+    }
+
+    @Test("signs amperage negative while discharging")
+    func signsDischargeNegative() {
+        let raw = BatteryMonitor.signedAmperage(800, isCharging: false)
+        #expect(raw == -800)
+    }
+
+    @Test("keeps amperage zero when battery idle")
+    func idleAmperageStaysZero() {
+        #expect(BatteryMonitor.signedAmperage(0, isCharging: false) == 0)
+        #expect(BatteryMonitor.signedAmperage(0, isCharging: true) == 0)
+    }
+
+    @Test("falls back to steady Amperage when instant reading missing")
+    func fallsBackToSteadyAmperage() {
+        let usage = BatteryMonitor.parseUsage(from: [
+            "CurrentCapacity": 3_000,
+            "MaxCapacity": 5_000,
+            "DesignCapacity": 5_200,
+            "IsCharging": false,
+            "ExternalConnected": false,
+            "CycleCount": 42,
+            "Amperage": -950,
+        ])
+        // Raw already negative; should pass through unchanged.
+        #expect(usage?.amperageMilliAmps == -950)
+    }
+
+    @Test("omits temperature when sensor missing")
+    func omitsMissingTemperature() {
+        let usage = BatteryMonitor.parseUsage(from: [
+            "CurrentCapacity": 3_000,
+            "MaxCapacity": 5_000,
+            "DesignCapacity": 5_200,
+            "IsCharging": false,
+            "ExternalConnected": false,
+            "CycleCount": 42,
+        ])
+        #expect(usage?.temperatureCelsius == nil)
+    }
+}
+
+@Suite("MemoryMonitor Paging")
+struct MemoryMonitorPagingTests {
+
+    @Test("computes page-in rate as bytes per second between two counters")
+    func computesRate() {
+        let pageSize: UInt64 = 16_384
+        // 100 pages over 2 seconds -> 100 * 16384 / 2 = 819_200 B/s
+        let rate = MemoryMonitor.rate(current: 1_100, previous: 1_000, elapsed: 2, pageSize: pageSize)
+        #expect(rate == 819_200)
+    }
+
+    @Test("returns zero when counter goes backwards (guards against overflow)")
+    func guardsAgainstCounterReset() {
+        let rate = MemoryMonitor.rate(current: 50, previous: 100, elapsed: 1, pageSize: 16_384)
+        #expect(rate == 0)
+    }
+
+    @Test("returns zero when elapsed is zero")
+    func returnsZeroWhenElapsedZero() {
+        let rate = MemoryMonitor.rate(current: 200, previous: 100, elapsed: 0, pageSize: 16_384)
+        #expect(rate == 0)
+    }
+
+    @Test("first sample() produces zero paging rates (no previous state)")
+    func firstSampleHasZeroPagingRates() {
+        var monitor = MemoryMonitor()
+        let usage = monitor.sample()
+        #expect(usage.pageInsPerSec == 0)
+        #expect(usage.pageOutsPerSec == 0)
+    }
+}
+
+@Suite("WiFiMonitor")
+struct WiFiMonitorTests {
+
+    @Test("maps 2.4 GHz band enum to label")
+    func maps2GhzLabel() {
+        #expect(WiFiMonitor.bandLabel(for: .band2GHz) == "2.4 GHz")
+    }
+
+    @Test("maps 5 GHz band enum to label")
+    func maps5GhzLabel() {
+        #expect(WiFiMonitor.bandLabel(for: .band5GHz) == "5 GHz")
+    }
+
+    @Test("maps 6 GHz band enum to label")
+    func maps6GhzLabel() {
+        #expect(WiFiMonitor.bandLabel(for: .band6GHz) == "6 GHz")
+    }
+
+    @Test("unknown band becomes em-dash")
+    func unknownBand() {
+        #expect(WiFiMonitor.bandLabel(for: .bandUnknown) == "—")
+    }
+}
+
+@Suite("NetworkMonitor Connections")
+struct NetworkMonitorConnectionTests {
+
+    @Test("parseConnectionCount ignores netstat header lines")
+    func ignoresHeaderLines() {
+        let sample = """
+        Active Internet connections (including servers)
+        Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
+        tcp4       0      0  192.168.1.10.52341     17.57.146.10.443       ESTABLISHED
+        tcp4       0      0  192.168.1.10.52342     17.57.146.11.443       ESTABLISHED
+        tcp6       0      0  fe80::1.123            *.*                    LISTEN
+        """
+        #expect(NetworkMonitor.parseConnectionCount(output: sample) == 3)
+    }
+
+    @Test("parseConnectionCount returns zero for empty output")
+    func emptyOutputZero() {
+        #expect(NetworkMonitor.parseConnectionCount(output: "") == 0)
+    }
+
+    @Test("parseConnectionCount returns zero for header-only output")
+    func headerOnlyZero() {
+        let sample = """
+        Active Internet connections (including servers)
+        Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
+        """
+        #expect(NetworkMonitor.parseConnectionCount(output: sample) == 0)
+    }
+}
+
+@Suite("SystemMonitor Presentation Additions")
+@MainActor
+struct SystemMonitorPresentationAdditionsTests {
+
+    @Test("lowPowerModeText reflects scalar state")
+    func formatsLowPowerMode() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        monitor.record(isLowPowerModeEnabled: false)
+        #expect(monitor.lowPowerModeText == "Off")
+        monitor.record(isLowPowerModeEnabled: true)
+        #expect(monitor.lowPowerModeText == "On")
+    }
+
+    @Test("battery voltage text formats to two decimals in volts")
+    func formatsBatteryVoltage() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        monitor.record(battery: BatteryUsage(
+            percentage: 75, isCharging: true, isPluggedIn: true,
+            timeRemaining: 60, cycleCount: 100,
+            designCapacity: 5000, maxCapacity: 4700, health: 94,
+            voltageMilliVolts: 12_340, amperageMilliAmps: 1_250, temperatureCelsius: 30.5
+        ))
+        #expect(monitor.batteryVoltageText == "12.34 V")
+        #expect(monitor.batteryCurrentText == "+1.25 A")
+        #expect(monitor.batteryTemperatureText == "30.5 °C")
+    }
+
+    @Test("wifi signal text reports dBm or empty when absent")
+    func formatsWiFiSignal() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        var sample = NetworkUsage.zero
+        sample.wifi = WiFiLinkInfo(
+            rssiDBm: -58, noiseDBm: -92, linkRateMbps: 1_200,
+            channelNumber: 149, band: "5 GHz", hardwareAddress: "aa:bb"
+        )
+        monitor.record(network: sample)
+        #expect(monitor.wifiSignalText == "-58 dBm")
+        #expect(monitor.wifiLinkRateText == "1.20 Gbps")
+        #expect(monitor.wifiChannelText == "Channel 149 (5 GHz)")
+    }
+
+    @Test("tcp/udp count texts reflect NetworkUsage state")
+    func formatsConnectionCounts() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        monitor.record(network: NetworkUsage(
+            bytesInPerSec: 0, bytesOutPerSec: 0,
+            tcpConnectionCount: 42, udpConnectionCount: 7
+        ))
+        #expect(monitor.tcpConnectionCountText == "42")
+        #expect(monitor.udpConnectionCountText == "7")
+        #expect(monitor.hasConnectionCounts)
+    }
+
+    @Test("displayInfoText reflects scalar state")
+    func formatsDisplayInfo() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        monitor.record(displayInfo: DisplayInfo(widthPixels: 3456, heightPixels: 2234, refreshRateHz: 120))
+        #expect(monitor.displayInfoText == "3456 × 2234 @ 120 Hz")
+        #expect(monitor.hasDisplayInfo)
     }
 }

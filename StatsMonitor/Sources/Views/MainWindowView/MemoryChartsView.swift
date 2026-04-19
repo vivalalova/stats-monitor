@@ -50,6 +50,18 @@ struct MemoryChartsView: View {
                     maxValue: monitor.memorySwapChartMaxBytes
                 )
             }
+            if showsPagingCard {
+                MetricChartCard(
+                    title: "Page I/O",
+                    value: monitor.memoryPagingSummaryText,
+                    statusColor: .yellow,
+                    lines: [
+                        (history: monitor.paddedMemoryPageInHistory, color: .teal),
+                        (history: monitor.paddedMemoryPageOutHistory, color: .orange),
+                    ],
+                    maxValue: monitor.memoryPagingChartMaxBytes
+                )
+            }
         } footer: {
             TopProcessesTable(settings: settings, monitor: monitor, initialSort: .memory)
         }
@@ -67,6 +79,10 @@ struct MemoryChartsView: View {
 
     private var showsSwapCard: Bool {
         monitor.paddedMemorySwapHistory.contains { $0 > 0 } || !monitor.memorySwapSummaryText.isEmpty
+    }
+
+    private var showsPagingCard: Bool {
+        monitor.hasMemoryPaging
     }
 
     private func memoryBytesCard(

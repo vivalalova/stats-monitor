@@ -13,6 +13,20 @@ struct NetworkDetailView: View {
                 ("↑ Out", monitor.networkOutText),
                 ("Total", monitor.networkTotalText),
             ])
+            if monitor.hasWiFi {
+                DetailMetricSection(title: "Wi-Fi", rows: availableDetailMetrics([
+                    ("Signal", monitor.wifiSignalText),
+                    ("Noise", monitor.wifiNoiseText),
+                    ("Link Rate", monitor.wifiLinkRateText),
+                    ("Channel", monitor.wifiChannelText),
+                ]))
+            }
+            if monitor.hasConnectionCounts {
+                DetailMetricSection(title: "Connections", rows: availableDetailMetrics([
+                    ("TCP", monitor.tcpConnectionCountText),
+                    ("UDP", monitor.udpConnectionCountText),
+                ]))
+            }
             DetailListSection(
                 "Interfaces",
                 data: Array(monitor.activeNetworkInterfaces.prefix(4).enumerated()),
