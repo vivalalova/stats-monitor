@@ -3,6 +3,7 @@ import ObjectiveC
 import SwiftUI
 @testable import StatsMonitor
 
+@MainActor
 private var retainedWindowAssociationKey: UInt8 = 0
 
 @MainActor

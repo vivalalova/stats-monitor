@@ -1,14 +1,48 @@
 import AppKit
 
 enum MenuBarTextLayout {
-    static let contentInset: CGFloat = 6
-    static let symbolPointSize: CGFloat = 11
-    static let textFontSize: CGFloat = 12
-    static let iconTextSpacing: CGFloat = 3
-    static let itemHorizontalPadding: CGFloat = 2
+    struct Style {
+        let rowCount: Int
+        let contentInset: CGFloat
+        let segmentSpacing: CGFloat
+        let rowSpacing: CGFloat
+        let iconSpacing: CGFloat
+        let iconSlotSize: CGFloat
+        let symbolPointSize: CGFloat
+        let textFontSize: CGFloat
+    }
 
-    static var textFont: NSFont {
-        NSFont.monospacedSystemFont(ofSize: textFontSize, weight: .regular)
+    static let statusItemHeight: CGFloat = 22
+    static let compactRowThreshold = 5
+
+    static func style(forRowCount rowCount: Int) -> Style {
+        if rowCount > 1 {
+            return Style(
+                rowCount: rowCount,
+                contentInset: 3,
+                segmentSpacing: 2,
+                rowSpacing: 0,
+                iconSpacing: 1,
+                iconSlotSize: 12,
+                symbolPointSize: 10,
+                textFontSize: 10
+            )
+        }
+
+        return Style(
+            rowCount: rowCount,
+            contentInset: 6,
+            segmentSpacing: 4,
+            rowSpacing: 0,
+            iconSpacing: 2,
+            iconSlotSize: 13,
+            symbolPointSize: 11,
+            textFontSize: 12
+        )
+    }
+
+    static func textFont(for style: Style) -> NSFont {
+        NSFont.monospacedSystemFont(ofSize: style.textFontSize, weight: .medium)
     }
 
     static func slotLength(for panel: PanelID) -> Int {
@@ -24,11 +58,11 @@ enum MenuBarTextLayout {
         return String(repeating: " ", count: slotLength - text.count) + text
     }
 
-    static func slotWidth(for panel: PanelID) -> CGFloat {
+    static func slotWidth(for panel: PanelID, style: Style = style(forRowCount: 1)) -> CGFloat {
         let template = String(repeating: "0", count: slotLength(for: panel))
         return NSAttributedString(
             string: template,
-            attributes: [.font: textFont]
+            attributes: [.font: textFont(for: style)]
         ).size().width
     }
 }

@@ -3,23 +3,49 @@ import SwiftUI
 
 @MainActor
 enum StatusBarButtonPresentation {
-    static func itemLength(monitor: SystemMonitor, settings: AppSettings) -> CGFloat {
-        let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
-        return ceil(StatusBarLabelRenderer.measuredTitleWidth(for: segments)) + 12
+    struct State {
+        let layout: StatusBarLayout
+        let itemLength: CGFloat
     }
 
-    static func applyLabel(
-        to button: NSStatusBarButton,
-        monitor: SystemMonitor,
-        settings: AppSettings
-    ) {
+    static func state(monitor: SystemMonitor, settings: AppSettings) -> State {
+        let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
+        let layout = StatusBarLabelRenderer.layout(for: segments)
+        return State(layout: layout, itemLength: layout.itemWidth)
+    }
+
+    static func apply(_ state: State, to button: NSStatusBarButton) {
         button.title = ""
+        button.attributedTitle = NSAttributedString()
         button.image = nil
         button.isBordered = false
-        button.attributedTitle = StatusBarLabelRenderer.makeAttributedTitle(
-            monitor: monitor,
-            settings: settings
-        )
+        let contentView = contentView(for: button)
+        contentView.frame = button.bounds
+        contentView.autoresizingMask = [.width, .height]
+        contentView.layout = state.layout
+    }
+
+    static func makeStandaloneButton(monitor: SystemMonitor, settings: AppSettings) -> NSStatusBarButton {
+        let state = state(monitor: monitor, settings: settings)
+        let button = NSStatusBarButton(frame: CGRect(
+            x: 0,
+            y: 0,
+            width: state.itemLength,
+            height: MenuBarTextLayout.statusItemHeight
+        ))
+        apply(state, to: button)
+        button.layoutSubtreeIfNeeded()
+        return button
+    }
+
+    private static func contentView(for button: NSStatusBarButton) -> StatusBarLabelView {
+        if let contentView = button.subviews.compactMap({ $0 as? StatusBarLabelView }).first {
+            return contentView
+        }
+
+        let contentView = StatusBarLabelView(frame: button.bounds)
+        button.addSubview(contentView)
+        return contentView
     }
 }
 
@@ -56,7 +82,7 @@ final class StatusBarController: NSObject {
 
     private func setupButton() {
         guard let button = statusButton else { return }
-        StatusBarButtonPresentation.applyLabel(to: button, monitor: monitor, settings: settings)
+        refreshButtonPresentation(for: button)
         Self.configureClickBehavior(for: button)
         button.setAccessibilityLabel("StatsMonitor")
         button.target = self
@@ -74,16 +100,13 @@ final class StatusBarController: NSObject {
 
     // MARK: - Length
 
-    private func updateLength() {
-        let width = StatusBarButtonPresentation.itemLength(monitor: monitor, settings: settings)
-        if width > 0 {
-            statusItem.length = width
+    private func refreshButtonPresentation(for button: NSStatusBarButton? = nil) {
+        guard let button = button ?? statusButton else { return }
+        let presentationState = StatusBarButtonPresentation.state(monitor: monitor, settings: settings)
+        if presentationState.itemLength > 0 {
+            statusItem.length = presentationState.itemLength
         }
-    }
-
-    private func renderButtonLabel() {
-        guard let button = statusButton else { return }
-        StatusBarButtonPresentation.applyLabel(to: button, monitor: monitor, settings: settings)
+        StatusBarButtonPresentation.apply(presentationState, to: button)
     }
 
     /// 觀察所有影響 label 寬度的值（指標數值 + show 設定），任一改變就重算 length
@@ -92,8 +115,7 @@ final class StatusBarController: NSObject {
             _ = currentSegments
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
-                self?.renderButtonLabel()
-                self?.updateLength()
+                self?.refreshButtonPresentation()
                 self?.observeForLength()
             }
         }
@@ -103,12 +125,25 @@ final class StatusBarController: NSObject {
 
     @objc private func handleClick(_ sender: NSStatusBarButton) {
         guard let event = NSApp.currentEvent else { return }
-        let x = sender.convert(event.locationInWindow, from: nil).x
-        toggle(panel: panelAt(x: x), relativeTo: sender)
+        let point = Self.normalizeClickPoint(
+            sender.convert(event.locationInWindow, from: nil),
+            in: sender.bounds,
+            isFlipped: sender.isFlipped
+        )
+        toggle(panel: panel(at: point, in: sender.bounds), relativeTo: sender)
     }
 
-    private func panelAt(x: CGFloat) -> PanelID {
-        StatusBarLabelRenderer.panel(at: x, in: currentSegments) ?? .cpu
+    static func normalizeClickPoint(_ point: CGPoint, in bounds: CGRect, isFlipped: Bool) -> CGPoint {
+        guard isFlipped else { return point }
+
+        return CGPoint(
+            x: point.x,
+            y: max(0, min(bounds.height, bounds.height - point.y))
+        )
+    }
+
+    private func panel(at point: CGPoint, in bounds: CGRect) -> PanelID {
+        StatusBarLabelRenderer.panel(at: point, in: currentSegments, bounds: bounds) ?? .cpu
     }
 
     // MARK: - Popover

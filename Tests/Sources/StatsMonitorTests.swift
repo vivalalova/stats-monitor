@@ -1553,21 +1553,34 @@ struct StatusBarTests {
         #expect(criticalAttachment?.image?.tiffRepresentation != nominalAttachment?.image?.tiffRepresentation)
     }
 
-    @Test("status bar hit testing follows rendered segment widths instead of equal slots")
-    func statusBarHitTestingUsesMeasuredWidths() {
+    @Test("status bar hit testing follows rendered segment frames across compact rows")
+    func statusBarHitTestingUsesRenderedFrames() throws {
         let settings = makeTestSettings()
         settings.showCPU = true
-        settings.showGPU = false
-        settings.showMemory = false
-        settings.showDisk = false
+        settings.showGPU = true
+        settings.showMemory = true
+        settings.showDisk = true
         settings.showNetwork = true
         settings.showBattery = true
-        settings.showThermal = false
-        settings.showPower = false
-        settings.showFans = false
+        settings.showThermal = true
+        settings.showPower = true
+        settings.showFans = true
 
         let monitor = SystemMonitor(settings: settings)
         monitor.record(cpu: CPUUsage(user: 98, system: 1, idle: 1, perCore: [], coreFrequencies: []))
+        monitor.record(gpu: GPUUsage(deviceUtilization: 42, renderUtilization: 21, engines: [:], vramUsed: 0))
+        monitor.record(memory: MemoryUsage(
+            active: 8_589_934_592,
+            wired: 2_147_483_648,
+            compressed: 1_073_741_824,
+            total: 17_179_869_184
+        ))
+        monitor.record(disk: DiskUsage(
+            used: 400_000_000_000,
+            total: 1_000_000_000_000,
+            readBPS: 8_388_608,
+            writeBPS: 2_097_152
+        ))
         monitor.record(network: NetworkUsage(bytesInPerSec: 2_048, bytesOutPerSec: 1_024))
         monitor.record(battery: BatteryUsage(
             percentage: 80,
@@ -1584,16 +1597,100 @@ struct StatusBarTests {
             gpuMilliWatts: 1_200,
             totalMilliWatts: 9_800
         ))
+        monitor.record(thermal: ThermalUsage(cpuTemperature: 68.4, gpuTemperature: 57.2))
+        monitor.record(fans: [
+            FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
+        ])
 
         let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
-        #expect(segments.map(\.panel) == [.cpu, .network, .power])
+        #expect(segments.map(\.panel) == [.cpu, .gpu, .memory, .disk, .network, .power, .thermal, .fans])
 
-        let firstBoundary = StatusBarLabelRenderer.measuredTitleWidth(for: Array(segments.prefix(1)))
-        let secondBoundary = StatusBarLabelRenderer.measuredTitleWidth(for: Array(segments.prefix(2)))
+        let layout = StatusBarLabelRenderer.layout(for: segments)
+        let bounds = CGRect(
+            x: 0,
+            y: 0,
+            width: layout.itemWidth,
+            height: MenuBarTextLayout.statusItemHeight
+        )
 
-        #expect(StatusBarLabelRenderer.panel(at: firstBoundary / 2 + 6, in: segments) == .cpu)
-        #expect(StatusBarLabelRenderer.panel(at: (firstBoundary + secondBoundary) / 2 + 6, in: segments) == .network)
-        #expect(StatusBarLabelRenderer.panel(at: secondBoundary + 12, in: segments) == .power)
+        for panel in [PanelID.cpu, .disk, .network, .fans] {
+            let frame = try #require(layout.frame(for: panel, in: bounds))
+            let point = CGPoint(x: frame.midX, y: frame.midY)
+            #expect(StatusBarLabelRenderer.panel(at: point, in: segments, bounds: bounds) == panel)
+        }
+    }
+
+    @Test("status bar normalizes flipped button coordinates before resolving compact rows")
+    func statusBarNormalizesFlippedButtonCoordinates() throws {
+        let settings = makeTestSettings()
+        settings.showCPU = true
+        settings.showGPU = true
+        settings.showMemory = true
+        settings.showDisk = true
+        settings.showNetwork = true
+        settings.showBattery = true
+        settings.showThermal = true
+        settings.showPower = true
+        settings.showFans = true
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(cpu: CPUUsage(user: 32, system: 0, idle: 68, perCore: [], coreFrequencies: []))
+        monitor.record(gpu: GPUUsage(deviceUtilization: 9, renderUtilization: 4, engines: [:], vramUsed: 0))
+        monitor.record(memory: MemoryUsage(
+            active: 8_589_934_592,
+            wired: 2_147_483_648,
+            compressed: 1_073_741_824,
+            total: 17_179_869_184
+        ))
+        monitor.record(disk: DiskUsage(
+            used: 400_000_000_000,
+            total: 1_000_000_000_000,
+            readBPS: 1_048_576,
+            writeBPS: 314_572.8
+        ))
+        monitor.record(network: NetworkUsage(bytesInPerSec: 2_048, bytesOutPerSec: 0))
+        monitor.record(battery: BatteryUsage(
+            percentage: 79,
+            isCharging: false,
+            isPluggedIn: false,
+            timeRemaining: 180,
+            cycleCount: 132,
+            designCapacity: 5000,
+            maxCapacity: 4630,
+            health: 92.6
+        ))
+        monitor.record(thermal: ThermalUsage(cpuTemperature: 68.4, gpuTemperature: 57.2))
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 18_000
+        ))
+        monitor.record(fans: [
+            FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
+        ])
+
+        let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
+        let layout = StatusBarLabelRenderer.layout(for: segments)
+        let bounds = CGRect(
+            x: 0,
+            y: 0,
+            width: layout.itemWidth,
+            height: MenuBarTextLayout.statusItemHeight
+        )
+
+        let cpuFrame = try #require(layout.frame(for: .cpu, in: bounds))
+        let diskFrame = try #require(layout.frame(for: .disk, in: bounds))
+
+        let flippedCPUPoint = CGPoint(x: cpuFrame.midX, y: bounds.height - cpuFrame.midY)
+        let flippedDiskPoint = CGPoint(x: diskFrame.midX, y: bounds.height - diskFrame.midY)
+
+        let normalizedCPUPoint = StatusBarController.normalizeClickPoint(flippedCPUPoint, in: bounds, isFlipped: true)
+        let normalizedDiskPoint = StatusBarController.normalizeClickPoint(flippedDiskPoint, in: bounds, isFlipped: true)
+
+        #expect(StatusBarLabelRenderer.panel(at: normalizedCPUPoint, in: segments, bounds: bounds) == .cpu)
+        #expect(StatusBarLabelRenderer.panel(at: normalizedDiskPoint, in: segments, bounds: bounds) == .disk)
     }
 
     @Test("status bar keeps a stable measured width when menu values change")
@@ -1647,6 +1744,71 @@ struct StatusBarTests {
         #expect(lowWidth == highWidth)
     }
 
+    @Test("status bar switches to a two-row compact layout without dropping visible monitors")
+    func statusBarUsesCompactTwoRowLayoutForDenseConfiguration() {
+        let settings = makeTestSettings()
+        settings.showCPU = true
+        settings.showGPU = true
+        settings.showMemory = true
+        settings.showDisk = true
+        settings.showNetwork = true
+        settings.showBattery = true
+        settings.showThermal = true
+        settings.showPower = true
+        settings.showFans = true
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(cpu: CPUUsage(user: 24, system: 18, idle: 58, perCore: [], coreFrequencies: []))
+        monitor.record(gpu: GPUUsage(deviceUtilization: 37, renderUtilization: 25, engines: [:], vramUsed: 0))
+        monitor.record(memory: MemoryUsage(
+            active: 8_589_934_592,
+            wired: 2_147_483_648,
+            compressed: 1_073_741_824,
+            total: 17_179_869_184
+        ))
+        monitor.record(disk: DiskUsage(
+            used: 400_000_000_000,
+            total: 1_000_000_000_000,
+            readBPS: 8_388_608,
+            writeBPS: 2_097_152
+        ))
+        monitor.record(network: NetworkUsage(bytesInPerSec: 1_572_864, bytesOutPerSec: 262_144))
+        monitor.record(battery: BatteryUsage(
+            percentage: 78,
+            isCharging: false,
+            isPluggedIn: false,
+            timeRemaining: 165,
+            cycleCount: 132,
+            designCapacity: 5000,
+            maxCapacity: 4630,
+            health: 92.6
+        ))
+        monitor.record(thermal: ThermalUsage(cpuTemperature: 68.4, gpuTemperature: 57.2))
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+        monitor.record(fans: [
+            FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
+        ])
+
+        let segments = StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
+        let layout = StatusBarLabelRenderer.layout(for: segments)
+
+        #expect(layout.rowCount == 2)
+        #expect(layout.style.textFontSize >= 10)
+        #expect(Set(layout.placedSegments.map(\.segment.panel)) == Set(segments.map(\.panel)))
+        #expect(layout.placedSegments.allSatisfy { $0.icon != nil && $0.iconFrame.width > 0 })
+        let topRowIconCenters = layout.placedSegments.filter { $0.rowIndex == 0 }.map { $0.iconFrame.midY }
+        let bottomRowIconCenters = layout.placedSegments.filter { $0.rowIndex == 1 }.map { $0.iconFrame.midY }
+        #expect(Set(topRowIconCenters).count == 1)
+        #expect(Set(bottomRowIconCenters).count == 1)
+        #expect(layout.placedSegments.allSatisfy { $0.iconFrame.width == layout.style.iconSlotSize })
+        #expect(layout.itemWidth < StatusBarLabelRenderer.singleRowWidth(for: segments))
+    }
+
     @Test("menu bar uses narrower fixed widths for compact metrics")
     func menuBarUsesPanelSpecificFixedWidths() {
         #expect(MenuBarTextLayout.slotLength(for: .cpu) == 4)
@@ -1658,6 +1820,31 @@ struct StatusBarTests {
         #expect(MenuBarTextLayout.slotLength(for: .thermal) == 4)
         #expect(MenuBarTextLayout.slotLength(for: .fans) == 4)
         #expect(MenuBarTextLayout.slotWidth(for: .cpu) == MenuBarTextLayout.slotWidth(for: .disk))
+    }
+
+    @Test("snapshot menu bar button reuses the same production presentation path")
+    func snapshotMenuBarButtonUsesProductionPresentationPath() {
+        let settings = makeTestSettings()
+        settings.showCPU = true
+        settings.showGPU = true
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = false
+        settings.showPower = false
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(cpu: CPUUsage(user: 32, system: 0, idle: 68, perCore: [], coreFrequencies: []))
+        monitor.record(gpu: GPUUsage(deviceUtilization: 9, renderUtilization: 4, engines: [:], vramUsed: 0))
+
+        let state = StatusBarButtonPresentation.state(monitor: monitor, settings: settings)
+        let button = StatusBarButtonPresentation.makeStandaloneButton(monitor: monitor, settings: settings)
+
+        #expect(button.frame.width == state.itemLength)
+        #expect(button.frame.height == MenuBarTextLayout.statusItemHeight)
+        #expect(button.subviews.contains { $0 is StatusBarLabelView })
     }
 
     @Test("status bar button handles click on mouse down to avoid popover click-through")
