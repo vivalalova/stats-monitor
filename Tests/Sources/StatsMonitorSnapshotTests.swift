@@ -874,7 +874,7 @@ private extension AboutView.SnapshotData {
         copyright: "© 2026 Lova Shih",
         macModel: "MacBookPro18,3",
         chipName: "Apple M1 Pro",
-        osVersion: "macOS 15.5 (24F74)",
+        osVersion: "macOS 26.0",
         totalRAM: "32 GB",
         uptime: "2d 5h 18m",
         loadAverage: "1.24, 1.02, 0.87",
