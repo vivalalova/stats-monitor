@@ -84,13 +84,12 @@ struct MainWindowView: View {
     var body: some View {
         HStack(spacing: 0) {
             if isSidebarVisible {
-                ZStack(alignment: .top) {
-                    Rectangle().fill(.ultraThickMaterial)
-                    sidebar.padding(8)
-                }
-                .frame(width: SettingsWindowLayout.sidebarWidth)
-                .frame(maxHeight: .infinity)
-                .transition(.move(edge: .leading).combined(with: .opacity))
+                sidebar
+                    .padding(8)
+                    .frame(width: SettingsWindowLayout.sidebarWidth)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .glassEffect(.regular, in: Rectangle())
+                    .transition(.move(edge: .leading).combined(with: .opacity))
             }
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -114,17 +113,19 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var sidebar: some View {
-        VStack(spacing: 4) {
-            ForEach(Tab.chartTabs, id: \.self) { tab in
-                sidebarRow(for: tab)
-                    .contentShape(Rectangle())
-                    .onTapGesture { selection = tab }
-            }
-            Divider()
-                .padding(.vertical, 4)
-            ForEach(Tab.textTabs, id: \.self) { tab in
-                sidebarTextRow(for: tab)
-                    .onTapGesture { selection = tab }
+        GlassEffectContainer(spacing: 4) {
+            VStack(spacing: 4) {
+                ForEach(Tab.chartTabs, id: \.self) { tab in
+                    sidebarRow(for: tab)
+                        .contentShape(Rectangle())
+                        .onTapGesture { selection = tab }
+                }
+                Divider()
+                    .padding(.vertical, 4)
+                ForEach(Tab.textTabs, id: \.self) { tab in
+                    sidebarTextRow(for: tab)
+                        .onTapGesture { selection = tab }
+                }
             }
         }
     }
@@ -221,7 +222,7 @@ struct MainWindowView: View {
             statusColor: statusColor,
             lines: lines,
             maxValue: maxValue,
-            height: 50
+            height: 64
         )
         .overlay {
             RoundedRectangle(cornerRadius: 8)
@@ -233,17 +234,25 @@ struct MainWindowView: View {
         .contentShape(Rectangle())
     }
 
+    @ViewBuilder
     private func sidebarTextRow(for tab: Tab) -> some View {
         let isSelected = selection == tab
-        return Label(tab.localizedTitle, systemImage: tab.icon)
+        let row = Label(tab.localizedTitle, systemImage: tab.icon)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isSelected ? Color.accentColor.opacity(0.18) : .clear)
-            )
             .contentShape(Rectangle())
+
+        if isSelected {
+            row
+                .foregroundStyle(Color.accentColor)
+                .glassEffect(
+                    .regular.tint(.accentColor.opacity(0.25)).interactive(),
+                    in: RoundedRectangle(cornerRadius: 6)
+                )
+        } else {
+            row
+        }
     }
 }
 

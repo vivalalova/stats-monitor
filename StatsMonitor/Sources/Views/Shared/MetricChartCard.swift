@@ -11,22 +11,25 @@ struct MetricChartCard: View {
     var body: some View {
         Group {
             if dashboardCardHasChart(lines: lines) {
-                ZStack(alignment: .topLeading) {
-                    LineChartView(lines: lines, maxValue: maxValue, height: nil, cornerRadius: 8)
-
+                VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         titleLabel
                         Spacer()
                         statusIndicator
                     }
-                    .padding(4)
-
-                    VStack {
-                        Spacer()
-                        valueLabel
-                            .padding(4)
-                    }
+                    valueLabel
+                    LineChartView(
+                        lines: lines,
+                        maxValue: maxValue,
+                        height: nil,
+                        cornerRadius: 0,
+                        showsBackground: false
+                    )
+                    .frame(maxHeight: .infinity)
                 }
+                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
@@ -38,7 +41,7 @@ struct MetricChartCard: View {
                 }
                 .padding(8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
             }
         }
         .frame(height: height ?? dashboardCardHeight(lines: lines))

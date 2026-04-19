@@ -6,6 +6,7 @@ struct LineChartView: View {
     var maxValue: Double = 100
     var height: CGFloat? = 100
     var cornerRadius: CGFloat = 4
+    var showsBackground: Bool = true
 
     var body: some View {
         Canvas { context, size in
@@ -36,8 +37,21 @@ struct LineChartView: View {
             }
         }
         .frame(height: height)
-        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: cornerRadius))
+        .modifier(LineChartBackgroundModifier(enabled: showsBackground, cornerRadius: cornerRadius))
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+}
+
+private struct LineChartBackgroundModifier: ViewModifier {
+    let enabled: Bool
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
+        } else {
+            content
+        }
     }
 }
 

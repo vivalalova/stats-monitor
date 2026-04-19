@@ -4,5 +4,5 @@ import ProjectDescriptionHelpers
 let project = Project.app(
     name: "StatsMonitor",
     destinations: .macOS,
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
 )
