@@ -19,12 +19,13 @@ struct MainWindowView: View {
         case gpuEngines
         case memory
         case disk
+        case network
         case power
         case dashboard
         case general
         case about
 
-        static let chartTabs: [Tab] = [.cpuCores, .gpuEngines, .memory, .disk, .power]
+        static let chartTabs: [Tab] = [.cpuCores, .gpuEngines, .memory, .disk, .network, .power]
         static let textTabs: [Tab] = [.dashboard, .general, .about]
 
         var showsGridSizeSlider: Bool {
@@ -37,6 +38,7 @@ struct MainWindowView: View {
             case .gpuEngines: "GPU"
             case .memory:     "Memory"
             case .disk:       "Disk"
+            case .network:    "Network"
             case .power:      "Power"
             case .dashboard:  "Dashboard"
             case .general:    "General"
@@ -50,6 +52,7 @@ struct MainWindowView: View {
             case .gpuEngines: "memorychip"
             case .memory:     "memorychip.fill"
             case .disk:       "internaldrive"
+            case .network:    "network"
             case .power:      "bolt.fill"
             case .dashboard:  "square.grid.2x2"
             case .general:    "gearshape"
@@ -133,6 +136,7 @@ struct MainWindowView: View {
         case .gpuEngines: GPUEnginesView(settings: settings, monitor: monitor)
         case .memory:     MemoryChartsView(settings: settings, monitor: monitor)
         case .disk:       DiskChartsView(settings: settings, monitor: monitor)
+        case .network:    NetworkChartsView(settings: settings, monitor: monitor)
         case .power:      PowerChartsView(settings: settings, monitor: monitor)
         case .dashboard:  DashboardView(settings: settings, monitor: monitor)
         case .general:    GeneralSettingsView(settings: settings, monitor: monitor)
@@ -176,6 +180,17 @@ struct MainWindowView: View {
                 lines: [
                     (history: monitor.paddedDiskReadHistory, color: .teal),
                     (history: monitor.paddedDiskWriteHistory, color: .orange),
+                ]
+            )
+        case .network:
+            sidebarChartRow(
+                tab: .network,
+                title: "Network",
+                value: monitor.networkTotalText,
+                statusColor: .blue,
+                lines: [
+                    (history: monitor.paddedNetworkInHistory,  color: .green),
+                    (history: monitor.paddedNetworkOutHistory, color: .red),
                 ]
             )
         case .power:

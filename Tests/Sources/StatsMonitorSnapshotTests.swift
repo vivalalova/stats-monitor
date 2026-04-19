@@ -388,6 +388,35 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    @Test("Network main window tab renders a stable screenshot")
+    func networkMainWindowScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        seedMonitorSnapshotData(into: snapshotContext.monitor)
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .network,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: .image(size: view.frame.size),
+            named: "main-window-network",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("Power main window tab renders a stable screenshot")
     func powerMainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()

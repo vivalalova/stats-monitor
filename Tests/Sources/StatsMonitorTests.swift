@@ -1253,15 +1253,17 @@ struct SettingsWindowTests {
 
     @Test("settings window exposes all chart tabs for hardware metrics")
     func settingsWindowTabConfiguration() {
-        #expect(MainWindowView.Tab.chartTabs == [.cpuCores, .gpuEngines, .memory, .disk, .power])
+        #expect(MainWindowView.Tab.chartTabs == [.cpuCores, .gpuEngines, .memory, .disk, .network, .power])
         #expect(MainWindowView.Tab.textTabs == [.dashboard, .general, .about])
         #expect(MainWindowView.Tab.memory.icon == "memorychip.fill")
         #expect(MainWindowView.Tab.disk.icon == "internaldrive")
+        #expect(MainWindowView.Tab.network.icon == "network")
         #expect(MainWindowView.Tab.power.icon == "bolt.fill")
         #expect(MainWindowView.Tab.cpuCores.showsGridSizeSlider)
         #expect(MainWindowView.Tab.gpuEngines.showsGridSizeSlider)
         #expect(MainWindowView.Tab.memory.showsGridSizeSlider)
         #expect(MainWindowView.Tab.disk.showsGridSizeSlider)
+        #expect(MainWindowView.Tab.network.showsGridSizeSlider)
         #expect(MainWindowView.Tab.power.showsGridSizeSlider)
         #expect(MainWindowView.Tab.dashboard.showsGridSizeSlider)
         #expect(!MainWindowView.Tab.general.showsGridSizeSlider)
