@@ -73,57 +73,59 @@ struct TopProcessesTable: View {
                 .font(.subheadline)
                 .fontWeight(.semibold)
 
-            VStack(spacing: 0) {
-                HStack {
-                    Button { toggleSort(.name) } label: {
-                        HStack(spacing: 2) {
-                            Text("Name")
-                            Image(systemName: ascending ? "chevron.up" : "chevron.down")
-                                .imageScale(.small)
-                                .opacity(sortColumn == .name ? 1 : 0)
-                            Spacer(minLength: 0)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                    colHeader("CPU%",    col: .cpu,     width: 60)
-                    colHeader("GPU%",    col: .gpu,     width: 60)
-                    colHeader("Memory",  col: .memory,  width: 72)
-                    colHeader("Disk",    col: .disk,    width: 72)
-                    colHeader("Network", col: .network, width: 80)
-                }
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 4)
-                .padding(.horizontal, 8)
-
-                Divider()
-
-                ForEach(mergedProcesses, id: \.name) { proc in
+            GlassEffectContainer(spacing: 2) {
+                VStack(spacing: 0) {
                     HStack {
-                        Text(proc.name)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                        Button { toggleSort(.name) } label: {
+                            HStack(spacing: 2) {
+                                Text("Name")
+                                Image(systemName: ascending ? "chevron.up" : "chevron.down")
+                                    .imageScale(.small)
+                                    .opacity(sortColumn == .name ? 1 : 0)
+                                Spacer(minLength: 0)
+                            }
+                        }
+                        .buttonStyle(.plain)
                         Spacer()
-                        Text(monitor.formatProcessCPU(proc.cpuPercent))
-                            .frame(width: 60, alignment: .trailing)
-                        Text(proc.gpuPercent > 0
-                             ? monitor.formatProcessGPU(proc.gpuPercent) : "—")
-                            .frame(width: 60, alignment: .trailing)
-                        Text(monitor.formatProcessMemory(proc.memoryBytes))
-                            .frame(width: 72, alignment: .trailing)
-                        Text(proc.diskTotalBPS > 0
-                             ? monitor.formatProcessDisk(proc.diskTotalBPS) : "—")
-                            .frame(width: 72, alignment: .trailing)
-                        Text(proc.networkTotalBPS > 0
-                             ? monitor.formatProcessNetwork(proc.networkTotalBPS) : "—")
-                            .frame(width: 80, alignment: .trailing)
+                        colHeader("CPU%",    col: .cpu,     width: 60)
+                        colHeader("GPU%",    col: .gpu,     width: 60)
+                        colHeader("Memory",  col: .memory,  width: 72)
+                        colHeader("Disk",    col: .disk,    width: 72)
+                        colHeader("Network", col: .network, width: 80)
                     }
-                    .font(.system(size: 12))
-                    .monospacedDigit()
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
                     .padding(.vertical, 4)
                     .padding(.horizontal, 8)
-                    .background(Color.primary.opacity(0.02), in: RoundedRectangle(cornerRadius: 4))
+
+                    Divider()
+
+                    ForEach(mergedProcesses, id: \.name) { proc in
+                        HStack {
+                            Text(proc.name)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer()
+                            Text(monitor.formatProcessCPU(proc.cpuPercent))
+                                .frame(width: 60, alignment: .trailing)
+                            Text(proc.gpuPercent > 0
+                                 ? monitor.formatProcessGPU(proc.gpuPercent) : "—")
+                                .frame(width: 60, alignment: .trailing)
+                            Text(monitor.formatProcessMemory(proc.memoryBytes))
+                                .frame(width: 72, alignment: .trailing)
+                            Text(proc.diskTotalBPS > 0
+                                 ? monitor.formatProcessDisk(proc.diskTotalBPS) : "—")
+                                .frame(width: 72, alignment: .trailing)
+                            Text(proc.networkTotalBPS > 0
+                                 ? monitor.formatProcessNetwork(proc.networkTotalBPS) : "—")
+                                .frame(width: 80, alignment: .trailing)
+                        }
+                        .font(.system(size: 12))
+                        .monospacedDigit()
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 4))
+                    }
                 }
             }
         }

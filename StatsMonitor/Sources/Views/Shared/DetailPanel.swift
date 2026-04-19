@@ -12,11 +12,14 @@ struct PanelView<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            content
+        GlassEffectContainer(spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
+                content
+            }
+            .padding(16)
+            .frame(width: 280)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
         }
-        .padding(16)
-        .frame(width: 280)
     }
 }
 

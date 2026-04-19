@@ -99,42 +99,44 @@ private struct TopPowerProcessesTable: View {
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Name")
-                        Spacer()
-                        Text("Impact")
-                            .frame(width: 74, alignment: .trailing)
-                        Text("CPU%")
-                            .frame(width: 60, alignment: .trailing)
-                        Text("Memory")
-                            .frame(width: 80, alignment: .trailing)
-                    }
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 8)
-
-                    Divider()
-
-                    ForEach(monitor.topPowerProcesses, id: \.name) { process in
+                GlassEffectContainer(spacing: 2) {
+                    VStack(spacing: 0) {
                         HStack {
-                            Text(process.name)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+                            Text("Name")
                             Spacer()
-                            Text(monitor.formatProcessPower(process))
+                            Text("Impact")
                                 .frame(width: 74, alignment: .trailing)
-                            Text(monitor.formatProcessCPU(process.cpuPercent))
+                            Text("CPU%")
                                 .frame(width: 60, alignment: .trailing)
-                            Text(monitor.formatProcessMemory(process.memoryBytes))
+                            Text("Memory")
                                 .frame(width: 80, alignment: .trailing)
                         }
-                        .font(.system(size: 12))
-                        .monospacedDigit()
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                         .padding(.vertical, 4)
                         .padding(.horizontal, 8)
-                        .background(Color.primary.opacity(0.02), in: RoundedRectangle(cornerRadius: 4))
+
+                        Divider()
+
+                        ForEach(monitor.topPowerProcesses, id: \.name) { process in
+                            HStack {
+                                Text(process.name)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Spacer()
+                                Text(monitor.formatProcessPower(process))
+                                    .frame(width: 74, alignment: .trailing)
+                                Text(monitor.formatProcessCPU(process.cpuPercent))
+                                    .frame(width: 60, alignment: .trailing)
+                                Text(monitor.formatProcessMemory(process.memoryBytes))
+                                    .frame(width: 80, alignment: .trailing)
+                            }
+                            .font(.system(size: 12))
+                            .monospacedDigit()
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 4))
+                        }
                     }
                 }
             }
