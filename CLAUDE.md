@@ -50,7 +50,7 @@ StatsMonitor/Sources/
   Views/
     LineChartView.swift       # 共用折線圖元件
     DashboardView.swift       # Settings 視窗 Dashboard 分頁（總覽卡片 + 行程表）
-    MainWindowView.swift      # 主視窗 NavigationSplitView（Dashboard / General / About）
+    MainWindowView.swift      # 主視窗 sidebar tabs（CPU / GPU / Memory / Disk / Power / Dashboard / General / About）
     AboutView.swift           # About 分頁（版本資訊 + 系統規格）
     Detail/
       DetailPanel.swift           # 點擊 menu bar 展開的 popover 容器
@@ -91,6 +91,11 @@ Packages/Util/
 
 ## Settings 視窗分頁
 
+- **CPU**：每核心用量圖 + 熱門 CPU 行程
+- **GPU**：GPU engines / frequency / media engine 圖 + 熱門 GPU 行程
+- **Memory**：Used / Free / Active / Wired / Compressed / Swap 圖 + 熱門記憶體行程
+- **Disk**：容量 / Read / Write / Total I/O 圖 + 熱門磁碟行程
+- **Power**：總功耗 / CPU / GPU / media engine / 供電來源圖 + 熱門 energy impact
 - **Dashboard**：總覽卡片（CPU/GPU/Memory/Disk/Network/Disk I/O/Battery/Thermal/Power/Fans 折線圖 + 數值）+ 合併熱門行程表；toolbar slider 控制欄數（3–6）
 - **General**：AppSettings 所有可調選項
 - **About**：版本資訊、系統規格（型號/晶片/macOS/RAM/開機時間）

@@ -4,14 +4,10 @@ struct GPUEnginesView: View {
     let settings: AppSettings
     var monitor: SystemMonitor
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 180), spacing: 8)
-    ]
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(columns: columns, spacing: 8) {
+                LazyVGrid(columns: mainWindowChartColumns, spacing: 8) {
                     if monitor.hasGPUFrequency {
                         MetricChartCard(
                             title: "Frequency",

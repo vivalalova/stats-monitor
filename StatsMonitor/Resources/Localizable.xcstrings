@@ -178,6 +178,9 @@
         }
       }
     },
+    "CPU%" : {
+
+    },
     "Dashboard" : {
       "comment" : "Settings sidebar tabs",
       "extractionState" : "stale",
@@ -309,6 +312,9 @@
         }
       }
     },
+    "Impact" : {
+
+    },
     "Keep at least one item to avoid hiding the app completely." : {
       "comment" : "General Settings",
       "localizations" : {
@@ -334,7 +340,6 @@
     },
     "Memory" : {
       "comment" : "MetricCard / PanelID titles + About system info",
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -521,6 +526,9 @@
           }
         }
       }
+    },
+    "Top Energy Impact" : {
+
     },
     "Top Processes" : {
       "comment" : "CPU / Memory / Disk / Network detail",

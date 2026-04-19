@@ -118,7 +118,7 @@ struct DashboardColumnsSlider: View {
 
 // MARK: - Dashboard Helpers
 
-private func powerStatusColor(_ watts: Double) -> Color {
+func powerStatusColor(_ watts: Double) -> Color {
     switch watts {
     case ..<10:
         return .green

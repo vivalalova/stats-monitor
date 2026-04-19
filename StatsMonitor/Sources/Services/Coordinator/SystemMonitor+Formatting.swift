@@ -120,6 +120,8 @@ extension SystemMonitor {
     var memoryActiveText: String { formatBytes(currentMemory.active) }
     var memoryWiredText: String { formatBytes(currentMemory.wired) }
     var memoryCompressedText: String { formatBytes(currentMemory.compressed) }
+    var memoryChartMaxBytes: Double { max(Double(currentMemory.total), 1) }
+    var memorySwapChartMaxBytes: Double { max(Double(currentMemory.swapTotal), 1) }
     var memorySwapUsedText: String {
         currentMemory.swapUsed > 0 ? formatBytes(currentMemory.swapUsed) : ""
     }
@@ -152,6 +154,26 @@ extension SystemMonitor {
         }
     }
     var paddedMemoryHistory: [Double] { padded(memorySamples.values.map { $0.usedFraction * 100 }, capacity: memorySamples.capacity) }
+    var paddedMemoryActiveHistory: [Double] {
+        padded(memorySamples.values.map { Double($0.active) }, capacity: memorySamples.capacity)
+    }
+    var paddedMemoryWiredHistory: [Double] {
+        padded(memorySamples.values.map { Double($0.wired) }, capacity: memorySamples.capacity)
+    }
+    var paddedMemoryCompressedHistory: [Double] {
+        padded(memorySamples.values.map { Double($0.compressed) }, capacity: memorySamples.capacity)
+    }
+    var paddedMemoryFreeHistory: [Double] {
+        padded(
+            memorySamples.values.map { sample in
+                Double(sample.total > sample.used ? sample.total - sample.used : 0)
+            },
+            capacity: memorySamples.capacity
+        )
+    }
+    var paddedMemorySwapHistory: [Double] {
+        padded(memorySamples.values.map { Double($0.swapUsed) }, capacity: memorySamples.capacity)
+    }
 
     var diskUsedText: String { formatBytes(currentDisk.used) }
     var diskFreeText: String { formatBytes(currentDisk.total - currentDisk.used) }
@@ -164,6 +186,12 @@ extension SystemMonitor {
     var paddedDiskHistory: [Double] { padded(diskSamples.values.map { $0.usedFraction * 100 }, capacity: diskSamples.capacity) }
     var paddedDiskReadHistory: [Double] { padded(diskSamples.values.map(\.readBPS), capacity: diskSamples.capacity) }
     var paddedDiskWriteHistory: [Double] { padded(diskSamples.values.map(\.writeBPS), capacity: diskSamples.capacity) }
+    var paddedDiskActivityHistory: [Double] {
+        padded(
+            diskSamples.values.map { $0.readBPS + $0.writeBPS },
+            capacity: diskSamples.capacity
+        )
+    }
 
     var networkInText: String { formatThroughput(currentNetwork.bytesInPerSec) }
     var networkOutText: String { formatThroughput(currentNetwork.bytesOutPerSec) }
@@ -251,6 +279,36 @@ extension SystemMonitor {
         return formatMenuPower(power?.totalWatts ?? 0)
     }
     var powerMenuSymbol: String { "bolt.fill" }
+    var hasExternalInputPower: Bool {
+        powerSamples.values.contains { $0.externalInputMilliWatts != nil }
+    }
+    var hasBatteryFlowPower: Bool {
+        powerSamples.values.contains { $0.batteryMilliWatts != 0 }
+    }
+    var paddedCPUPowerHistory: [Double] {
+        padded(powerSamples.values.map(\.cpuWatts), capacity: powerSamples.capacity)
+    }
+    var paddedGPUPowerHistory: [Double] {
+        padded(powerSamples.values.map(\.gpuWatts), capacity: powerSamples.capacity)
+    }
+    var paddedExternalInputPowerHistory: [Double] {
+        padded(
+            powerSamples.values.map { $0.externalInputWatts ?? 0 },
+            capacity: powerSamples.capacity
+        )
+    }
+    var paddedBatteryFlowPowerHistory: [Double] {
+        padded(
+            powerSamples.values.map { abs($0.batteryMilliWatts) / 1000 },
+            capacity: powerSamples.capacity
+        )
+    }
+    var batteryFlowPowerText: String {
+        let batteryMilliWatts = power?.batteryMilliWatts ?? 0
+        guard batteryMilliWatts != 0 else { return "0.0 W" }
+        let sign = batteryMilliWatts > 0 ? "+" : "-"
+        return String(format: "\(sign)%.1f W", abs(batteryMilliWatts) / 1000)
+    }
 
     var thermal: ThermalUsage? { thermalSamples.current }
     var thermalPressureText: String {

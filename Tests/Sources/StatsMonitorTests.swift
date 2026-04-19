@@ -1190,6 +1190,15 @@ struct SettingsWindowTests {
         #expect(SettingsWindowLayout.sidebarWidth == 130)
         #expect(SettingsWindowLayout.defaultWidth > SettingsWindowLayout.sidebarWidth)
     }
+
+    @Test("settings window exposes all chart tabs for hardware metrics")
+    func settingsWindowTabConfiguration() {
+        #expect(MainWindowView.Tab.chartTabs == [.cpuCores, .gpuEngines, .memory, .disk, .power])
+        #expect(MainWindowView.Tab.textTabs == [.dashboard, .general, .about])
+        #expect(MainWindowView.Tab.memory.icon == "memorychip.fill")
+        #expect(MainWindowView.Tab.disk.icon == "internaldrive")
+        #expect(MainWindowView.Tab.power.icon == "bolt.fill")
+    }
 }
 
 @Suite("Dashboard Toolbar")

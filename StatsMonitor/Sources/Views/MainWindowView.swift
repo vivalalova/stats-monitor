@@ -17,17 +17,23 @@ struct MainWindowView: View {
     enum Tab: CaseIterable, Hashable {
         case cpuCores
         case gpuEngines
+        case memory
+        case disk
+        case power
         case dashboard
         case general
         case about
 
-        static let chartTabs: [Tab] = [.cpuCores, .gpuEngines]
+        static let chartTabs: [Tab] = [.cpuCores, .gpuEngines, .memory, .disk, .power]
         static let textTabs: [Tab] = [.dashboard, .general, .about]
 
         var localizedTitle: LocalizedStringKey {
             switch self {
             case .cpuCores:   "CPU"
             case .gpuEngines: "GPU"
+            case .memory:     "Memory"
+            case .disk:       "Disk"
+            case .power:      "Power"
             case .dashboard:  "Dashboard"
             case .general:    "General"
             case .about:      "About"
@@ -38,6 +44,9 @@ struct MainWindowView: View {
             switch self {
             case .cpuCores:   "cpu"
             case .gpuEngines: "memorychip"
+            case .memory:     "memorychip.fill"
+            case .disk:       "internaldrive"
+            case .power:      "bolt.fill"
             case .dashboard:  "square.grid.2x2"
             case .general:    "gearshape"
             case .about:      "info.circle"
@@ -113,6 +122,9 @@ struct MainWindowView: View {
         switch selection {
         case .cpuCores:   CPUCoreChartsView(settings: settings, monitor: monitor)
         case .gpuEngines: GPUEnginesView(settings: settings, monitor: monitor)
+        case .memory:     MemoryChartsView(settings: settings, monitor: monitor)
+        case .disk:       DiskChartsView(settings: settings, monitor: monitor)
+        case .power:      PowerChartsView(settings: settings, monitor: monitor)
         case .dashboard:  DashboardView(settings: settings, monitor: monitor)
         case .general:    GeneralSettingsView(settings: settings)
         case .about:      AboutView(data: aboutData)
@@ -137,6 +149,33 @@ struct MainWindowView: View {
                 value: monitor.gpuPercent,
                 statusColor: progressColor(monitor.gpuFraction),
                 lines: [(history: monitor.paddedGPUHistory, color: .purple)]
+            )
+        case .memory:
+            sidebarChartRow(
+                tab: .memory,
+                title: "Memory",
+                value: monitor.memoryPercent,
+                statusColor: progressColor(monitor.memoryFraction),
+                lines: [(history: monitor.paddedMemoryHistory, color: .cyan)]
+            )
+        case .disk:
+            sidebarChartRow(
+                tab: .disk,
+                title: "Disk",
+                value: monitor.diskActivityText,
+                statusColor: .blue,
+                lines: [
+                    (history: monitor.paddedDiskReadHistory, color: .teal),
+                    (history: monitor.paddedDiskWriteHistory, color: .orange),
+                ]
+            )
+        case .power:
+            sidebarChartRow(
+                tab: .power,
+                title: "Power",
+                value: monitor.powerText,
+                statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
+                lines: [(history: monitor.paddedPowerHistory, color: .red)]
             )
         default:
             sidebarTextRow(for: tab)
