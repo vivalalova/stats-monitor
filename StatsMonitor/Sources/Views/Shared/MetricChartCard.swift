@@ -9,43 +9,32 @@ struct MetricChartCard: View {
     var height: CGFloat? = nil
 
     var body: some View {
-        Group {
-            if dashboardCardHasChart(lines: lines) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        titleLabel
-                        Spacer()
-                        statusIndicator
-                    }
-                    valueLabel
-                    LineChartView(
-                        lines: lines,
-                        maxValue: maxValue,
-                        height: nil,
-                        cornerRadius: 0,
-                        showsBackground: false
-                    )
-                    .frame(maxHeight: .infinity)
-                }
-                .padding(8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        titleLabel
-                        Spacer()
-                        statusIndicator
-                    }
-                    valueLabel
-                }
-                .padding(8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
+        VStack(alignment: .leading, spacing: hasChart ? 4 : 6) {
+            HStack {
+                titleLabel
+                Spacer()
+                statusIndicator
+            }
+            valueLabel
+            if hasChart {
+                LineChartView(
+                    lines: lines,
+                    maxValue: maxValue,
+                    height: nil,
+                    cornerRadius: 0,
+                    showsBackground: false
+                )
+                .frame(maxHeight: .infinity)
             }
         }
+        .padding(8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
         .frame(height: height ?? dashboardCardHeight(lines: lines))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var hasChart: Bool {
+        dashboardCardHasChart(lines: lines)
     }
 
     private var titleLabel: some View {

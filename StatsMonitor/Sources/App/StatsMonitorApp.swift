@@ -45,11 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if AppTerminationGate.shared.consumeAuthorization() {
-            return .terminateNow
-        }
-
-        return quitConfirmationReply()
+        quitConfirmationReply()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

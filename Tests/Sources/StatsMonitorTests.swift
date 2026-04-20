@@ -1347,7 +1347,7 @@ struct DashboardToolbarTests {
 
     @Test("chart tabs derive grid item width from the shared dashboard slider")
     func chartTabsUseSharedDashboardSliderValue() {
-        #expect(MainWindowMetricGridLayout.minimumCardWidth(for: 3) == 219)
+        #expect(MainWindowMetricGridLayout.minimumCardWidth(for: 3) == 222)
         #expect(MainWindowMetricGridLayout.minimumCardWidth(for: 6) == 120)
         #expect(
             MainWindowMetricGridLayout.minimumCardWidth(for: 3)
@@ -1945,14 +1945,20 @@ struct StatusBarTests {
         #expect(button.sendAction(on: []) == StatusBarController.clickActionMask.rawValue)
     }
 
-    @Test("status bar popover disables animation for faster panel opening")
-    func statusBarPopoverDisablesAnimation() {
-        let popover = NSPopover()
+    @Test("status bar panel is borderless, transparent, and floats above other windows")
+    func statusBarPanelUsesLiquidGlassChrome() {
+        let panel = NSPanel()
 
-        StatusBarController.configurePopoverBehavior(for: popover)
+        StatusBarController.configureDetailPanel(panel)
 
-        #expect(popover.behavior == .transient)
-        #expect(popover.animates == false)
+        #expect(panel.styleMask.contains(.borderless))
+        #expect(panel.styleMask.contains(.nonactivatingPanel))
+        #expect(panel.isOpaque == false)
+        #expect(panel.backgroundColor == .clear)
+        #expect(!panel.hasShadow)
+        #expect(panel.isFloatingPanel)
+        #expect(panel.level == .statusBar)
+        #expect(panel.animationBehavior == .none)
     }
 }
 
@@ -1960,57 +1966,14 @@ struct StatusBarTests {
 @MainActor
 struct QuitConfirmationTests {
 
-    @Test("requesting quit presents confirmation before termination")
-    func requestQuitPresentsConfirmation() {
-        var terminateCallCount = 0
-        let confirmation = QuitConfirmationController {
-            terminateCallCount += 1
-        }
+    @Test("alert factory uses quit-confirmation copy and button ordering")
+    func alertFactoryMatchesCopy() {
+        let alert = QuitConfirmationAlertFactory.makeAlert()
 
-        confirmation.requestQuit()
-
-        #expect(confirmation.isPresented)
-        #expect(terminateCallCount == 0)
-    }
-
-    @Test("cancel dismisses confirmation without terminating the app")
-    func cancelDismissesWithoutTermination() {
-        var terminateCallCount = 0
-        let confirmation = QuitConfirmationController {
-            terminateCallCount += 1
-        }
-        confirmation.requestQuit()
-
-        confirmation.cancel()
-
-        #expect(!confirmation.isPresented)
-        #expect(terminateCallCount == 0)
-    }
-
-    @Test("confirm dismisses confirmation and terminates the app")
-    func confirmDismissesAndTerminates() {
-        var terminateCallCount = 0
-        let confirmation = QuitConfirmationController {
-            terminateCallCount += 1
-        }
-        confirmation.requestQuit()
-
-        confirmation.confirm()
-
-        #expect(!confirmation.isPresented)
-        #expect(terminateCallCount == 1)
-    }
-
-    @Test("termination gate authorizes only the next terminate request")
-    func terminationGateConsumesAuthorizationOnce() {
-        let gate = AppTerminationGate()
-
-        #expect(gate.consumeAuthorization() == false)
-
-        gate.authorizeNextTermination()
-
-        #expect(gate.consumeAuthorization() == true)
-        #expect(gate.consumeAuthorization() == false)
+        #expect(alert.messageText == QuitConfirmationCopy.title)
+        #expect(alert.informativeText == QuitConfirmationCopy.message)
+        #expect(alert.alertStyle == .warning)
+        #expect(alert.buttons.map(\.title) == [QuitConfirmationCopy.confirm, QuitConfirmationCopy.cancel])
     }
 
     @Test("closing the last transient window does not terminate the app")

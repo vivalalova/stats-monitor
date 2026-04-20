@@ -52,13 +52,15 @@ enum StatusBarButtonPresentation {
 @MainActor
 final class StatusBarController: NSObject {
     static let clickActionMask: NSEvent.EventTypeMask = [.leftMouseDown]
+    static let panelSpacing: CGFloat = 4
 
     private let statusItem: NSStatusItem
     private let settings: AppSettings
     private let monitor: SystemMonitor
-    private let popover: NSPopover
-    private let popoverContentController: NSHostingController<AnyView>
+    private let detailPanel: NSPanel
+    private let hostingController: NSHostingController<AnyView>
     private var currentPanel: PanelID?
+    private var dismissMonitors: [Any] = []
 
     private var statusButton: NSStatusBarButton? {
         statusItem.button
@@ -68,14 +70,26 @@ final class StatusBarController: NSObject {
         self.settings = settings
         self.monitor = monitor
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        popover = NSPopover()
-        popoverContentController = NSHostingController(rootView: AnyView(EmptyView()))
+        hostingController = NSHostingController(rootView: AnyView(EmptyView()))
+        detailPanel = NSPanel(
+            contentRect: CGRect(x: 0, y: 0, width: 280, height: 100),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
         super.init()
-        Self.configurePopoverBehavior(for: popover)
-        popover.delegate = self
-        popover.contentViewController = popoverContentController
+        Self.configureDetailPanel(detailPanel)
+        detailPanel.contentViewController = hostingController
+        detailPanel.contentView?.wantsLayer = true
+        detailPanel.delegate = self
         setupButton()
         observeForLength()
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            removeDismissMonitors()
+        }
     }
 
     // MARK: - Setup
@@ -88,14 +102,21 @@ final class StatusBarController: NSObject {
         button.target = self
         button.action = #selector(handleClick(_:))
     }
- 
+
     static func configureClickBehavior(for button: NSStatusBarButton) {
         button.sendAction(on: clickActionMask)
     }
 
-    static func configurePopoverBehavior(for popover: NSPopover) {
-        popover.behavior = .transient
-        popover.animates = false
+    static func configureDetailPanel(_ panel: NSPanel) {
+        panel.styleMask = [.borderless, .nonactivatingPanel]
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.isFloatingPanel = true
+        panel.level = .statusBar
+        panel.animationBehavior = .none
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.hidesOnDeactivate = false
     }
 
     // MARK: - Length
@@ -146,26 +167,31 @@ final class StatusBarController: NSObject {
         StatusBarLabelRenderer.panel(at: point, in: currentSegments, bounds: bounds) ?? .cpu
     }
 
-    // MARK: - Popover
+    // MARK: - Panel presentation
 
     private func toggle(panel: PanelID, relativeTo button: NSView) {
-        if popover.isShown, currentPanel == panel {
-            popover.performClose(nil)
+        if detailPanel.isVisible, currentPanel == panel {
+            closePanel()
             return
         }
 
-        updatePopoverContent(for: panel)
-        if popover.isShown {
-            popover.performClose(nil)
-        }
-
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        updatePanelContent(for: panel)
+        sizePanelToFitContent()
+        positionPanel(relativeTo: button)
+        detailPanel.orderFrontRegardless()
+        installDismissMonitors()
         NSApp.activate(ignoringOtherApps: true)
         currentPanel = panel
     }
 
-    private func updatePopoverContent(for panel: PanelID) {
-        popoverContentController.rootView = AnyView(
+    private func closePanel() {
+        removeDismissMonitors()
+        detailPanel.orderOut(nil)
+        currentPanel = nil
+    }
+
+    private func updatePanelContent(for panel: PanelID) {
+        hostingController.rootView = AnyView(
             DetailPopoverContentFactory.makeContent(
                 for: panel,
                 settings: settings,
@@ -174,15 +200,65 @@ final class StatusBarController: NSObject {
         )
     }
 
+    private func sizePanelToFitContent() {
+        hostingController.view.layoutSubtreeIfNeeded()
+        let fitting = hostingController.view.fittingSize
+        detailPanel.setContentSize(fitting)
+    }
+
+    private func positionPanel(relativeTo button: NSView) {
+        guard let buttonWindow = button.window else { return }
+        let buttonRectOnScreen = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        let panelSize = detailPanel.frame.size
+        var origin = CGPoint(
+            x: buttonRectOnScreen.midX - panelSize.width / 2,
+            y: buttonRectOnScreen.minY - panelSize.height - Self.panelSpacing
+        )
+        if let screenFrame = (buttonWindow.screen ?? NSScreen.main)?.visibleFrame {
+            origin.x = max(screenFrame.minX + 4, min(origin.x, screenFrame.maxX - panelSize.width - 4))
+            origin.y = max(screenFrame.minY + 4, origin.y)
+        }
+        detailPanel.setFrameOrigin(origin)
+    }
+
+    private func installDismissMonitors() {
+        removeDismissMonitors()
+
+        let globalMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor in self?.closePanel() }
+        }
+        let localMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] event in
+            guard let self else { return event }
+            if event.window !== self.detailPanel {
+                self.closePanel()
+            }
+            return event
+        }
+        if let globalMonitor { dismissMonitors.append(globalMonitor) }
+        if let localMonitor { dismissMonitors.append(localMonitor) }
+    }
+
+    private func removeDismissMonitors() {
+        for token in dismissMonitors {
+            NSEvent.removeMonitor(token)
+        }
+        dismissMonitors.removeAll()
+    }
+
     private var currentSegments: [MenuBarItem] {
         StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings)
     }
 }
 
-// MARK: - NSPopoverDelegate
+// MARK: - NSWindowDelegate
 
-extension StatusBarController: NSPopoverDelegate {
-    func popoverDidClose(_ notification: Notification) {
-        currentPanel = nil
+extension StatusBarController: NSWindowDelegate {
+    func windowDidResignKey(_ notification: Notification) {
+        guard notification.object as? NSWindow === detailPanel else { return }
+        closePanel()
     }
 }
