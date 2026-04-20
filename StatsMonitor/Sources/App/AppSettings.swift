@@ -16,7 +16,7 @@ final class AppSettings {
     static let defaultDashboardColumns = DashboardGridSizing.defaultColumnCount
     static let dashboardColumnRange = DashboardGridSizing.columnRange
 
-    static let pollIntervalOptions: [TimeInterval] = [1, 2, 5, 10]
+    static let pollIntervalOptions: [TimeInterval] = [2, 3, 5, 10]
     static let historyCapacityOptions: [(label: String, value: Int)] = [
         ("1 min (60)", 60),
         ("2 min (120)", 120),
