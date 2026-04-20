@@ -1347,7 +1347,7 @@ struct DashboardToolbarTests {
 
     @Test("chart tabs derive grid item width from the shared dashboard slider")
     func chartTabsUseSharedDashboardSliderValue() {
-        #expect(MainWindowMetricGridLayout.minimumCardWidth(for: 3) == 222)
+        #expect(MainWindowMetricGridLayout.minimumCardWidth(for: 3) == 219)
         #expect(MainWindowMetricGridLayout.minimumCardWidth(for: 6) == 120)
         #expect(
             MainWindowMetricGridLayout.minimumCardWidth(for: 3)

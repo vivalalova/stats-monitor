@@ -16,6 +16,8 @@ macOS menu bar 系統監控工具，即時顯示 CPU / GPU / Memory / Disk / Net
 - Xcode 26+
 - [Tuist](https://tuist.io) 4.x（`brew install tuist`）
 
+> 目前僅在 MacBook Air M3 測試過，其他機型（Intel、桌機、其他 Apple Silicon 型號）未驗證。
+
 ## 快速開始
 
 ```bash

@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum MainWindowMetricGridLayout {
-    static let spacing: CGFloat = 4
+    static let spacing: CGFloat = 8
     private static let horizontalPadding: CGFloat = 16
     private static let minimumCardWidthFloor: CGFloat = 120
 
