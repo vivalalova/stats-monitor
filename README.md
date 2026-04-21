@@ -29,5 +29,5 @@ open StatsMonitor.xcworkspace
 一鍵 Release 安裝：
 
 ```bash
-./scripts/install.sh
+fastlane mac install
 ```

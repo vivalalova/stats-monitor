@@ -19,3 +19,7 @@ xcuserdata/
 .claude/rules/shared/
 .agents/looping/.hook-debug.log
 .deriveddata
+
+# fastlane
+fastlane/report.xml
+fastlane/test_output

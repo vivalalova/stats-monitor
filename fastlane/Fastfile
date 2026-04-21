@@ -1,0 +1,54 @@
+default_platform(:mac)
+
+SCHEME = "StatsMonitor"
+WORKSPACE = "StatsMonitor.xcworkspace"
+CONFIGURATION = "Release"
+DERIVED_DATA = "build"
+APP_NAME = "#{SCHEME}.app"
+INSTALL_PATH = "/Applications/#{APP_NAME}"
+
+platform :mac do
+  desc "Build Release, install to /Applications, strip quarantine, and launch"
+  lane :install do
+    project_root = File.expand_path("..", __dir__)
+    arch = `uname -m`.strip
+    formatter = system("command -v xcbeautify >/dev/null 2>&1") ? "xcbeautify" : "cat"
+
+    Dir.chdir(project_root) do
+      UI.header("tuist generate")
+      sh("tuist generate --no-open")
+
+      UI.header("xcodebuild (#{CONFIGURATION}, arch=#{arch})")
+      sh(
+        "set -o pipefail; xcodebuild " \
+        "-workspace #{WORKSPACE.shellescape} " \
+        "-scheme #{SCHEME.shellescape} " \
+        "-configuration #{CONFIGURATION.shellescape} " \
+        "-destination #{"platform=macOS,arch=#{arch}".shellescape} " \
+        "-derivedDataPath #{DERIVED_DATA.shellescape} " \
+        "clean build | #{formatter}"
+      )
+
+      built_app = File.join(project_root, DERIVED_DATA, "Build/Products", CONFIGURATION, APP_NAME)
+      UI.user_error!("build product not found at #{built_app}") unless File.directory?(built_app)
+
+      if system("pgrep", "-x", SCHEME, out: File::NULL)
+        UI.message("Quitting running #{SCHEME}")
+        system("osascript", "-e", %(tell application "#{SCHEME}" to quit), out: File::NULL, err: File::NULL)
+        sleep 1
+      end
+
+      UI.header("Installing to #{INSTALL_PATH}")
+      sh("rm -rf #{INSTALL_PATH.shellescape}")
+      sh("cp -R #{built_app.shellescape} #{INSTALL_PATH.shellescape}")
+
+      UI.message("Stripping quarantine attribute")
+      system("xattr", "-dr", "com.apple.quarantine", INSTALL_PATH, out: File::NULL, err: File::NULL)
+
+      UI.header("Launching")
+      sh("open #{INSTALL_PATH.shellescape}")
+
+      UI.success("Installed #{APP_NAME} to /Applications")
+    end
+  end
+end

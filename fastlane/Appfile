@@ -1,0 +1,3 @@
+for_platform :mac do
+  # app_identifier / apple_id 留白：目前僅用於本地 Release 安裝，不走 App Store / notarization。
+end
