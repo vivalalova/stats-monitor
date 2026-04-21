@@ -396,9 +396,10 @@ struct CPUMonitorTests {
             previousSnapshots: [
                 601: CPUMonitor.ProcessSnapshot(ticks: 3_000_000_000, date: now.addingTimeInterval(-2)),
                 72166: CPUMonitor.ProcessSnapshot(ticks: 2_000_000_000, date: now.addingTimeInterval(-2)),
-                83863: CPUMonitor.ProcessSnapshot(ticks: 2_400_000_000, date: now.addingTimeInterval(-2)),
+                83863: CPUMonitor.ProcessSnapshot(ticks: 2_400_000_000, date: now.addingTimeInterval(-2))
             ],
-            processCount: 2
+            processCount: 2,
+            nanosecondsPerTick: 1.0
         )
 
         #expect(processes.count == 2)
@@ -406,6 +407,37 @@ struct CPUMonitorTests {
         #expect(processes[0].cpuPercent == 100)
         #expect(processes[1].name == "iTerm2")
         #expect(processes[1].cpuPercent == 50)
+    }
+
+    @Test("cpuPercent converts mach ticks via timebase (Apple Silicon 125/3 ratio)")
+    func cpuPercentConvertsMachTicks() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        // Apple Silicon: hw.tbfrequency = 24_000_000 → 1 full core for 2 sec = 48_000_000 ticks.
+        let snapshot = ProcessCountersSnapshot(
+            entries: [
+                .init(pid: 601, name: "FullCore", cpuTicks: 48_000_000, memoryBytes: 0,
+                      diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0),
+                .init(pid: 602, name: "HalfCore", cpuTicks: 24_000_000, memoryBytes: 0,
+                      diskReadBytes: 0, diskWriteBytes: 0, powerImpact: 0)
+            ],
+            date: now
+        )
+
+        let processes = CPUMonitor.computeTopProcesses(
+            snapshot: snapshot,
+            previousSnapshots: [
+                601: CPUMonitor.ProcessSnapshot(ticks: 0, date: now.addingTimeInterval(-2)),
+                602: CPUMonitor.ProcessSnapshot(ticks: 0, date: now.addingTimeInterval(-2))
+            ],
+            processCount: 2,
+            nanosecondsPerTick: 125.0 / 3.0
+        )
+
+        #expect(processes.count == 2)
+        #expect(processes[0].name == "FullCore")
+        #expect(abs(processes[0].cpuPercent - 100.0) < 0.01)
+        #expect(processes[1].name == "HalfCore")
+        #expect(abs(processes[1].cpuPercent - 50.0) < 0.01)
     }
 }
 

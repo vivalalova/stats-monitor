@@ -85,10 +85,23 @@ struct CPUMonitor: Sendable {
         processSampler.sampleTopProcesses(from: snapshot, processCount: processCount)
     }
 
+    /// `pti_total_user` / `pti_total_system` 是 mach absolute-time 單位，需以 `mach_timebase_info`
+    /// 的 numer/denom 轉換為 nanoseconds。Apple Silicon 上 1 tick ≈ 41.67 ns，不做轉換會讓 CPU%
+    /// 低估約 41 倍（原本 100% 的行程只會顯示 2.4%）。
+    static let machNanosecondsPerTick: Double = {
+        var timebase = mach_timebase_info_data_t()
+        mach_timebase_info(&timebase)
+        let numer = Double(timebase.numer)
+        let denom = Double(timebase.denom)
+        guard denom > 0 else { return 1 }
+        return numer / denom
+    }()
+
     static func computeTopProcesses(
         snapshot: ProcessCountersSnapshot,
         previousSnapshots: [Int32: ProcessSnapshot],
-        processCount: Int
+        processCount: Int,
+        nanosecondsPerTick: Double = machNanosecondsPerTick
     ) -> [ProcInfo] {
         let processes = snapshot.entries.compactMap { entry -> ProcInfo? in
             guard let previous = previousSnapshots[entry.pid] else { return nil }
@@ -98,9 +111,10 @@ struct CPUMonitor: Sendable {
             let deltaTicks = entry.cpuTicks >= previous.ticks ? Double(entry.cpuTicks - previous.ticks) : 0
             guard deltaTicks > 0 else { return nil }
 
+            let deltaNanoseconds = deltaTicks * nanosecondsPerTick
             return ProcInfo(
                 name: entry.name,
-                cpuPercent: (deltaTicks / 1_000_000_000.0) / elapsed * 100,
+                cpuPercent: (deltaNanoseconds / 1_000_000_000.0) / elapsed * 100,
                 memoryBytes: entry.memoryBytes
             )
         }

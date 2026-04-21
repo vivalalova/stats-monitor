@@ -1,1128 +1,1150 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "%@ items": {
-      "comment": "Dynamic picker / stepper labels",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 個"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ items" : {
+      "comment" : "Dynamic picker / stepper labels",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 個"
           }
         }
       }
     },
-    "%@ sec": {
-      "comment": "Dynamic picker / stepper labels",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 秒"
+    "%@ sec" : {
+      "comment" : "Dynamic picker / stepper labels",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 秒"
           }
         }
       }
     },
-    "%@%%": {
-      "comment": "Percentage value, e.g. core usage",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@%%"
+    "%@%%" : {
+      "comment" : "Percentage value, e.g. core usage",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@%%"
           }
         }
       }
     },
-    "%lld items": {
-      "comment": "Dynamic picker / stepper labels",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 個"
+    "%lld items" : {
+      "comment" : "Dynamic picker / stepper labels",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 個"
           }
         }
       }
     },
-    "%lld sec": {
-      "comment": "Dynamic picker / stepper labels",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 秒"
+    "%lld sec" : {
+      "comment" : "Dynamic picker / stepper labels",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 秒"
           }
         }
       }
     },
-    "1 min (60)": {
-      "comment": "History capacity picker options",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 分鐘 (60)"
+    "↑ Out" : {
+      "comment" : "Network detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↑ 上傳"
           }
         }
       }
     },
-    "2 min (120)": {
-      "comment": "History capacity picker options",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "2 分鐘 (120)"
+    "↑ Write" : {
+      "comment" : "Disk detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↑ 寫入"
           }
         }
       }
     },
-    "5 min (300)": {
-      "comment": "History capacity picker options",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "5 分鐘 (300)"
+    "↓ In" : {
+      "comment" : "Network detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↓ 下載"
           }
         }
       }
     },
-    "About": {
-      "comment": "Settings sidebar tabs",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "關於"
+    "↓ Read" : {
+      "comment" : "Disk detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↓ 讀取"
           }
         }
       }
     },
-    "Active": {
-      "comment": "Memory detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用中"
+    "1 min (60)" : {
+      "comment" : "History capacity picker options",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 分鐘 (60)"
           }
         }
       }
     },
-    "Battery": {
-      "comment": "MetricCard / PanelID titles",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "電池"
+    "2 min (120)" : {
+      "comment" : "History capacity picker options",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 分鐘 (120)"
           }
         }
       }
     },
-    "Battery Flow": {
-      "comment": "Power chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "電池功率"
+    "5 min (300)" : {
+      "comment" : "History capacity picker options",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5 分鐘 (300)"
           }
         }
       }
     },
-    "CPU": {
-      "comment": "Sidebar / toggle / chart title",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CPU"
+    "About" : {
+      "comment" : "Settings sidebar tabs",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關於"
           }
         }
       }
     },
-    "CPU%": {
-      "comment": "Process table column header",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CPU%"
+    "Active" : {
+      "comment" : "Memory detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用中"
           }
         }
       }
     },
-    "Capacity": {
-      "comment": "Disk chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "容量"
+    "Battery" : {
+      "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電池"
           }
         }
       }
     },
-    "Channel": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "頻道"
+    "Battery Flow" : {
+      "comment" : "Power chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電池功率"
           }
         }
       }
     },
-    "Chip": {
-      "comment": "About — system info labels",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "晶片"
+    "Capacity" : {
+      "comment" : "Disk chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "容量"
           }
         }
       }
     },
-    "Compressed": {
-      "comment": "Memory detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已壓縮"
+    "Channel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "頻道"
           }
         }
       }
     },
-    "Connections": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "連線數"
+    "Chip" : {
+      "comment" : "About — system info labels",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "晶片"
           }
         }
       }
     },
-    "Current": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "電流"
+    "Compressed" : {
+      "comment" : "Memory detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已壓縮"
           }
         }
       }
     },
-    "Dashboard": {
-      "comment": "Settings sidebar tabs",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "儀表板"
+    "Connections" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線數"
           }
         }
       }
     },
-    "Device": {
-      "comment": "GPU detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "裝置"
+    "CPU" : {
+      "comment" : "Sidebar / toggle / chart title",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU"
           }
         }
       }
     },
-    "Disk": {
-      "comment": "MetricCard / PanelID titles",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "磁碟"
+    "CPU%" : {
+      "comment" : "Process table column header",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU%"
           }
         }
       }
     },
-    "Disk I/O": {
-      "comment": "Dashboard chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "磁碟 I/O"
+    "Current" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電流"
           }
         }
       }
     },
-    "Display": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "顯示器"
+    "Dashboard" : {
+      "comment" : "Settings sidebar tabs",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儀表板"
           }
         }
       }
     },
-    "Display Count": {
-      "comment": "General Settings — section headers",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "顯示數量"
+    "Device" : {
+      "comment" : "GPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "裝置"
           }
         }
       }
     },
-    "Engines": {
-      "comment": "GPU detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "引擎"
+    "Disk" : {
+      "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "磁碟"
           }
         }
       }
     },
-    "External Input": {
-      "comment": "Power chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "外接輸入"
+    "Disk I/O" : {
+      "comment" : "Dashboard chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "磁碟 I/O"
           }
         }
       }
     },
-    "Fans": {
-      "comment": "MetricCard / PanelID titles",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "風扇"
+    "Display" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示器"
           }
         }
       }
     },
-    "Free": {
-      "comment": "Disk detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "可用"
+    "Display Count" : {
+      "comment" : "General Settings — section headers",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示數量"
           }
         }
       }
     },
-    "Frequency": {
-      "comment": "Detail section / GPU engine chart",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "頻率"
+    "Engines" : {
+      "comment" : "GPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "引擎"
           }
         }
       }
     },
-    "GPU": {
-      "comment": "Sidebar / toggle / chart title",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "GPU"
+    "External Input" : {
+      "comment" : "Power chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外接輸入"
           }
         }
       }
     },
-    "GPU Mem": {
-      "comment": "GPU detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "GPU 記憶體"
+    "Fans" : {
+      "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "風扇"
           }
         }
       }
     },
-    "General": {
-      "comment": "Settings sidebar tabs",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "一般"
+    "Free" : {
+      "comment" : "Disk detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可用"
           }
         }
       }
     },
-    "Hardware": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "硬體"
+    "Frequency" : {
+      "comment" : "Detail section / GPU engine chart",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "頻率"
           }
         }
       }
     },
-    "History": {
-      "comment": "General Settings — section headers",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "歷史資料"
+    "General" : {
+      "comment" : "Settings sidebar tabs",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一般"
           }
         }
       }
     },
-    "Idle": {
-      "comment": "CPU detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "閒置"
+    "GPU" : {
+      "comment" : "Sidebar / toggle / chart title",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPU"
           }
         }
       }
     },
-    "Impact": {
-      "comment": "Energy impact column header",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "耗能"
+    "GPU Mem" : {
+      "comment" : "GPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPU 記憶體"
           }
         }
       }
     },
-    "In": {
-      "comment": "Network chart card — inbound",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下載"
+    "Hardware" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "硬體"
           }
         }
       }
     },
-    "Interfaces": {
-      "comment": "Network detail section",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "網路介面"
+    "History" : {
+      "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歷史資料"
           }
         }
       }
     },
-    "Keep at least one item to avoid hiding the app completely.": {
-      "comment": "General Settings",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "至少保留一個項目以避免完全隱藏應用程式。"
+    "Idle" : {
+      "comment" : "CPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "閒置"
           }
         }
       }
     },
-    "Launch at Login": {
-      "comment": "General Settings",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "登入時自動啟動"
+    "Impact" : {
+      "comment" : "Energy impact column header",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "耗能"
           }
         }
       }
     },
-    "Link Rate": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "連線速率"
+    "In" : {
+      "comment" : "Network chart card — inbound",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載"
           }
         }
       }
     },
-    "Load Average": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系統負載"
+    "Interfaces" : {
+      "comment" : "Network detail section",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "網路介面"
           }
         }
       }
     },
-    "Low Power Mode": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "低電力模式"
+    "Keep at least one item to avoid hiding the app completely." : {
+      "comment" : "General Settings",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "至少保留一個項目以避免完全隱藏應用程式。"
           }
         }
       }
     },
-    "Media Engine": {
-      "comment": "Power chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "媒體引擎"
+    "Launch at Login" : {
+      "comment" : "General Settings",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入時自動啟動"
           }
         }
       }
     },
-    "Memory": {
-      "comment": "MetricCard / PanelID titles + About system info",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "記憶體"
+    "Link Rate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線速率"
           }
         }
       }
     },
-    "Menu Bar Items": {
-      "comment": "General Settings — section headers",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選單列項目"
+    "Load Average" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系統負載"
           }
         }
       }
     },
-    "Model": {
-      "comment": "About — system info labels",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mac 型號"
+    "Low Power Mode" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "低電力模式"
           }
         }
       }
     },
-    "Name": {
-      "comment": "Dashboard process table",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名稱"
+    "Media Engine" : {
+      "comment" : "Power chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "媒體引擎"
           }
         }
       }
     },
-    "Network": {
-      "comment": "MetricCard / PanelID titles",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "網路"
+    "Memory" : {
+      "comment" : "MetricCard / PanelID titles + About system info",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "記憶體"
           }
         }
       }
     },
-    "Neural Engine": {
-      "comment": "GPU detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "神經網路引擎"
+    "Menu Bar Items" : {
+      "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選單列項目"
           }
         }
       }
     },
-    "Noise": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "雜訊"
+    "Model" : {
+      "comment" : "About — system info labels",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac 型號"
           }
         }
       }
     },
-    "Out": {
-      "comment": "Network chart card — outbound",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "上傳"
+    "Name" : {
+      "comment" : "Dashboard process table",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名稱"
           }
         }
       }
     },
-    "Page I/O": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "分頁 I/O"
+    "Network" : {
+      "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "網路"
           }
         }
       }
     },
-    "Per Core": {
-      "comment": "CPU detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "每核心"
+    "Neural Engine" : {
+      "comment" : "GPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "神經網路引擎"
           }
         }
       }
     },
-    "Per Fan": {
-      "comment": "Fans detail section",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "每組風扇"
+    "Noise" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "雜訊"
           }
         }
       }
     },
-    "Poll Interval": {
-      "comment": "General Settings — section headers",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "輪詢間隔"
+    "Out" : {
+      "comment" : "Network chart card — outbound",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上傳"
           }
         }
       }
     },
-    "Power": {
-      "comment": "Sidebar / toggle / power chart",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "電力"
+    "Page I/O" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分頁 I/O"
           }
         }
       }
     },
-    "Process List": {
-      "comment": "General Settings — section headers",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "行程列表"
+    "Per Core" : {
+      "comment" : "CPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每核心"
           }
         }
       }
     },
-    "Processes": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "行程數"
+    "Per Fan" : {
+      "comment" : "Fans detail section",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每組風扇"
           }
         }
       }
     },
-    "Quit StatsMonitor": {
-      "comment": "Toolbar tooltips",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "結束 StatsMonitor"
+    "Poll Interval" : {
+      "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輪詢間隔"
           }
         }
       }
     },
-    "Read": {
-      "comment": "Disk chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "讀取"
+    "Power" : {
+      "comment" : "Sidebar / toggle / power chart",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電力"
           }
         }
       }
     },
-    "Renderer": {
-      "comment": "GPU detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "渲染器"
+    "Process List" : {
+      "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "行程列表"
           }
         }
       }
     },
-    "Retention Period": {
-      "comment": "General Settings — section headers",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "保留時間"
+    "Processes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "行程數"
           }
         }
       }
     },
-    "Runtime": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "執行中"
+    "Quit StatsMonitor" : {
+      "comment" : "Toolbar tooltips",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "結束 StatsMonitor"
           }
         }
       }
     },
-    "Settings": {
-      "comment": "Toolbar tooltips",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "設定"
+    "Read" : {
+      "comment" : "Disk chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "讀取"
           }
         }
       }
     },
-    "Settings…": {
-      "comment": "Menu item",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "設定…"
+    "Renderer" : {
+      "comment" : "GPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "渲染器"
           }
         }
       }
     },
-    "Signal": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "訊號強度"
+    "Retention Period" : {
+      "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留時間"
           }
         }
       }
     },
-    "Software": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "軟體"
+    "Runtime" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "執行中"
           }
         }
       }
     },
-    "Swap Used": {
-      "comment": "Memory chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已用 Swap"
+    "Settings" : {
+      "comment" : "Toolbar tooltips",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定"
           }
         }
       }
     },
-    "System": {
-      "comment": "CPU detail + General Settings section header",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系統"
+    "Settings…" : {
+      "comment" : "Menu item",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定…"
           }
         }
       }
     },
-    "System Information": {
-      "comment": "About — system info labels",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系統資訊"
+    "Signal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "訊號強度"
           }
         }
       }
     },
-    "TCP": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "TCP"
+    "Software" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "軟體"
           }
         }
       }
     },
-    "Temperature": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "溫度"
+    "Swap Used" : {
+      "comment" : "Memory chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已用 Swap"
           }
         }
       }
     },
-    "Thermal": {
-      "comment": "MetricCard / PanelID titles",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "溫度"
+    "System" : {
+      "comment" : "CPU detail + General Settings section header",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系統"
           }
         }
       }
     },
-    "Thermals": {
-      "comment": "Power detail section",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "溫度"
+    "System Information" : {
+      "comment" : "About — system info labels",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系統資訊"
           }
         }
       }
     },
-    "Toggle Sidebar": {
-      "comment": "Sidebar toggle help",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "切換側邊欄"
+    "TCP" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TCP"
           }
         }
       }
     },
-    "Top Energy Impact": {
-      "comment": "Power detail section header",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "高耗能行程"
+    "Temperature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "溫度"
           }
         }
       }
     },
-    "Top Energy Impact (score)": {
-      "comment": "Power detail section",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "高耗能行程（分數）"
+    "Thermal" : {
+      "comment" : "MetricCard / PanelID titles",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "溫度"
           }
         }
       }
     },
-    "Top GPU Apps": {
-      "comment": "GPU detail section",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "熱門 GPU 行程"
+    "Thermals" : {
+      "comment" : "Power detail section",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "溫度"
           }
         }
       }
     },
-    "Top Processes": {
-      "comment": "CPU / Memory / Disk / Network detail",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "熱門行程"
+    "Toggle Sidebar" : {
+      "comment" : "Sidebar toggle help",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換側邊欄"
           }
         }
       }
     },
-    "Total": {
-      "comment": "Disk detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "總計"
+    "Top Energy Impact" : {
+      "comment" : "Power detail section header",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高耗能行程"
           }
         }
       }
     },
-    "Total I/O": {
-      "comment": "Disk detail / chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "總 I/O"
+    "Top Energy Impact (score)" : {
+      "comment" : "Power detail section",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高耗能行程（分數）"
           }
         }
       }
     },
-    "UDP": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "UDP"
+    "Top GPU Apps" : {
+      "comment" : "GPU detail section",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "熱門 GPU 行程"
           }
         }
       }
     },
-    "Update Frequency": {
-      "comment": "General Settings — section headers",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "更新頻率"
+    "Top Processes" : {
+      "comment" : "CPU / Memory / Disk / Network detail",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "熱門行程"
           }
         }
       }
     },
-    "Uptime": {
-      "comment": "About — system info labels",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已開機"
+    "Total" : {
+      "comment" : "Disk detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "總計"
           }
         }
       }
     },
-    "Used": {
-      "comment": "CPU / Memory / Disk detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已使用"
+    "Total I/O" : {
+      "comment" : "Disk detail / chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "總 I/O"
           }
         }
       }
     },
-    "User": {
-      "comment": "CPU detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用者"
+    "UDP" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UDP"
           }
         }
       }
     },
-    "Version %@ (%@)": {
-      "comment": "About",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "版本 %@ (%@)"
+    "Update Frequency" : {
+      "comment" : "General Settings — section headers",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新頻率"
           }
         }
       }
     },
-    "Voltage": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "電壓"
+    "Uptime" : {
+      "comment" : "About — system info labels",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已開機"
           }
         }
       }
     },
-    "Wi-Fi": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wi-Fi"
+    "Used" : {
+      "comment" : "CPU / Memory / Disk detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已使用"
           }
         }
       }
     },
-    "Wired": {
-      "comment": "Memory detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "固定"
+    "User" : {
+      "comment" : "CPU detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用者"
           }
         }
       }
     },
-    "Write": {
-      "comment": "Disk chart card",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "寫入"
+    "Version %@ (%@)" : {
+      "comment" : "About",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本 %@ (%@)"
           }
         }
       }
     },
-    "↑ Out": {
-      "comment": "Network detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "↑ 上傳"
+    "Voltage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電壓"
           }
         }
       }
     },
-    "↑ Write": {
-      "comment": "Disk detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "↑ 寫入"
+    "Wi-Fi" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi"
           }
         }
       }
     },
-    "↓ In": {
-      "comment": "Network detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "↓ 下載"
+    "Wired" : {
+      "comment" : "Memory detail",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "固定"
           }
         }
       }
     },
-    "↓ Read": {
-      "comment": "Disk detail",
-      "extractionState": "stale",
-      "localizations": {
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "↓ 讀取"
+    "Write" : {
+      "comment" : "Disk chart card",
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "寫入"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

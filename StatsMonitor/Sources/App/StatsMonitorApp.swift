@@ -12,6 +12,9 @@ struct StatsMonitorApp: App {
             width: SettingsWindowLayout.defaultWidth,
             height: SettingsWindowLayout.defaultHeight
         )
+        // 視窗尺寸鎖定為 contentSize，禁止使用者調整；MainWindowView 已 frame 到 820×520。
+        // 刻意設計，不得改動。
+        .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
         .restorationBehavior(.disabled)
         .commands {
