@@ -32,7 +32,7 @@ struct MetricGridPage<Cards: View, Footer: View>: View {
             }
             .padding(sectionSpacing)
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.never)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
