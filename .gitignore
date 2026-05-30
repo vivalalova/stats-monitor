@@ -7,6 +7,7 @@ Derived/
 build/
 DerivedData/
 xcuserdata/
+*.profraw
 
 # Swift Package Manager
 .build/

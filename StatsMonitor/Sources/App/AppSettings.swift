@@ -11,7 +11,7 @@ enum DashboardGridSizing {
 @MainActor
 final class AppSettings {
     typealias LaunchAtLoginStateProvider = @MainActor () -> Bool
-    typealias LaunchAtLoginHandler = @MainActor (Bool) -> Void
+    typealias LaunchAtLoginHandler = @MainActor (Bool) throws -> Void
 
     static let defaultDashboardColumns = DashboardGridSizing.defaultColumnCount
     static let dashboardColumnRange = DashboardGridSizing.columnRange
@@ -24,6 +24,7 @@ final class AppSettings {
     ]
 
     private let defaults: UserDefaults
+    private let launchAtLoginStateProvider: LaunchAtLoginStateProvider
     private let launchAtLoginHandler: LaunchAtLoginHandler
     private var isHydrating = false
 
@@ -47,19 +48,20 @@ final class AppSettings {
     var launchAtLogin: Bool = false {
         didSet {
             guard !isHydrating else { return }
-            launchAtLoginHandler(launchAtLogin)
+            applyLaunchAtLoginChange()
         }
     }
 
     init(
         defaults: UserDefaults = .standard,
-        launchAtLoginStateProvider: LaunchAtLoginStateProvider = { SMAppService.mainApp.status == .enabled },
+        launchAtLoginStateProvider: @escaping LaunchAtLoginStateProvider = { SMAppService.mainApp.status == .enabled },
         launchAtLoginHandler: @escaping LaunchAtLoginHandler = { enabled in
-            if enabled { try? SMAppService.mainApp.register() }
-            else       { try? SMAppService.mainApp.unregister() }
+            if enabled { try SMAppService.mainApp.register() }
+            else       { try SMAppService.mainApp.unregister() }
         }
     ) {
         self.defaults = defaults
+        self.launchAtLoginStateProvider = launchAtLoginStateProvider
         self.launchAtLoginHandler = launchAtLoginHandler
 
         isHydrating = true
@@ -89,6 +91,20 @@ final class AppSettings {
     private func persist(_ key: String, _ value: Any) {
         guard !isHydrating else { return }
         defaults.set(value, forKey: key)
+    }
+
+    private func applyLaunchAtLoginChange() {
+        do {
+            try launchAtLoginHandler(launchAtLogin)
+        } catch {
+            replaceLaunchAtLoginWithoutApplyingHandler(launchAtLoginStateProvider())
+        }
+    }
+
+    private func replaceLaunchAtLoginWithoutApplyingHandler(_ value: Bool) {
+        isHydrating = true
+        launchAtLogin = value
+        isHydrating = false
     }
 
     func setPowerPanelVisible(_ isVisible: Bool) {

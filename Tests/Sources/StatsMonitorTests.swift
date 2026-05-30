@@ -640,6 +640,13 @@ struct NetworkMonitorTests {
         #expect(usage[1].displayName == "VPN (utun4)")
     }
 
+    @Test("network byte rate returns zero when counters reset")
+    func byteRateReturnsZeroWhenCountersReset() {
+        #expect(NetworkMonitor.bytesPerSecond(current: 500, previous: 1_000, elapsed: 2) == 0)
+        #expect(NetworkMonitor.bytesPerSecond(current: 1_500, previous: 500, elapsed: 2) == 500)
+        #expect(NetworkMonitor.bytesPerSecond(current: 1_500, previous: 500, elapsed: 0) == 0)
+    }
+
     @Test("computes top network processes from cumulative samples")
     func computesTopNetworkProcesses() {
         let now = Date(timeIntervalSince1970: 1_000)
@@ -1268,6 +1275,44 @@ struct AppSettingsMenuBarPredicateTests {
         settings.showPower = false
         #expect(settings.showPowerPanel)
         #expect(AppSettings.anyMenuBarItemChecked(settings: settings, hasPower: true, hasThermal: false, hasFans: false))
+    }
+}
+
+@Suite("AppSettings Launch at Login")
+@MainActor
+struct AppSettingsLaunchAtLoginTests {
+    private enum LaunchAtLoginTestError: Error {
+        case failed
+    }
+
+    @Test("launch at login applies successful changes through the service handler")
+    func launchAtLoginAppliesSuccessfulChanges() {
+        let defaults = makeTestDefaults()
+        var requests: [Bool] = []
+        let settings = AppSettings(
+            defaults: defaults,
+            launchAtLoginStateProvider: { false },
+            launchAtLoginHandler: { enabled in requests.append(enabled) }
+        )
+
+        settings.launchAtLogin = true
+
+        #expect(settings.launchAtLogin)
+        #expect(requests == [true])
+    }
+
+    @Test("launch at login rolls back to actual system state when service update fails")
+    func launchAtLoginRollsBackWhenHandlerFails() {
+        let defaults = makeTestDefaults()
+        let settings = AppSettings(
+            defaults: defaults,
+            launchAtLoginStateProvider: { false },
+            launchAtLoginHandler: { _ in throw LaunchAtLoginTestError.failed }
+        )
+
+        settings.launchAtLogin = true
+
+        #expect(settings.launchAtLogin == false)
     }
 }
 

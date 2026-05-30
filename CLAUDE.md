@@ -18,7 +18,7 @@ tuist install         # SPM 依賴
 tuist generate        # 產 Xcode 專案
 tuist build
 tuist test
-./scripts/install.sh  # Release → /Applications → 啟動
+fastlane mac install  # Release → /Applications → 啟動
 ```
 
 ## 架構決策（Claude 猜不到）

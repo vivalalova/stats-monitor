@@ -42,8 +42,8 @@ struct NetworkMonitor: Sendable {
             )
         }
 
-        let inPerSec  = Double(bytesIn  - previousBytesIn)  / elapsed
-        let outPerSec = Double(bytesOut - previousBytesOut) / elapsed
+        let inPerSec = Self.bytesPerSecond(current: bytesIn, previous: previousBytesIn, elapsed: elapsed)
+        let outPerSec = Self.bytesPerSecond(current: bytesOut, previous: previousBytesOut, elapsed: elapsed)
         let interfaceUsage = Self.computeInterfaceUsage(
             currentCounters: interfaces,
             previousCounters: previousInterfaceCounters,
@@ -56,8 +56,8 @@ struct NetworkMonitor: Sendable {
         previousDate = now
 
         return NetworkUsage(
-            bytesInPerSec:  max(0, inPerSec),
-            bytesOutPerSec: max(0, outPerSec),
+            bytesInPerSec: inPerSec,
+            bytesOutPerSec: outPerSec,
             interfaces: interfaceUsage,
             tcpConnectionCount: connections.tcp,
             udpConnectionCount: connections.udp
@@ -127,14 +127,14 @@ struct NetworkMonitor: Sendable {
         guard elapsed > 0 else { return [] }
         return currentCounters.compactMap { name, current -> NetworkInterfaceUsage? in
             guard let previous = previousCounters[name] else { return nil }
-            let inDelta = current.bytesIn >= previous.bytesIn ? current.bytesIn - previous.bytesIn : 0
-            let outDelta = current.bytesOut >= previous.bytesOut ? current.bytesOut - previous.bytesOut : 0
-            guard inDelta > 0 || outDelta > 0 else { return nil }
+            let inPerSec = bytesPerSecond(current: current.bytesIn, previous: previous.bytesIn, elapsed: elapsed)
+            let outPerSec = bytesPerSecond(current: current.bytesOut, previous: previous.bytesOut, elapsed: elapsed)
+            guard inPerSec > 0 || outPerSec > 0 else { return nil }
             return NetworkInterfaceUsage(
                 name: name,
                 displayName: displayName(for: name),
-                bytesInPerSec: Double(inDelta) / elapsed,
-                bytesOutPerSec: Double(outDelta) / elapsed
+                bytesInPerSec: inPerSec,
+                bytesOutPerSec: outPerSec
             )
         }
         .sorted {
@@ -156,16 +156,16 @@ struct NetworkMonitor: Sendable {
             let elapsed = now.timeIntervalSince(previous.date)
             guard elapsed > 0 else { return nil }
 
-            let bytesInDelta = current.bytesIn >= previous.bytesIn ? current.bytesIn - previous.bytesIn : 0
-            let bytesOutDelta = current.bytesOut >= previous.bytesOut ? current.bytesOut - previous.bytesOut : 0
-            guard bytesInDelta > 0 || bytesOutDelta > 0 else { return nil }
+            let inPerSec = bytesPerSecond(current: current.bytesIn, previous: previous.bytesIn, elapsed: elapsed)
+            let outPerSec = bytesPerSecond(current: current.bytesOut, previous: previous.bytesOut, elapsed: elapsed)
+            guard inPerSec > 0 || outPerSec > 0 else { return nil }
 
             return ProcInfo(
                 name: processName(from: key),
                 cpuPercent: 0,
                 memoryBytes: 0,
-                networkInBPS: Double(bytesInDelta) / elapsed,
-                networkOutBPS: Double(bytesOutDelta) / elapsed
+                networkInBPS: inPerSec,
+                networkOutBPS: outPerSec
             )
         }
 
@@ -174,6 +174,11 @@ struct NetworkMonitor: Sendable {
                 .sorted { $0.networkTotalBPS > $1.networkTotalBPS }
                 .prefix(processCount)
         )
+    }
+
+    static func bytesPerSecond(current: UInt64, previous: UInt64, elapsed: Double) -> Double {
+        guard elapsed > 0, current >= previous else { return 0 }
+        return Double(current - previous) / elapsed
     }
 
     static func displayName(for interface: String) -> String {
