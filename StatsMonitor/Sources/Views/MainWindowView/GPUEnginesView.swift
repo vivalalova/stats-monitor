@@ -14,7 +14,7 @@ struct GPUEnginesView: View {
                     title: "Frequency",
                     value: monitor.gpuFrequencyText,
                     statusColor: .orange,
-                    lines: [(history: monitor.paddedGPUFrequencyHistory, color: .orange)],
+                    lines: [ChartSeries(history: monitor.paddedGPUFrequencyHistory, color: .orange)],
                     maxValue: max(monitor.gpuFrequencyMaxHz, 1)
                 )
             }
@@ -23,7 +23,7 @@ struct GPUEnginesView: View {
                     title: "Media Engine",
                     value: monitor.gpuMediaEnginePowerText,
                     statusColor: .red,
-                    lines: [(history: monitor.paddedGPUMediaEngineHistory, color: .red)],
+                    lines: [ChartSeries(history: monitor.paddedGPUMediaEngineHistory, color: .red)],
                     maxValue: max(monitor.paddedGPUMediaEngineHistory.max() ?? 0, 0.5)
                 )
             }
@@ -32,7 +32,7 @@ struct GPUEnginesView: View {
                     title: entry.name,
                     value: engineValue(entry.name),
                     statusColor: progressColor((monitor.gpuEngines[entry.name] ?? 0) / 100),
-                    lines: [(history: entry.history, color: .purple)],
+                    lines: [ChartSeries(history: entry.history, color: .purple)],
                     maxValue: 100
                 )
             }

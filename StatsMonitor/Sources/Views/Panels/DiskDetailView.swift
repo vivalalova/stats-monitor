@@ -33,8 +33,11 @@ struct DiskDetailView: View {
         }
     }
 
-    private var diskChartLines: [(history: [Double], color: Color)] {
-        [(monitor.paddedDiskReadHistory, .yellow), (monitor.paddedDiskWriteHistory, .orange)]
+    private var diskChartLines: [ChartSeries] {
+        [
+            ChartSeries(history: monitor.paddedDiskReadHistory, color: .yellow),
+            ChartSeries(history: monitor.paddedDiskWriteHistory, color: .orange),
+        ]
     }
 
     private var diskChartMax: Double {

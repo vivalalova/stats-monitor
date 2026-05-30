@@ -20,21 +20,21 @@ struct DashboardView: View {
                 title: "CPU",
                 value: monitor.cpuPercent,
                 statusColor: progressColor(monitor.cpuFraction),
-                lines: [(history: monitor.paddedCPUHistory, color: .blue)],
+                lines: [ChartSeries(history: monitor.paddedCPUHistory, color: .blue)],
                 maxValue: histMax(monitor.paddedCPUHistory)
             )
             MetricChartCard(
                 title: "GPU",
                 value: monitor.gpuPercent,
                 statusColor: progressColor(monitor.gpuFraction),
-                lines: [(history: monitor.paddedGPUHistory, color: .purple)],
+                lines: [ChartSeries(history: monitor.paddedGPUHistory, color: .purple)],
                 maxValue: histMax(monitor.paddedGPUHistory)
             )
             MetricChartCard(
                 title: "Memory",
                 value: monitor.memoryPercent,
                 statusColor: progressColor(monitor.memoryFraction),
-                lines: [(history: monitor.paddedMemoryHistory, color: .cyan)],
+                lines: [ChartSeries(history: monitor.paddedMemoryHistory, color: .cyan)],
                 maxValue: histMax(monitor.paddedMemoryHistory)
             )
             MetricChartCard(
@@ -42,8 +42,8 @@ struct DashboardView: View {
                 value: "↓\(monitor.networkInText)  ↑\(monitor.networkOutText)",
                 statusColor: .blue,
                 lines: [
-                    (history: monitor.paddedNetworkInHistory,  color: .blue),
-                    (history: monitor.paddedNetworkOutHistory, color: .green),
+                    ChartSeries(history: monitor.paddedNetworkInHistory, color: .blue),
+                    ChartSeries(history: monitor.paddedNetworkOutHistory, color: .green),
                 ],
                 maxValue: histMax(monitor.paddedNetworkInHistory + monitor.paddedNetworkOutHistory)
             )
@@ -52,8 +52,8 @@ struct DashboardView: View {
                 value: "↓\(monitor.diskReadText)  ↑\(monitor.diskWriteText)",
                 statusColor: .blue,
                 lines: [
-                    (history: monitor.paddedDiskReadHistory,  color: .teal),
-                    (history: monitor.paddedDiskWriteHistory, color: .orange),
+                    ChartSeries(history: monitor.paddedDiskReadHistory, color: .teal),
+                    ChartSeries(history: monitor.paddedDiskWriteHistory, color: .orange),
                 ],
                 maxValue: histMax(monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory)
             )
@@ -62,7 +62,7 @@ struct DashboardView: View {
                     title: "Power",
                     value: monitor.powerText,
                     statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
-                    lines: [(history: monitor.paddedPowerHistory, color: .red)],
+                    lines: [ChartSeries(history: monitor.paddedPowerHistory, color: .red)],
                     maxValue: histMax(monitor.paddedPowerHistory)
                 )
             }
@@ -72,7 +72,7 @@ struct DashboardView: View {
                     value: monitor.fansSummaryText,
                     statusColor: .blue,
                     lines: monitor.paddedFanAverageHistory.count >= 2
-                        ? [(history: monitor.paddedFanAverageHistory, color: .blue)]
+                        ? [ChartSeries(history: monitor.paddedFanAverageHistory, color: .blue)]
                         : [],
                     maxValue: monitor.fanChartMaxRPM
                 )
@@ -118,11 +118,11 @@ func powerStatusColor(_ watts: Double) -> Color {
     }
 }
 
-func dashboardCardHasChart(lines: [(history: [Double], color: Color)]) -> Bool {
+func dashboardCardHasChart(lines: [ChartSeries]) -> Bool {
     !lines.isEmpty
 }
 
-func dashboardCardHeight(lines: [(history: [Double], color: Color)]) -> CGFloat {
+func dashboardCardHeight(lines: [ChartSeries]) -> CGFloat {
     dashboardCardHasChart(lines: lines) ? 100 : 52
 }
 

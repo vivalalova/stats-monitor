@@ -13,14 +13,14 @@ struct MemoryChartsView: View {
                 title: "Used",
                 value: monitor.memoryPercent,
                 statusColor: progressColor(monitor.memoryFraction),
-                lines: [(history: monitor.paddedMemoryHistory, color: .cyan)],
+                lines: [ChartSeries(history: monitor.paddedMemoryHistory, color: .cyan)],
                 maxValue: 100
             )
             MetricChartCard(
                 title: "Free",
                 value: monitor.memoryFreeText,
                 statusColor: progressColor(1 - freeMemoryFraction),
-                lines: [(history: monitor.paddedMemoryFreeHistory, color: .green)],
+                lines: [ChartSeries(history: monitor.paddedMemoryFreeHistory, color: .green)],
                 maxValue: monitor.memoryChartMaxBytes
             )
             memoryBytesCard(
@@ -46,7 +46,7 @@ struct MemoryChartsView: View {
                     title: "Swap Used",
                     value: monitor.memorySwapUsedText.isEmpty ? "0 B" : monitor.memorySwapUsedText,
                     statusColor: progressColor(memorySwapFraction),
-                    lines: [(history: monitor.paddedMemorySwapHistory, color: .pink)],
+                    lines: [ChartSeries(history: monitor.paddedMemorySwapHistory, color: .pink)],
                     maxValue: monitor.memorySwapChartMaxBytes
                 )
             }
@@ -56,8 +56,8 @@ struct MemoryChartsView: View {
                     value: monitor.memoryPagingSummaryText,
                     statusColor: .yellow,
                     lines: [
-                        (history: monitor.paddedMemoryPageInHistory, color: .teal),
-                        (history: monitor.paddedMemoryPageOutHistory, color: .orange),
+                        ChartSeries(history: monitor.paddedMemoryPageInHistory, color: .teal),
+                        ChartSeries(history: monitor.paddedMemoryPageOutHistory, color: .orange),
                     ],
                     maxValue: monitor.memoryPagingChartMaxBytes
                 )
@@ -95,7 +95,7 @@ struct MemoryChartsView: View {
             title: title,
             value: value,
             statusColor: progressColor((history.last ?? 0) / monitor.memoryChartMaxBytes),
-            lines: [(history: history, color: color)],
+            lines: [ChartSeries(history: history, color: color)],
             maxValue: monitor.memoryChartMaxBytes
         )
     }

@@ -31,13 +31,13 @@ struct ThermalDetailView: View {
         ])
     }
 
-    private var thermalLines: [(history: [Double], color: Color)] {
-        var lines: [(history: [Double], color: Color)] = []
+    private var thermalLines: [ChartSeries] {
+        var lines: [ChartSeries] = []
         if monitor.paddedCPUTempHistory.count >= 2 {
-            lines.append((monitor.paddedCPUTempHistory, .orange))
+            lines.append(ChartSeries(history: monitor.paddedCPUTempHistory, color: .orange))
         }
         if monitor.paddedGPUTempHistory.count >= 2 {
-            lines.append((monitor.paddedGPUTempHistory, .purple))
+            lines.append(ChartSeries(history: monitor.paddedGPUTempHistory, color: .purple))
         }
         return lines
     }

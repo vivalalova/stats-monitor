@@ -8,7 +8,7 @@ struct CPUDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            DetailChart(lines: [(monitor.paddedCPUHistory, .blue)])
+            DetailChart(lines: [ChartSeries(history: monitor.paddedCPUHistory, color: .blue)])
             DetailMetricSection(rows: [
                 ("Used", monitor.cpuPercent),
                 ("User", monitor.cpuUserPercent),

@@ -4,7 +4,7 @@ struct SidebarMetricRow: View {
     let title: String
     let value: String
     let statusColor: Color
-    let lines: [(history: [Double], color: Color)]
+    let lines: [ChartSeries]
     let maxValue: Double
 
     var body: some View {
@@ -48,7 +48,7 @@ struct SidebarMetricRow: View {
             title: "CPU",
             value: "29.1%",
             statusColor: .green,
-            lines: [(history: history, color: .blue)],
+            lines: [ChartSeries(history: history, color: .blue)],
             maxValue: 100
         )
         SidebarMetricRow(
@@ -56,8 +56,8 @@ struct SidebarMetricRow: View {
             value: "↓5 KB/s",
             statusColor: .blue,
             lines: [
-                (history: history, color: .green),
-                (history: history.reversed(), color: .red)
+                ChartSeries(history: history, color: .green),
+                ChartSeries(history: Array(history.reversed()), color: .red)
             ],
             maxValue: 100
         )

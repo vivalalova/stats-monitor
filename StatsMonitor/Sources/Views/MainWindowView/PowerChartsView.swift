@@ -13,21 +13,21 @@ struct PowerChartsView: View {
                 title: "Total",
                 value: monitor.powerText,
                 statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
-                lines: [(history: monitor.paddedPowerHistory, color: .red)],
+                lines: [ChartSeries(history: monitor.paddedPowerHistory, color: .red)],
                 maxValue: powerChartMax
             )
             MetricChartCard(
                 title: "CPU",
                 value: monitor.cpuPowerText,
                 statusColor: .orange,
-                lines: [(history: monitor.paddedCPUPowerHistory, color: .orange)],
+                lines: [ChartSeries(history: monitor.paddedCPUPowerHistory, color: .orange)],
                 maxValue: powerChartMax
             )
             MetricChartCard(
                 title: "GPU",
                 value: monitor.gpuPowerText,
                 statusColor: .purple,
-                lines: [(history: monitor.paddedGPUPowerHistory, color: .purple)],
+                lines: [ChartSeries(history: monitor.paddedGPUPowerHistory, color: .purple)],
                 maxValue: powerChartMax
             )
             if monitor.hasMediaEngine {
@@ -35,7 +35,7 @@ struct PowerChartsView: View {
                     title: "Media Engine",
                     value: monitor.gpuMediaEnginePowerText,
                     statusColor: .pink,
-                    lines: [(history: monitor.paddedGPUMediaEngineHistory, color: .pink)],
+                    lines: [ChartSeries(history: monitor.paddedGPUMediaEngineHistory, color: .pink)],
                     maxValue: powerChartMax
                 )
             }
@@ -44,7 +44,7 @@ struct PowerChartsView: View {
                     title: "External Input",
                     value: monitor.externalInputPowerText,
                     statusColor: .blue,
-                    lines: [(history: monitor.paddedExternalInputPowerHistory, color: .blue)],
+                    lines: [ChartSeries(history: monitor.paddedExternalInputPowerHistory, color: .blue)],
                     maxValue: powerChartMax
                 )
             }
@@ -53,7 +53,7 @@ struct PowerChartsView: View {
                     title: "Battery Flow",
                     value: monitor.batteryFlowPowerText,
                     statusColor: batteryFlowStatusColor,
-                    lines: [(history: monitor.paddedBatteryFlowPowerHistory, color: .green)],
+                    lines: [ChartSeries(history: monitor.paddedBatteryFlowPowerHistory, color: .green)],
                     maxValue: powerChartMax
                 )
             }

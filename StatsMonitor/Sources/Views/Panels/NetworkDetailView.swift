@@ -47,8 +47,11 @@ struct NetworkDetailView: View {
         }
     }
 
-    private var networkChartLines: [(history: [Double], color: Color)] {
-        [(monitor.paddedNetworkInHistory, .green), (monitor.paddedNetworkOutHistory, .red)]
+    private var networkChartLines: [ChartSeries] {
+        [
+            ChartSeries(history: monitor.paddedNetworkInHistory, color: .green),
+            ChartSeries(history: monitor.paddedNetworkOutHistory, color: .red),
+        ]
     }
 
     private var networkChartMax: Double {

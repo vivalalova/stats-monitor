@@ -14,7 +14,7 @@ struct CPUCoreChartsView: View {
                     title: "Core \(index + 1)",
                     value: coreValue(for: index),
                     statusColor: progressColor(currentCoreUsage(for: index) / 100),
-                    lines: [(history: history, color: coreColor(for: index))],
+                    lines: [ChartSeries(history: history, color: coreColor(for: index))],
                     maxValue: 100
                 )
             }

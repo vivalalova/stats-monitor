@@ -83,7 +83,7 @@ func availableDetailMetrics(_ rows: [DetailMetric]) -> [DetailMetric] {
 }
 
 struct DetailChart: View {
-    let lines: [(history: [Double], color: Color)]
+    let lines: [ChartSeries]
     var maxValue: Double?
 
     var body: some View {

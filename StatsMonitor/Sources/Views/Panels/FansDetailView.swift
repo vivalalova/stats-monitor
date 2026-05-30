@@ -8,7 +8,7 @@ struct FansDetailView: View {
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
             DetailChart(
-                lines: [(monitor.paddedFanAverageHistory, .blue)],
+                lines: [ChartSeries(history: monitor.paddedFanAverageHistory, color: .blue)],
                 maxValue: monitor.fanChartMaxRPM
             )
             DetailMetricSection(rows: [

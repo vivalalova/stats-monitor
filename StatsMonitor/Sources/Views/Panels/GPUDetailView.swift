@@ -7,7 +7,7 @@ struct GPUDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            DetailChart(lines: [(monitor.paddedGPUHistory, .purple)])
+            DetailChart(lines: [ChartSeries(history: monitor.paddedGPUHistory, color: .purple)])
             DetailMetricSection(rows: availableDetailMetrics([
                 ("Device", monitor.gpuPercent),
                 ("Renderer", monitor.gpuRenderPercent),

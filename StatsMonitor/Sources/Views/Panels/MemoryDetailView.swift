@@ -7,7 +7,7 @@ struct MemoryDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            DetailChart(lines: [(monitor.paddedMemoryHistory, .orange)])
+            DetailChart(lines: [ChartSeries(history: monitor.paddedMemoryHistory, color: .orange)])
             DetailMetricSection(rows: availableDetailMetrics([
                 ("Percent", monitor.memoryPercent),
                 ("Pressure", monitor.memoryPressureText),

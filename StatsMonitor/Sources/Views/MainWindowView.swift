@@ -156,7 +156,7 @@ struct MainWindowView: View {
                 title: "CPU",
                 value: monitor.cpuPercent,
                 statusColor: progressColor(monitor.cpuFraction),
-                lines: [(history: monitor.paddedCPUHistory, color: .blue)]
+                lines: [ChartSeries(history: monitor.paddedCPUHistory, color: .blue)]
             )
         case .gpuEngines:
             sidebarChartRow(
@@ -164,7 +164,7 @@ struct MainWindowView: View {
                 title: "GPU",
                 value: monitor.gpuPercent,
                 statusColor: progressColor(monitor.gpuFraction),
-                lines: [(history: monitor.paddedGPUHistory, color: .purple)]
+                lines: [ChartSeries(history: monitor.paddedGPUHistory, color: .purple)]
             )
         case .memory:
             sidebarChartRow(
@@ -172,7 +172,7 @@ struct MainWindowView: View {
                 title: "Memory",
                 value: monitor.memoryPercent,
                 statusColor: progressColor(monitor.memoryFraction),
-                lines: [(history: monitor.paddedMemoryHistory, color: .cyan)]
+                lines: [ChartSeries(history: monitor.paddedMemoryHistory, color: .cyan)]
             )
         case .disk:
             sidebarChartRow(
@@ -181,8 +181,8 @@ struct MainWindowView: View {
                 value: monitor.diskActivityText,
                 statusColor: .blue,
                 lines: [
-                    (history: monitor.paddedDiskReadHistory, color: .teal),
-                    (history: monitor.paddedDiskWriteHistory, color: .orange),
+                    ChartSeries(history: monitor.paddedDiskReadHistory, color: .teal),
+                    ChartSeries(history: monitor.paddedDiskWriteHistory, color: .orange),
                 ]
             )
         case .network:
@@ -192,8 +192,8 @@ struct MainWindowView: View {
                 value: monitor.networkTotalText,
                 statusColor: .blue,
                 lines: [
-                    (history: monitor.paddedNetworkInHistory,  color: .green),
-                    (history: monitor.paddedNetworkOutHistory, color: .red),
+                    ChartSeries(history: monitor.paddedNetworkInHistory, color: .green),
+                    ChartSeries(history: monitor.paddedNetworkOutHistory, color: .red),
                 ]
             )
         case .power:
@@ -202,7 +202,7 @@ struct MainWindowView: View {
                 title: "Power",
                 value: monitor.powerText,
                 statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
-                lines: [(history: monitor.paddedPowerHistory, color: .red)]
+                lines: [ChartSeries(history: monitor.paddedPowerHistory, color: .red)]
             )
         default:
             sidebarTextRow(for: tab)
@@ -214,7 +214,7 @@ struct MainWindowView: View {
         title: String,
         value: String,
         statusColor: Color,
-        lines: [(history: [Double], color: Color)]
+        lines: [ChartSeries]
     ) -> some View {
         let maxValue = max(lines.flatMap(\.history).max() ?? 0, 1)
         let isSelected = selection == tab

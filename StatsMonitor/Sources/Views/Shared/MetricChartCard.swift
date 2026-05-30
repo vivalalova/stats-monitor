@@ -4,7 +4,7 @@ struct MetricChartCard: View {
     let title: String
     let value: String
     let statusColor: Color
-    let lines: [(history: [Double], color: Color)]
+    let lines: [ChartSeries]
     let maxValue: Double
     var height: CGFloat? = nil
 
@@ -58,4 +58,3 @@ struct MetricChartCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
-

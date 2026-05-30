@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Mini line chart drawn with Canvas + Path. Supports multiple series.
 struct LineChartView: View {
-    var lines: [(history: [Double], color: Color)]
+    var lines: [ChartSeries]
     var maxValue: Double = 100
     var height: CGFloat? = 100
     var cornerRadius: CGFloat = 4
@@ -58,8 +58,8 @@ private struct LineChartBackgroundModifier: ViewModifier {
 #Preview(traits: .sizeThatFitsLayout) {
     let history = (0..<60).map { _ in Double.random(in: 0...100) }
     LineChartView(lines: [
-        (history: history, color: .blue),
-        (history: (0..<60).map { _ in Double.random(in: 0...60) }, color: .green),
+        ChartSeries(history: history, color: .blue),
+        ChartSeries(history: (0..<60).map { _ in Double.random(in: 0...60) }, color: .green),
     ])
     .padding()
     .frame(width: 280)
