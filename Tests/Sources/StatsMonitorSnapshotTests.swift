@@ -474,6 +474,35 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    @Test("Diagnostics main window tab renders a stable screenshot")
+    func diagnosticsMainWindowScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        seedMonitorSnapshotData(into: snapshotContext.monitor)
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .diagnostics,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: .image(size: view.frame.size),
+            named: "main-window-diagnostics",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("Combined menu bar label renders a stable screenshot")
     func combinedMenuBarLabelScreenshot() {
         let settings = makeTestSettings()

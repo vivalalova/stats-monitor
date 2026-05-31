@@ -6,7 +6,8 @@ macOS menu bar 系統監控工具，即時顯示 CPU / GPU / Memory / Disk / Net
 
 - Menu bar label：CPU / GPU / Memory / Disk / Network / Battery / Thermal / Power / Fans，可個別開關
 - 點擊展開詳細 popover，含歷史折線圖、熱門行程、Wi-Fi 資訊、電池健康度等
-- Settings 視窗：CPU / GPU / Memory / Disk / Network / Power / Dashboard / General / About 九分頁
+- Settings 視窗：CPU / GPU / Memory / Disk / Network / Power / Dashboard / Diagnostics / General / About 十分頁
+- Diagnostics：硬體相容性檢查、各監控 sample 狀態、目前指標、最近 crash report 摘要與 Markdown 匯出
 - 硬體不支援的指標（桌機無電池、Intel Mac 無 Power、無風扇機型無 Fans）自動隱藏
 - 繁體中文 / English，跟隨系統語言
 

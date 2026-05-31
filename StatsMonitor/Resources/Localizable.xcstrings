@@ -352,6 +352,325 @@
         }
       }
     },
+    "Available" : {
+      "comment" : "Diagnostics availability state",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可用"
+          }
+        }
+      }
+    },
+    "Battery Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電池樣本"
+          }
+        }
+      }
+    },
+    "CPU Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU 樣本"
+          }
+        }
+      }
+    },
+    "Current Metrics" : {
+      "comment" : "Diagnostics section header",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前指標"
+          }
+        }
+      }
+    },
+    "Diagnostics" : {
+      "comment" : "Settings sidebar tab and diagnostics page title",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "診斷"
+          }
+        }
+      }
+    },
+    "DiagnosticReports" : {
+      "comment" : "Diagnostics crash report directory label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "診斷報告"
+          }
+        }
+      }
+    },
+    "Disk Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "磁碟樣本"
+          }
+        }
+      }
+    },
+    "Display Mode" : {
+      "comment" : "Diagnostics hardware compatibility row",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示模式"
+          }
+        }
+      }
+    },
+    "Export Diagnostics" : {
+      "comment" : "Diagnostics export button",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "匯出診斷"
+          }
+        }
+      }
+    },
+    "Export failed: %@" : {
+      "comment" : "Diagnostics export failure message",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "匯出失敗：%@"
+          }
+        }
+      }
+    },
+    "Exported %@" : {
+      "comment" : "Diagnostics export success message",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已匯出 %@"
+          }
+        }
+      }
+    },
+    "Fan Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "風扇樣本"
+          }
+        }
+      }
+    },
+    "Fan Sensors" : {
+      "comment" : "Diagnostics hardware compatibility row",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "風扇感測器"
+          }
+        }
+      }
+    },
+    "GPU Frequency" : {
+      "comment" : "Diagnostics hardware compatibility row",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPU 頻率"
+          }
+        }
+      }
+    },
+    "GPU Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPU 樣本"
+          }
+        }
+      }
+    },
+    "Hardware Compatibility" : {
+      "comment" : "Diagnostics section header",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "硬體相容性"
+          }
+        }
+      }
+    },
+    "Media Engine Power" : {
+      "comment" : "Diagnostics hardware compatibility row",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "媒體引擎功耗"
+          }
+        }
+      }
+    },
+    "Memory Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "記憶體樣本"
+          }
+        }
+      }
+    },
+    "Network Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "網路樣本"
+          }
+        }
+      }
+    },
+    "No recent StatsMonitor crash reports found" : {
+      "comment" : "Diagnostics crash report empty state",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "找不到最近的 StatsMonitor crash report"
+          }
+        }
+      }
+    },
+    "Power Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電源樣本"
+          }
+        }
+      }
+    },
+    "Power Telemetry" : {
+      "comment" : "Diagnostics hardware compatibility row",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電源遙測"
+          }
+        }
+      }
+    },
+    "Recent Crash Reports" : {
+      "comment" : "Diagnostics section header",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近 Crash Report"
+          }
+        }
+      }
+    },
+    "Samples" : {
+      "comment" : "Diagnostics section header",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "樣本"
+          }
+        }
+      }
+    },
+    "Scan Failed" : {
+      "comment" : "Diagnostics crash report failure label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "掃描失敗"
+          }
+        }
+      }
+    },
+    "Thermal Samples" : {
+      "comment" : "Diagnostics sample count label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "溫度樣本"
+          }
+        }
+      }
+    },
+    "Thermal Sensors" : {
+      "comment" : "Diagnostics hardware compatibility row",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "溫度感測器"
+          }
+        }
+      }
+    },
+    "Unavailable" : {
+      "comment" : "Diagnostics availability state",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不可用"
+          }
+        }
+      }
+    },
+    "Wi-Fi Link" : {
+      "comment" : "Diagnostics hardware compatibility row",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi 連線"
+          }
+        }
+      }
+    },
     "Engines" : {
       "comment" : "GPU detail",
       "extractionState" : "stale",

@@ -1218,6 +1218,183 @@ struct SystemMonitorTests {
     }
 }
 
+@Suite("Diagnostics")
+@MainActor
+struct DiagnosticsTests {
+
+    private func makeAboutData() -> AboutView.SnapshotData {
+        AboutView.SnapshotData(
+            appName: "StatsMonitor",
+            appVersion: "1.2.0",
+            appBuild: "120",
+            copyright: "© 2026 Lova Shih",
+            macModel: "MacBookPro18,3",
+            chipName: "Apple M1 Pro",
+            osVersion: "macOS 26.0",
+            totalRAM: "32 GB",
+            uptime: "2d 5h 18m",
+            loadAverage: "1.24, 1.02, 0.87",
+            processCount: "412",
+            display: "3456 × 2234 @ 120 Hz"
+        )
+    }
+
+    private func makeSeededMonitor(settings: AppSettings) -> SystemMonitor {
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(cpu: CPUUsage(user: 20, system: 5, idle: 75, perCore: [], coreFrequencies: []))
+        monitor.record(gpu: GPUUsage(
+            deviceUtilization: 42,
+            renderUtilization: 30,
+            engines: [:],
+            vramUsed: 0,
+            frequency: CPUCoreFrequency(currentHz: 860_000_000, maxHz: 1_398_000_000)
+        ))
+        monitor.record(memory: MemoryUsage(active: 4_000_000_000, wired: 2_000_000_000, compressed: 1_000_000_000, total: 16_000_000_000))
+        monitor.record(disk: DiskUsage(used: 500_000_000_000, total: 1_000_000_000_000, readBPS: 1_048_576, writeBPS: 524_288))
+        monitor.record(network: NetworkUsage(
+            bytesInPerSec: 2_097_152,
+            bytesOutPerSec: 524_288,
+            wifi: WiFiLinkInfo(
+                rssiDBm: -58,
+                noiseDBm: -92,
+                linkRateMbps: 1_200,
+                channelNumber: 149,
+                band: "5 GHz",
+                hardwareAddress: "a4:83:e7:00:11:22"
+            )
+        ))
+        monitor.record(battery: BatteryUsage(
+            percentage: 78,
+            isCharging: false,
+            isPluggedIn: false,
+            timeRemaining: 165,
+            cycleCount: 132,
+            designCapacity: 5000,
+            maxCapacity: 4630,
+            health: 92.6
+        ))
+        monitor.record(thermal: ThermalUsage(cpuTemperature: 68.4, gpuTemperature: 57.2))
+        monitor.record(thermalPressureState: .nominal)
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            mediaEngineMilliWatts: 1_450,
+            totalMilliWatts: 21_300
+        ))
+        monitor.record(fans: [
+            FanUsage(id: 0, currentRPM: 2410, minRPM: 1200, maxRPM: 5000, name: "Left Fan"),
+            FanUsage(id: 1, currentRPM: 2530, minRPM: 1200, maxRPM: 5000, name: "Right Fan"),
+        ])
+        monitor.record(displayInfo: DisplayInfo(widthPixels: 3456, heightPixels: 2234, refreshRateHz: 120))
+        return monitor
+    }
+
+    @Test("hardware diagnostics classify support from monitor samples")
+    func hardwareDiagnosticsClassifySupport() {
+        let settings = makeTestSettings()
+        let monitor = makeSeededMonitor(settings: settings)
+
+        let diagnostics = HardwareDiagnosticsSnapshot.make(monitor: monitor)
+
+        #expect(diagnostics.item(id: .battery)?.availability == .available)
+        #expect(diagnostics.item(id: .powerTelemetry)?.availability == .available)
+        #expect(diagnostics.item(id: .thermalSensors)?.availability == .available)
+        #expect(diagnostics.item(id: .fanSensors)?.availability == .available)
+        #expect(diagnostics.item(id: .wifiLink)?.availability == .available)
+        #expect(diagnostics.item(id: .gpuFrequency)?.availability == .available)
+        #expect(diagnostics.item(id: .mediaEnginePower)?.availability == .available)
+        #expect(diagnostics.item(id: .displayMode)?.detail == "3456 × 2234 @ 120 Hz")
+    }
+
+    @Test("hardware diagnostics mark optional telemetry unavailable without samples")
+    func hardwareDiagnosticsMarkUnavailableTelemetry() {
+        let monitor = SystemMonitor(settings: makeTestSettings())
+
+        let diagnostics = HardwareDiagnosticsSnapshot.make(monitor: monitor)
+
+        #expect(diagnostics.item(id: .battery)?.availability == .unavailable)
+        #expect(diagnostics.item(id: .powerTelemetry)?.availability == .unavailable)
+        #expect(diagnostics.item(id: .thermalSensors)?.availability == .unavailable)
+        #expect(diagnostics.item(id: .fanSensors)?.availability == .unavailable)
+        #expect(diagnostics.item(id: .wifiLink)?.availability == .unavailable)
+        #expect(diagnostics.item(id: .displayMode)?.availability == .unavailable)
+    }
+
+    @Test("diagnostics report renders app, settings, hardware, samples, and crash summaries")
+    func diagnosticsReportRendersCompleteSections() {
+        let settings = makeTestSettings()
+        settings.pollInterval = 5
+        settings.historyCapacity = 300
+        settings.processCount = 15
+        settings.dashboardColumns = 5
+        settings.launchAtLogin = true
+        let monitor = makeSeededMonitor(settings: settings)
+        let generatedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let crashReports = CrashReportScanResult.reports([
+            CrashReportSummary(
+                fileName: "StatsMonitor-2026-05-30-171207.ips",
+                modifiedAt: Date(timeIntervalSince1970: 1_800_000_100),
+                exception: "EXC_BREAKPOINT",
+                signal: "SIGTRAP",
+                termination: "SIGNAL 5"
+            )
+        ])
+
+        let report = DiagnosticsReport.make(
+            aboutData: makeAboutData(),
+            settings: settings,
+            monitor: monitor,
+            generatedAt: generatedAt,
+            crashReports: crashReports
+        )
+        let text = report.renderMarkdown()
+
+        #expect(text.contains("# StatsMonitor Diagnostics"))
+        #expect(text.contains("- Version: 1.2.0 (120)"))
+        #expect(text.contains("- Poll Interval: 5 sec"))
+        #expect(text.contains("- History Capacity: 300 samples"))
+        #expect(text.contains("- Battery: Available — 78%, 2h 45m"))
+        #expect(text.contains("- CPU Samples: 1 / 300"))
+        #expect(text.contains("- StatsMonitor-2026-05-30-171207.ips: EXC_BREAKPOINT / SIGTRAP, SIGNAL 5"))
+    }
+
+    @Test("crash report scanner orders recent reports and parses exception metadata")
+    func crashReportScannerParsesRecentReports() throws {
+        let fileManager = FileManager.default
+        let directory = fileManager.temporaryDirectory
+            .appendingPathComponent("StatsMonitorCrashReports-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? fileManager.removeItem(at: directory) }
+
+        let older = directory.appendingPathComponent("StatsMonitor-2026-05-30-160000.ips")
+        let newer = directory.appendingPathComponent("StatsMonitor-2026-05-30-171207.ips")
+        let otherApp = directory.appendingPathComponent("OtherApp-2026-05-30-171207.ips")
+        let crashJSON = """
+        {
+          "exception" : { "type" : "EXC_BREAKPOINT", "signal" : "SIGTRAP" },
+          "termination" : { "namespace" : "SIGNAL", "code" : 5 }
+        }
+        """
+        try crashJSON.write(to: older, atomically: true, encoding: .utf8)
+        try crashJSON.write(to: newer, atomically: true, encoding: .utf8)
+        try crashJSON.write(to: otherApp, atomically: true, encoding: .utf8)
+        try fileManager.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_800_000_000)], ofItemAtPath: older.path)
+        try fileManager.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_800_000_100)], ofItemAtPath: newer.path)
+
+        let result = CrashReportReader.scan(appName: "StatsMonitor", directory: directory, limit: 1)
+
+        guard case let .reports(reports) = result else {
+            Issue.record("Expected reports, got \(result)")
+            return
+        }
+        #expect(reports.count == 1)
+        #expect(reports[0].fileName == "StatsMonitor-2026-05-30-171207.ips")
+        #expect(reports[0].exception == "EXC_BREAKPOINT")
+        #expect(reports[0].signal == "SIGTRAP")
+        #expect(reports[0].termination == "SIGNAL 5")
+    }
+}
+
 @Suite("AppSettings Menu Bar Predicate")
 @MainActor
 struct AppSettingsMenuBarPredicateTests {
@@ -1331,11 +1508,12 @@ struct SettingsWindowTests {
     @Test("settings window exposes all chart tabs for hardware metrics")
     func settingsWindowTabConfiguration() {
         #expect(MainWindowView.Tab.chartTabs == [.cpuCores, .gpuEngines, .memory, .disk, .network, .power])
-        #expect(MainWindowView.Tab.textTabs == [.dashboard, .general, .about])
+        #expect(MainWindowView.Tab.textTabs == [.dashboard, .diagnostics, .general, .about])
         #expect(MainWindowView.Tab.memory.icon == "memorychip.fill")
         #expect(MainWindowView.Tab.disk.icon == "internaldrive")
         #expect(MainWindowView.Tab.network.icon == "network")
         #expect(MainWindowView.Tab.power.icon == "bolt.fill")
+        #expect(MainWindowView.Tab.diagnostics.icon == "stethoscope")
         #expect(MainWindowView.Tab.cpuCores.showsGridSizeSlider)
         #expect(MainWindowView.Tab.gpuEngines.showsGridSizeSlider)
         #expect(MainWindowView.Tab.memory.showsGridSizeSlider)
@@ -1343,6 +1521,7 @@ struct SettingsWindowTests {
         #expect(MainWindowView.Tab.network.showsGridSizeSlider)
         #expect(MainWindowView.Tab.power.showsGridSizeSlider)
         #expect(MainWindowView.Tab.dashboard.showsGridSizeSlider)
+        #expect(!MainWindowView.Tab.diagnostics.showsGridSizeSlider)
         #expect(!MainWindowView.Tab.general.showsGridSizeSlider)
         #expect(!MainWindowView.Tab.about.showsGridSizeSlider)
     }

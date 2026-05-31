@@ -22,11 +22,12 @@ struct MainWindowView: View {
         case network
         case power
         case dashboard
+        case diagnostics
         case general
         case about
 
         static let chartTabs: [Tab] = [.cpuCores, .gpuEngines, .memory, .disk, .network, .power]
-        static let textTabs: [Tab] = [.dashboard, .general, .about]
+        static let textTabs: [Tab] = [.dashboard, .diagnostics, .general, .about]
 
         var showsGridSizeSlider: Bool {
             Self.chartTabs.contains(self) || self == .dashboard
@@ -41,6 +42,7 @@ struct MainWindowView: View {
             case .network:    "Network"
             case .power:      "Power"
             case .dashboard:  "Dashboard"
+            case .diagnostics: "Diagnostics"
             case .general:    "General"
             case .about:      "About"
             }
@@ -55,6 +57,7 @@ struct MainWindowView: View {
             case .network:    "network"
             case .power:      "bolt.fill"
             case .dashboard:  "square.grid.2x2"
+            case .diagnostics: "stethoscope"
             case .general:    "gearshape"
             case .about:      "info.circle"
             }
@@ -142,6 +145,7 @@ struct MainWindowView: View {
         case .network:    NetworkChartsView(settings: settings, monitor: monitor)
         case .power:      PowerChartsView(settings: settings, monitor: monitor)
         case .dashboard:  DashboardView(settings: settings, monitor: monitor)
+        case .diagnostics: DiagnosticsView(settings: settings, monitor: monitor, aboutData: aboutData)
         case .general:    GeneralSettingsView(settings: settings, monitor: monitor)
         case .about:      AboutView(data: aboutData)
         }
