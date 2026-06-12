@@ -1393,6 +1393,46 @@ struct DiagnosticsTests {
         #expect(reports[0].signal == "SIGTRAP")
         #expect(reports[0].termination == "SIGNAL 5")
     }
+
+    @Test("crash report scanner limits recent reports before reading bodies")
+    func crashReportScannerLimitsBeforeReadingBodies() throws {
+        let fileManager = FileManager.default
+        let directory = fileManager.temporaryDirectory
+            .appendingPathComponent("StatsMonitorCrashReportLimit-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? fileManager.removeItem(at: directory) }
+
+        let older = directory.appendingPathComponent("StatsMonitor-2026-05-30-160000.ips")
+        let newer = directory.appendingPathComponent("StatsMonitor-2026-05-30-171207.ips")
+        let crashJSON = """
+        {
+          "exception" : { "type" : "EXC_BREAKPOINT", "signal" : "SIGTRAP" },
+          "termination" : { "namespace" : "SIGNAL", "code" : 5 }
+        }
+        """
+        try crashJSON.write(to: older, atomically: true, encoding: .utf8)
+        try crashJSON.write(to: newer, atomically: true, encoding: .utf8)
+        try fileManager.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_800_000_000)], ofItemAtPath: older.path)
+        try fileManager.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_800_000_100)], ofItemAtPath: newer.path)
+
+        var readFileNames: [String] = []
+        let result = CrashReportReader.scan(
+            appName: "StatsMonitor",
+            directory: directory,
+            limit: 1,
+            readData: { url in
+                readFileNames.append(url.lastPathComponent)
+                return try Data(contentsOf: url)
+            }
+        )
+
+        guard case let .reports(reports) = result else {
+            Issue.record("Expected reports, got \(result)")
+            return
+        }
+        #expect(reports.map { $0.fileName } == ["StatsMonitor-2026-05-30-171207.ips"])
+        #expect(readFileNames == ["StatsMonitor-2026-05-30-171207.ips"])
+    }
 }
 
 @Suite("AppSettings Menu Bar Predicate")

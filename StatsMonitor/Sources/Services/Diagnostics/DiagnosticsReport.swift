@@ -345,7 +345,8 @@ enum CrashReportReader {
         appName: String = defaultAppName,
         directory: URL = defaultDiagnosticReportsDirectory,
         limit: Int = 3,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        readData: (URL) throws -> Data = { try Data(contentsOf: $0) }
     ) -> CrashReportScanResult {
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: directory.path, isDirectory: &isDirectory), isDirectory.boolValue else {
@@ -363,14 +364,21 @@ enum CrashReportReader {
             return .failed(error.localizedDescription)
         }
 
-        let summaries = reportURLs
+        let candidates = reportURLs
             .filter { isCrashReportURL($0, appName: appName) }
-            .map { parseSummary(url: $0) }
+            .map { CrashReportCandidate(url: $0, modifiedAt: modificationDate(for: $0)) }
             .sorted { $0.modifiedAt > $1.modifiedAt }
             .prefix(max(limit, 0))
 
-        let reports = Array(summaries)
+        let reports = candidates.map { candidate in
+            parseSummary(url: candidate.url, modifiedAt: candidate.modifiedAt, readData: readData)
+        }
         return reports.isEmpty ? .noReports(directory: directory.path) : .reports(reports)
+    }
+
+    private struct CrashReportCandidate {
+        let url: URL
+        let modifiedAt: Date
     }
 
     private static func isCrashReportURL(_ url: URL, appName: String) -> Bool {
@@ -379,10 +387,17 @@ enum CrashReportReader {
             && (url.pathExtension == "ips" || url.pathExtension == "crash")
     }
 
-    private static func parseSummary(url: URL) -> CrashReportSummary {
-        let modifiedAt = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+    private static func modificationDate(for url: URL) -> Date {
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+    }
+
+    private static func parseSummary(
+        url: URL,
+        modifiedAt: Date,
+        readData: (URL) throws -> Data
+    ) -> CrashReportSummary {
         do {
-            let data = try Data(contentsOf: url)
+            let data = try readData(url)
             let metadata = parseMetadata(data: data)
             return CrashReportSummary(
                 fileName: url.lastPathComponent,
