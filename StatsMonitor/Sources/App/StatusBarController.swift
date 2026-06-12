@@ -119,6 +119,22 @@ final class StatusBarController: NSObject {
         panel.hidesOnDeactivate = false
     }
 
+    static func shouldDismissPanel(
+        forEventWindow eventWindow: NSWindow?,
+        eventType: NSEvent.EventType,
+        detailPanel: NSPanel,
+        statusButton: NSStatusBarButton?
+    ) -> Bool {
+        guard let eventWindow else { return true }
+        if eventWindow === detailPanel { return false }
+        if eventType == .leftMouseDown,
+           let statusButtonWindow = statusButton?.window,
+           eventWindow === statusButtonWindow {
+            return false
+        }
+        return true
+    }
+
     // MARK: - Length
 
     private func refreshButtonPresentation(for button: NSStatusBarButton? = nil) {
@@ -233,7 +249,12 @@ final class StatusBarController: NSObject {
             matching: [.leftMouseDown, .rightMouseDown]
         ) { [weak self] event in
             guard let self else { return event }
-            if event.window !== self.detailPanel {
+            if Self.shouldDismissPanel(
+                forEventWindow: event.window,
+                eventType: event.type,
+                detailPanel: self.detailPanel,
+                statusButton: self.statusButton
+            ) {
                 self.closePanel()
             }
             return event

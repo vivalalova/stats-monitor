@@ -2241,6 +2241,30 @@ struct StatusBarTests {
         #expect(button.sendAction(on: []) == StatusBarController.clickActionMask.rawValue)
     }
 
+    @Test("local dismiss monitor lets status bar clicks reach panel toggle")
+    func localDismissMonitorLetsStatusBarClicksReachPanelToggle() {
+        let detailPanel = NSPanel()
+        let statusWindow = NSWindow(contentRect: .init(x: 0, y: 0, width: 120, height: 22), styleMask: [], backing: .buffered, defer: false)
+        let button = NSStatusBarButton(frame: .init(x: 0, y: 0, width: 120, height: 22))
+        statusWindow.contentView?.addSubview(button)
+        let otherWindow = NSWindow(contentRect: .init(x: 0, y: 0, width: 80, height: 80), styleMask: [], backing: .buffered, defer: false)
+
+        func shouldDismiss(_ window: NSWindow?, eventType: NSEvent.EventType = .leftMouseDown) -> Bool {
+            StatusBarController.shouldDismissPanel(
+                forEventWindow: window,
+                eventType: eventType,
+                detailPanel: detailPanel,
+                statusButton: button
+            )
+        }
+
+        #expect(!shouldDismiss(detailPanel))
+        #expect(!shouldDismiss(statusWindow))
+        #expect(shouldDismiss(statusWindow, eventType: .rightMouseDown))
+        #expect(shouldDismiss(otherWindow))
+        #expect(shouldDismiss(nil))
+    }
+
     @Test("status bar panel is borderless, transparent, and floats above other windows")
     func statusBarPanelUsesLiquidGlassChrome() {
         let panel = NSPanel()
