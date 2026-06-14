@@ -17,7 +17,7 @@ macOS menu bar app — SwiftUI + Tuist。
 tuist install         # SPM 依賴
 tuist generate        # 產 Xcode 專案
 tuist build
-tuist test
+tuist test StatsMonitor --no-selective-testing
 fastlane mac install  # Release → /Applications → 啟動
 ```
 
@@ -50,7 +50,7 @@ fastlane mac install  # Release → /Applications → 啟動
 
 - 框架：Swift Testing（`@Suite`、`@Test`、`#expect`）
 - Snapshot reference：`Tests/Sources/__Snapshots__/StatsMonitorSnapshotTests/` — 看目前 UI 優先看這裡
-- 重錄 snapshot：刪對應 PNG 再跑 `tuist test`（不要切 `record` mode）
+- 重錄 snapshot：明確跑 `RECORD_SNAPSHOTS=1 tuist test StatsMonitor --no-selective-testing`
 
 ## Packages/Util
 

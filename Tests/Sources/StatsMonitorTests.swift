@@ -439,6 +439,11 @@ struct CPUMonitorTests {
         #expect(processes[1].name == "HalfCore")
         #expect(abs(processes[1].cpuPercent - 50.0) < 0.01)
     }
+
+    @Test("CPU tick deltas handle 32-bit counter wrap")
+    func cpuTickDeltaHandlesCounterWrap() {
+        #expect(CPUMonitor.cpuTickDelta(current: 4, previous: UInt32.max - 2) == 7)
+    }
 }
 
 @Suite("DiskMonitor")
@@ -671,6 +676,31 @@ struct NetworkMonitorTests {
         #expect(processes[0].networkOutBPS == 500)
         #expect(processes[1].name == "Slack")
         #expect(processes[1].networkTotalBPS == 200)
+    }
+
+    @Test("network process sampler state survives monitor copies")
+    func networkProcessSamplerStateSurvivesMonitorCopies() {
+        let sampler = NetworkProcessSampler()
+        let monitor = NetworkMonitor(processSampler: sampler)
+        let backgroundCopy = monitor
+        let start = Date(timeIntervalSince1970: 1_000)
+
+        _ = backgroundCopy.sampleTopProcesses(
+            currentCounters: ["Safari.601": (bytesIn: 100, bytesOut: 50)],
+            now: start,
+            processCount: 3
+        )
+
+        let processes = monitor.sampleTopProcesses(
+            currentCounters: ["Safari.601": (bytesIn: 700, bytesOut: 250)],
+            now: start.addingTimeInterval(2),
+            processCount: 3
+        )
+
+        #expect(processes.count == 1)
+        #expect(processes[0].name == "Safari")
+        #expect(processes[0].networkInBPS == 300)
+        #expect(processes[0].networkOutBPS == 100)
     }
 }
 
@@ -1216,6 +1246,44 @@ struct SystemMonitorTests {
         #expect(monitor.gpuSamples.values.isEmpty)
         #expect(monitor.networkSamples.values.isEmpty)
     }
+
+    @Test("optional telemetry nil samples clear stale current values without deleting history")
+    func optionalTelemetryNilSamplesClearStaleCurrentValuesWithoutDeletingHistory() {
+        let monitor = SystemMonitor(settings: makeTestSettings())
+        monitor.record(battery: BatteryUsage(
+            percentage: 77,
+            isCharging: false,
+            isPluggedIn: false,
+            timeRemaining: nil,
+            cycleCount: 10,
+            designCapacity: 5_000,
+            maxCapacity: 4_700,
+            health: 94
+        ))
+        monitor.record(thermal: ThermalUsage(cpuTemperature: 64.2, gpuTemperature: nil))
+        monitor.record(power: PowerUsage(cpuMilliWatts: 2_000, gpuMilliWatts: 1_000, totalMilliWatts: 3_000))
+
+        monitor.record(battery: nil)
+        monitor.record(thermal: nil)
+        monitor.record(power: nil)
+
+        #expect(monitor.batterySamples.values.map(\.percentage) == [77])
+        #expect(monitor.thermalSamples.values.map(\.cpuTemperature) == [64.2])
+        #expect(monitor.powerSamples.values.map(\.totalMilliWatts) == [3_000])
+        #expect(monitor.batteryPercent == "N/A")
+        #expect(monitor.cpuTempText == "N/A")
+        #expect(monitor.powerText == "N/A")
+    }
+
+    @Test("sample interval tracker uses elapsed wall time after first poll")
+    func sampleIntervalTrackerUsesElapsedWallTime() {
+        var tracker = SampleIntervalTracker(fallbackInterval: 2)
+        let start = Date(timeIntervalSince1970: 1_000)
+
+        #expect(tracker.interval(at: start) == 2)
+        #expect(tracker.interval(at: start.addingTimeInterval(5.5)) == 5.5)
+        #expect(tracker.interval(at: start.addingTimeInterval(5.0)) == 2)
+    }
 }
 
 @Suite("Diagnostics")
@@ -1567,6 +1635,31 @@ struct SettingsWindowTests {
     }
 }
 
+@Suite("App Resources")
+struct AppResourceTests {
+    @Test("app icon asset catalog references real files")
+    func appIconAssetCatalogReferencesRealFiles() throws {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let projectRoot = testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let iconDirectory = projectRoot.appendingPathComponent(
+            "StatsMonitor/Resources/Assets.xcassets/AppIcon.appiconset",
+            isDirectory: true
+        )
+        let data = try Data(contentsOf: iconDirectory.appendingPathComponent("Contents.json"))
+        let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let images = try #require(json["images"] as? [[String: Any]])
+        let filenames = images.compactMap { $0["filename"] as? String }
+
+        #expect(!filenames.isEmpty)
+        for filename in filenames {
+            #expect(FileManager.default.fileExists(atPath: iconDirectory.appendingPathComponent(filename).path))
+        }
+    }
+}
+
 @Suite("Dashboard Toolbar")
 @MainActor
 struct DashboardToolbarTests {
@@ -1589,6 +1682,20 @@ struct DashboardToolbarTests {
 
         defaults.set(7, forKey: key)
         #expect(makeTestSettings(defaults: defaults).dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
+    }
+
+    @Test("invalid persisted numeric settings fall back to safe defaults")
+    func invalidPersistedNumericSettingsFallBackToSafeDefaults() {
+        let defaults = makeTestDefaults()
+        defaults.set(0.0, forKey: "pollInterval")
+        defaults.set(1_000_000_000, forKey: "historyCapacity")
+        defaults.set(-1, forKey: "processCount")
+
+        let settings = makeTestSettings(defaults: defaults)
+
+        #expect(settings.pollInterval == AppSettings.defaultPollInterval)
+        #expect(settings.historyCapacity == AppSettings.defaultHistoryCapacity)
+        #expect(settings.processCount == AppSettings.defaultProcessCount)
     }
 
     @Test("all supported menu bar monitor items default to visible")
@@ -2232,6 +2339,35 @@ struct StatusBarTests {
         #expect(button.subviews.contains { $0 is StatusBarLabelView })
     }
 
+    @Test("empty menu bar presentation collapses the status item and ignores clicks")
+    func emptyMenuBarPresentationCollapsesStatusItemAndIgnoresClicks() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = false
+        settings.showPower = false
+        settings.showFans = false
+        let monitor = SystemMonitor(settings: settings)
+        let state = StatusBarButtonPresentation.state(monitor: monitor, settings: settings)
+        let statusItem = NSStatusBar.system.statusItem(withLength: 120)
+        defer { NSStatusBar.system.removeStatusItem(statusItem) }
+        let button = try! #require(statusItem.button)
+
+        StatusBarButtonPresentation.apply(state, to: statusItem, button: button)
+
+        #expect(state.itemLength == 0)
+        #expect(statusItem.length == 0)
+        #expect(StatusBarController.resolvedPanel(
+            at: CGPoint(x: 10, y: 10),
+            in: [],
+            bounds: CGRect(x: 0, y: 0, width: 120, height: MenuBarTextLayout.statusItemHeight)
+        ) == nil)
+    }
+
     @Test("status bar button handles click on mouse down to avoid popover click-through")
     func statusBarButtonHandlesClickOnMouseDown() {
         let button = NSStatusBarButton(frame: .init(x: 0, y: 0, width: 120, height: 22))
@@ -2290,10 +2426,30 @@ struct QuitConfirmationTests {
     func alertFactoryMatchesCopy() {
         let alert = QuitConfirmationAlertFactory.makeAlert()
 
-        #expect(alert.messageText == QuitConfirmationCopy.title)
-        #expect(alert.informativeText == QuitConfirmationCopy.message)
+        #expect(alert.messageText == QuitConfirmationCopy.title())
+        #expect(alert.informativeText == QuitConfirmationCopy.message())
         #expect(alert.alertStyle == .warning)
-        #expect(alert.buttons.map(\.title) == [QuitConfirmationCopy.confirm, QuitConfirmationCopy.cancel])
+        #expect(alert.buttons.map(\.title) == [QuitConfirmationCopy.confirm(), QuitConfirmationCopy.cancel()])
+    }
+
+    @Test("alert copy has Traditional Chinese localization")
+    func alertCopyHasTraditionalChineseLocalization() {
+        let locale = Locale(identifier: "zh-Hant")
+
+        #expect(QuitConfirmationCopy.title(locale: locale) == "結束 StatsMonitor？")
+        #expect(QuitConfirmationCopy.message(locale: locale) == "StatsMonitor 將停止監控並關閉。")
+        #expect(QuitConfirmationCopy.confirm(locale: locale) == "結束")
+        #expect(QuitConfirmationCopy.cancel(locale: locale) == "取消")
+    }
+
+    @Test("alert copy can be pinned to English regardless of current locale")
+    func alertCopyCanBePinnedToEnglish() {
+        let locale = Locale(identifier: "en")
+
+        #expect(QuitConfirmationCopy.title(locale: locale) == "Quit StatsMonitor?")
+        #expect(QuitConfirmationCopy.message(locale: locale) == "StatsMonitor will stop monitoring and close.")
+        #expect(QuitConfirmationCopy.confirm(locale: locale) == "Quit")
+        #expect(QuitConfirmationCopy.cancel(locale: locale) == "Cancel")
     }
 
     @Test("closing the last transient window does not terminate the app")

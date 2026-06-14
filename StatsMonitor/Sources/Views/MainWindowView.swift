@@ -340,7 +340,7 @@ private struct GeneralSettingsView: View {
                         Text("Display Count")
                         Spacer()
                         Picker("", selection: $settings.processCount) {
-                            ForEach([5, 10, 15, 20], id: \.self) { n in
+                            ForEach(AppSettings.processCountOptions, id: \.self) { n in
                                 Text("\(n) items").tag(n)
                             }
                         }

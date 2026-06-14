@@ -167,7 +167,9 @@ struct StatsMonitorSnapshotTests {
 
     @Test("Quit confirmation alert renders a stable screenshot")
     func quitConfirmationAlertScreenshot() {
-        let view = alertSnapshotView(QuitConfirmationAlertFactory.makeAlert())
+        let view = alertSnapshotView(
+            QuitConfirmationAlertFactory.makeAlert(locale: Locale(identifier: "en"))
+        )
 
         assertSnapshot(
             of: view,
@@ -645,6 +647,16 @@ struct StatsMonitorSnapshotTests {
             record: snapshotRecordMode
         )
     }
+
+    @Test("Snapshot tests do not auto-record missing references by default")
+    func snapshotRecordModeDoesNotRecordMissingByDefault() {
+        #expect(resolvedSnapshotRecordMode(environment: [:]) == .never)
+    }
+
+    @Test("Snapshot tests allow explicit reference re-recording")
+    func snapshotRecordModeAllowsExplicitRerecording() {
+        #expect(resolvedSnapshotRecordMode(environment: ["RECORD_SNAPSHOTS": "1"]) == .all)
+    }
 }
 
 @MainActor
@@ -700,7 +712,13 @@ private func makePressureOnlySnapshotContext(
 }
 
 private var snapshotRecordMode: SnapshotTestingConfiguration.Record {
-    ProcessInfo.processInfo.environment["RECORD_SNAPSHOTS"] == "1" ? .all : .missing
+    resolvedSnapshotRecordMode(environment: ProcessInfo.processInfo.environment)
+}
+
+private func resolvedSnapshotRecordMode(
+    environment: [String: String]
+) -> SnapshotTestingConfiguration.Record {
+    environment["RECORD_SNAPSHOTS"] == "1" ? .all : .never
 }
 
 @MainActor

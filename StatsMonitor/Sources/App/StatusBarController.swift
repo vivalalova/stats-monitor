@@ -25,6 +25,11 @@ enum StatusBarButtonPresentation {
         contentView.layout = state.layout
     }
 
+    static func apply(_ state: State, to statusItem: NSStatusItem, button: NSStatusBarButton) {
+        statusItem.length = state.itemLength
+        apply(state, to: button)
+    }
+
     static func makeStandaloneButton(monitor: SystemMonitor, settings: AppSettings) -> NSStatusBarButton {
         let state = state(monitor: monitor, settings: settings)
         let button = NSStatusBarButton(frame: CGRect(
@@ -140,10 +145,7 @@ final class StatusBarController: NSObject {
     private func refreshButtonPresentation(for button: NSStatusBarButton? = nil) {
         guard let button = button ?? statusButton else { return }
         let presentationState = StatusBarButtonPresentation.state(monitor: monitor, settings: settings)
-        if presentationState.itemLength > 0 {
-            statusItem.length = presentationState.itemLength
-        }
-        StatusBarButtonPresentation.apply(presentationState, to: button)
+        StatusBarButtonPresentation.apply(presentationState, to: statusItem, button: button)
     }
 
     /// 觀察所有影響 label 寬度的值（指標數值 + show 設定），任一改變就重算 length
@@ -167,7 +169,8 @@ final class StatusBarController: NSObject {
             in: sender.bounds,
             isFlipped: sender.isFlipped
         )
-        toggle(panel: panel(at: point, in: sender.bounds), relativeTo: sender)
+        guard let panel = panel(at: point, in: sender.bounds) else { return }
+        toggle(panel: panel, relativeTo: sender)
     }
 
     static func normalizeClickPoint(_ point: CGPoint, in bounds: CGRect, isFlipped: Bool) -> CGPoint {
@@ -179,8 +182,13 @@ final class StatusBarController: NSObject {
         )
     }
 
-    private func panel(at point: CGPoint, in bounds: CGRect) -> PanelID {
-        StatusBarLabelRenderer.panel(at: point, in: currentSegments, bounds: bounds) ?? .cpu
+    static func resolvedPanel(at point: CGPoint, in segments: [MenuBarItem], bounds: CGRect) -> PanelID? {
+        guard !segments.isEmpty else { return nil }
+        return StatusBarLabelRenderer.panel(at: point, in: segments, bounds: bounds) ?? .cpu
+    }
+
+    private func panel(at point: CGPoint, in bounds: CGRect) -> PanelID? {
+        Self.resolvedPanel(at: point, in: currentSegments, bounds: bounds)
     }
 
     // MARK: - Panel presentation

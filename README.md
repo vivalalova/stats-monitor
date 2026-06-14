@@ -27,6 +27,12 @@ tuist generate
 open StatsMonitor.xcworkspace
 ```
 
+測試：
+
+```bash
+tuist test StatsMonitor --no-selective-testing
+```
+
 一鍵 Release 安裝：
 
 ```bash

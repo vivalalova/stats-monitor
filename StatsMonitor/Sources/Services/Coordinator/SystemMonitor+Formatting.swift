@@ -259,7 +259,7 @@ extension SystemMonitor {
         currentNetwork.tcpConnectionCount > 0 || currentNetwork.udpConnectionCount > 0
     }
 
-    var power: PowerUsage? { powerSamples.current }
+    var power: PowerUsage? { currentPowerSample }
     var hasPower: Bool { power != nil }
     var paddedPowerHistory: [Double] { padded(powerSamples.values.map(\.totalWatts), capacity: powerSamples.capacity) }
     var powerText: String {
@@ -295,7 +295,7 @@ extension SystemMonitor {
         return String(format: "%+.1f W", balanceWatts)
     }
 
-    var battery: BatteryUsage? { batterySamples.current }
+    var battery: BatteryUsage? { currentBatterySample }
     var hasBattery: Bool { battery != nil }
     var paddedBatteryHistory: [Double] { padded(batterySamples.values.map(\.percentage), capacity: batterySamples.capacity) }
     var batteryPercent: String {
@@ -384,7 +384,7 @@ extension SystemMonitor {
         return String(format: "\(sign)%.1f W", abs(batteryMilliWatts) / 1000)
     }
 
-    var thermal: ThermalUsage? { thermalSamples.current }
+    var thermal: ThermalUsage? { currentThermalSample }
     var thermalPressureText: String {
         guard let thermalPressureState else { return "" }
         return Self.thermalPressureText(for: thermalPressureState)

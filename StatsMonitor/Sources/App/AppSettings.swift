@@ -13,24 +13,28 @@ final class AppSettings {
     typealias LaunchAtLoginStateProvider = @MainActor () -> Bool
     typealias LaunchAtLoginHandler = @MainActor (Bool) throws -> Void
 
+    static let defaultPollInterval: TimeInterval = 2.0
+    static let defaultHistoryCapacity = 120
+    static let defaultProcessCount = 10
     static let defaultDashboardColumns = DashboardGridSizing.defaultColumnCount
     static let dashboardColumnRange = DashboardGridSizing.columnRange
 
     static let pollIntervalOptions: [TimeInterval] = [2, 3, 5, 10]
     static let historyCapacityOptions: [(label: String, value: Int)] = [
         ("1 min (60)", 60),
-        ("2 min (120)", 120),
+        ("2 min (120)", defaultHistoryCapacity),
         ("5 min (300)", 300),
     ]
+    static let processCountOptions = [5, defaultProcessCount, 15, 20]
 
     private let defaults: UserDefaults
     private let launchAtLoginStateProvider: LaunchAtLoginStateProvider
     private let launchAtLoginHandler: LaunchAtLoginHandler
     private var isHydrating = false
 
-    var pollInterval:     Double = 2.0 { didSet { persist("pollInterval",     pollInterval) } }
-    var historyCapacity:  Int    = 120 { didSet { persist("historyCapacity",  historyCapacity) } }
-    var processCount:     Int    = 10  { didSet { persist("processCount",     processCount) } }
+    var pollInterval:     Double = defaultPollInterval { didSet { persist("pollInterval",     pollInterval) } }
+    var historyCapacity:  Int    = defaultHistoryCapacity { didSet { persist("historyCapacity",  historyCapacity) } }
+    var processCount:     Int    = defaultProcessCount  { didSet { persist("processCount",     processCount) } }
     var dashboardColumns: Int    = defaultDashboardColumns { didSet { persist("dashboardColumns", dashboardColumns) } }
 
     var showCPU:     Bool = true { didSet { persist("showCPU",     showCPU) } }
@@ -67,13 +71,16 @@ final class AppSettings {
         isHydrating = true
         let ud = defaults
         ud.register(defaults: [
-            "pollInterval": 2.0,  "historyCapacity": 120, "processCount": 10, "dashboardColumns": Self.defaultDashboardColumns,
+            "pollInterval": Self.defaultPollInterval,
+            "historyCapacity": Self.defaultHistoryCapacity,
+            "processCount": Self.defaultProcessCount,
+            "dashboardColumns": Self.defaultDashboardColumns,
             "showCPU": true, "showGPU": true, "showMemory": true, "showDisk": true, "showNetwork": true,
             "showBattery": true, "showThermal": true, "showPower": true, "showFans": true
         ])
-        pollInterval     = ud.double (forKey: "pollInterval")
-        historyCapacity  = ud.integer(forKey: "historyCapacity")
-        processCount     = ud.integer(forKey: "processCount")
+        pollInterval     = Self.validPollInterval(ud.double(forKey: "pollInterval"))
+        historyCapacity  = Self.validHistoryCapacity(ud.integer(forKey: "historyCapacity"))
+        processCount     = Self.validProcessCount(ud.integer(forKey: "processCount"))
         dashboardColumns = Self.clampDashboardColumns(ud.integer(forKey: "dashboardColumns"))
         showCPU     = ud.bool(forKey: "showCPU")
         showGPU     = ud.bool(forKey: "showGPU")
@@ -130,5 +137,17 @@ final class AppSettings {
 
     private static func clampDashboardColumns(_ value: Int) -> Int {
         min(max(value, dashboardColumnRange.lowerBound), dashboardColumnRange.upperBound)
+    }
+
+    private static func validPollInterval(_ value: TimeInterval) -> TimeInterval {
+        pollIntervalOptions.contains(value) ? value : defaultPollInterval
+    }
+
+    private static func validHistoryCapacity(_ value: Int) -> Int {
+        historyCapacityOptions.contains { $0.value == value } ? value : defaultHistoryCapacity
+    }
+
+    private static func validProcessCount(_ value: Int) -> Int {
+        processCountOptions.contains(value) ? value : defaultProcessCount
     }
 }

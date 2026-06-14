@@ -11,7 +11,7 @@ struct NetworkMonitor: Sendable {
     private var previousBytesIn: UInt64 = 0
     private var previousBytesOut: UInt64 = 0
     private var previousInterfaceCounters: [String: (bytesIn: UInt64, bytesOut: UInt64)] = [:]
-    private var previousProcessSnapshots: [String: ProcessSnapshot] = [:]
+    private let processSampler: NetworkProcessSampler
     private var previousDate: Date = .now
     private var connectionTick: UInt8 = 0
     private var cachedConnections: (tcp: Int, udp: Int) = (0, 0)
@@ -19,6 +19,10 @@ struct NetworkMonitor: Sendable {
     /// Refresh netstat-derived TCP/UDP connection counts every N samples to bound
     /// process-spawning cost. At default 2 s poll interval this ≈ every 6 s.
     private static let connectionRefreshEveryNSamples: UInt8 = 3
+
+    init(processSampler: NetworkProcessSampler = NetworkProcessSampler()) {
+        self.processSampler = processSampler
+    }
 
     mutating func sample() -> NetworkUsage {
         let interfaces = interfaceCounters()
@@ -74,21 +78,25 @@ struct NetworkMonitor: Sendable {
         return cachedConnections
     }
 
-    mutating func sampleTopProcesses(processCount: Int = 10) -> [ProcInfo] {
+    func sampleTopProcesses(processCount: Int = 10) -> [ProcInfo] {
         guard let currentCounters = Self.readProcessCounters() else { return [] }
-        let now = Date.now
-        let processes = Self.computeTopProcesses(
+        return processSampler.sampleTopProcesses(
             currentCounters: currentCounters,
-            previousSnapshots: previousProcessSnapshots,
+            now: .now,
+            processCount: processCount
+        )
+    }
+
+    func sampleTopProcesses(
+        currentCounters: [String: (bytesIn: UInt64, bytesOut: UInt64)],
+        now: Date,
+        processCount: Int
+    ) -> [ProcInfo] {
+        processSampler.sampleTopProcesses(
+            currentCounters: currentCounters,
             now: now,
             processCount: processCount
         )
-        previousProcessSnapshots = Dictionary(
-            uniqueKeysWithValues: currentCounters.map { key, value in
-                (key, ProcessSnapshot(bytesIn: value.bytesIn, bytesOut: value.bytesOut, date: now))
-            }
-        )
-        return processes
     }
 
     private func interfaceCounters() -> [String: (bytesIn: UInt64, bytesOut: UInt64)] {
@@ -286,5 +294,28 @@ struct NetworkMonitor: Sendable {
         }
 
         return counters
+    }
+}
+
+final class NetworkProcessSampler: @unchecked Sendable {
+    private var previousSnapshots: [String: NetworkMonitor.ProcessSnapshot] = [:]
+
+    func sampleTopProcesses(
+        currentCounters: [String: (bytesIn: UInt64, bytesOut: UInt64)],
+        now: Date,
+        processCount: Int
+    ) -> [ProcInfo] {
+        let processes = NetworkMonitor.computeTopProcesses(
+            currentCounters: currentCounters,
+            previousSnapshots: previousSnapshots,
+            now: now,
+            processCount: processCount
+        )
+        previousSnapshots = Dictionary(
+            uniqueKeysWithValues: currentCounters.map { key, value in
+                (key, NetworkMonitor.ProcessSnapshot(bytesIn: value.bytesIn, bytesOut: value.bytesOut, date: now))
+            }
+        )
+        return processes
     }
 }

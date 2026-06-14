@@ -1080,6 +1080,30 @@
         }
       }
     },
+    "Cancel" : {
+      "comment" : "Quit confirmation alert button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
+      }
+    },
+    "Quit" : {
+      "comment" : "Quit confirmation alert button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "結束"
+          }
+        }
+      }
+    },
     "Quit StatsMonitor" : {
       "comment" : "Toolbar tooltips",
       "extractionState" : "stale",
@@ -1092,6 +1116,18 @@
         }
       }
     },
+    "Quit StatsMonitor?" : {
+      "comment" : "Quit confirmation alert title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "結束 StatsMonitor？"
+          }
+        }
+      }
+    },
     "Read" : {
       "comment" : "Disk chart card",
       "extractionState" : "stale",
@@ -1100,6 +1136,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "讀取"
+          }
+        }
+      }
+    },
+    "StatsMonitor will stop monitoring and close." : {
+      "comment" : "Quit confirmation alert message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StatsMonitor 將停止監控並關閉。"
           }
         }
       }

@@ -52,10 +52,10 @@ struct CPUMonitor: Sendable {
             let curr = ticks[i]
             let prev = previousTicks[i]
 
-            let user   = UInt64(curr.cpu_ticks.0) &- UInt64(prev.cpu_ticks.0)
-            let system = UInt64(curr.cpu_ticks.1) &- UInt64(prev.cpu_ticks.1)
-            let idle   = UInt64(curr.cpu_ticks.2) &- UInt64(prev.cpu_ticks.2)
-            let nice   = UInt64(curr.cpu_ticks.3) &- UInt64(prev.cpu_ticks.3)
+            let user   = Self.cpuTickDelta(current: curr.cpu_ticks.0, previous: prev.cpu_ticks.0)
+            let system = Self.cpuTickDelta(current: curr.cpu_ticks.1, previous: prev.cpu_ticks.1)
+            let idle   = Self.cpuTickDelta(current: curr.cpu_ticks.2, previous: prev.cpu_ticks.2)
+            let nice   = Self.cpuTickDelta(current: curr.cpu_ticks.3, previous: prev.cpu_ticks.3)
 
             totalUser   += user
             totalSystem += system
@@ -83,6 +83,10 @@ struct CPUMonitor: Sendable {
 
     func sampleTopProcesses(from snapshot: ProcessCountersSnapshot, processCount: Int = 10) -> [ProcInfo] {
         processSampler.sampleTopProcesses(from: snapshot, processCount: processCount)
+    }
+
+    static func cpuTickDelta(current: UInt32, previous: UInt32) -> UInt64 {
+        UInt64(current &- previous)
     }
 
     /// `pti_total_user` / `pti_total_system` 是 mach absolute-time 單位，需以 `mach_timebase_info`

@@ -1,6 +1,22 @@
 import Foundation
 import Observation
 
+struct SampleIntervalTracker {
+    let fallbackInterval: TimeInterval
+    private var previousDate: Date?
+
+    init(fallbackInterval: TimeInterval) {
+        self.fallbackInterval = fallbackInterval
+    }
+
+    mutating func interval(at date: Date) -> TimeInterval {
+        defer { previousDate = date }
+        guard let previousDate else { return fallbackInterval }
+        let elapsed = date.timeIntervalSince(previousDate)
+        return elapsed > 0 ? elapsed : fallbackInterval
+    }
+}
+
 @Observable
 @MainActor
 final class SystemMonitor {
@@ -28,6 +44,9 @@ final class SystemMonitor {
     private(set) var thermalPressureState: ProcessInfo.ThermalState? = nil
     private(set) var isLowPowerModeEnabled: Bool = false
     private(set) var displayInfo: DisplayInfo = .zero
+    private(set) var currentBatterySample: BatteryUsage?
+    private(set) var currentThermalSample: ThermalUsage?
+    private(set) var currentPowerSample: PowerUsage?
 
     var topCPUProcesses: [ProcInfo] = []
     var topGPUProcesses: [GPUProcessInfo] = []
@@ -59,9 +78,11 @@ final class SystemMonitor {
 
     private var timer: Timer?
     private let settings: AppSettings
+    private var sampleIntervalTracker: SampleIntervalTracker
 
     init(settings: AppSettings) {
         self.settings = settings
+        sampleIntervalTracker = SampleIntervalTracker(fallbackInterval: settings.pollInterval)
         let sampleStores = Self.makeSampleStores(capacity: settings.historyCapacity)
         cpuSamples = sampleStores.cpu
         gpuSamples = sampleStores.gpu
@@ -112,8 +133,9 @@ final class SystemMonitor {
     }
 
     private func poll() {
+        let intervalSeconds = sampleIntervalTracker.interval(at: .now)
         let cpu     = cpuMonitor.sample()
-        let gpu     = gpuMonitor.sample(intervalSeconds: settings.pollInterval)
+        let gpu     = gpuMonitor.sample(intervalSeconds: intervalSeconds)
         let memory  = memoryMonitor.sample()
         let disk    = diskMonitor.sample()
         var network = networkMonitor.sample()
@@ -121,7 +143,7 @@ final class SystemMonitor {
         let battery = batteryMonitor.sample()
         let thermalSample = thermalMonitor.sample()
         let fans    = fanMonitor.sample()
-        let power   = powerMonitor.sample(intervalSeconds: settings.pollInterval)
+        let power   = powerMonitor.sample(intervalSeconds: intervalSeconds)
         let lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         let count   = settings.processCount
 
@@ -140,7 +162,7 @@ final class SystemMonitor {
             displayInfo = displayInfoMonitor.sample()
         }
         pollTick &+= 1
-        topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: settings.pollInterval, processCount: count)
+        topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: intervalSeconds, processCount: count)
 
         pollNetworkProcesses(processCount: count)
         pollProcessDetails(processCount: count)
@@ -176,13 +198,12 @@ final class SystemMonitor {
         let previousMonitor = networkMonitor
         Task { [weak self] in
             guard let self else { return }
-            let (processes, updatedMonitor) = await Task.detached(priority: .utility) {
-                var monitor = previousMonitor
+            let processes = await Task.detached(priority: .utility) {
+                let monitor = previousMonitor
                 let processes = monitor.sampleTopProcesses(processCount: processCount)
-                return (processes, monitor)
+                return processes
             }.value
             self.isNetworkProcessPollInFlight = false
-            self.networkMonitor = updatedMonitor
             self.topNetworkProcesses = processes
         }
     }
@@ -244,13 +265,17 @@ final class SystemMonitor {
     }
 
     func record(battery sample: BatteryUsage?) {
-        guard let sample else { return }
-        batterySamples.record(sample)
+        currentBatterySample = sample
+        if let sample {
+            batterySamples.record(sample)
+        }
     }
 
     func record(thermal sample: ThermalUsage?) {
-        guard let sample else { return }
-        thermalSamples.record(sample)
+        currentThermalSample = sample
+        if let sample {
+            thermalSamples.record(sample)
+        }
     }
 
     func record(thermalPressureState state: ProcessInfo.ThermalState?) {
@@ -266,8 +291,10 @@ final class SystemMonitor {
     }
 
     func record(power sample: PowerUsage?) {
-        guard let sample else { return }
-        powerSamples.record(sample)
+        currentPowerSample = sample
+        if let sample {
+            powerSamples.record(sample)
+        }
     }
 
     func record(fans sample: [FanUsage]) {
@@ -284,6 +311,9 @@ final class SystemMonitor {
         thermalSamples = sampleStores.thermal
         powerSamples = sampleStores.power
         fansSamples = sampleStores.fans
+        currentBatterySample = nil
+        currentThermalSample = nil
+        currentPowerSample = nil
     }
 
     private static func makeSampleStores(capacity: Int) -> SampleStores {
