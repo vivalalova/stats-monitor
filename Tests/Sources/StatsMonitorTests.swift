@@ -130,6 +130,26 @@ struct StatsMonitorTests {
         #expect(powerByPID[83863] == 13.8)
     }
 
+    @Test("PowerMonitor drains large process output before waiting for exit")
+    func powerMonitorDrainsLargeProcessOutputBeforeWaitingForExit() throws {
+        let output = try #require(PowerMonitor.runProcessCapturingOutput(
+            executableURL: URL(fileURLWithPath: "/bin/sh"),
+            arguments: [
+                "-c",
+                """
+                i=1
+                while [ "$i" -le 12000 ]; do
+                  printf '%05d abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz\\n' "$i"
+                  i=$((i + 1))
+                done
+                """
+            ]
+        ))
+
+        #expect(output.terminationStatus == 0)
+        #expect(output.stdout.contains("12000 abcdefghijklmnopqrstuvwxyz"))
+    }
+
     // MARK: - BatteryUsage
 
     @Test("BatteryUsage stores all fields")

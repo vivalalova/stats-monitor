@@ -4,6 +4,10 @@ import IOKit
 /// Reads CPU / GPU / total package power from IOReport Energy Model.
 /// Returns milliwatts. First call returns zero (needs two samples for delta).
 final class PowerMonitor: @unchecked Sendable {
+    struct ProcessOutput: Equatable {
+        var terminationStatus: Int32
+        var stdout: String
+    }
 
     private var subscription: OpaquePointer?
     private var previousSample: CFDictionary?
@@ -246,28 +250,38 @@ final class PowerMonitor: @unchecked Sendable {
     }
 
     static func samplePowerImpactByPID() -> [Int32: Double] {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/top")
-        process.arguments = ["-l", "2", "-s", "0", "-o", "power", "-stats", "pid,command,power"]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return [:]
-        }
-
-        guard process.terminationStatus == 0,
-              let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)
+        guard let output = runProcessCapturingOutput(
+            executableURL: URL(fileURLWithPath: "/usr/bin/top"),
+            arguments: ["-l", "2", "-s", "0", "-o", "power", "-stats", "pid,command,power"]
+        ),
+              output.terminationStatus == 0
         else {
             return [:]
         }
 
-        return parseTopPowerOutput(output)
+        return parseTopPowerOutput(output.stdout)
+    }
+
+    static func runProcessCapturingOutput(executableURL: URL, arguments: [String]) -> ProcessOutput? {
+        let process = Process()
+        process.executableURL = executableURL
+        process.arguments = arguments
+
+        let pipe = Pipe()
+        let standardError = FileHandle(forWritingAtPath: "/dev/null")
+        process.standardOutput = pipe
+        process.standardError = standardError
+        defer { standardError?.closeFile() }
+
+        do {
+            try process.run()
+            let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            guard let stdout = String(data: outputData, encoding: .utf8) else { return nil }
+            return ProcessOutput(terminationStatus: process.terminationStatus, stdout: stdout)
+        } catch {
+            return nil
+        }
     }
 
     private static let topPowerRegex = try! NSRegularExpression(pattern: #"^\s*(\d+)\s+.+\s+([0-9]+(?:\.[0-9]+)?)\s*$"#)
