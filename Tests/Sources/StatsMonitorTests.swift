@@ -1109,6 +1109,102 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.thermalMenuSymbolPaletteColors?[1] == NSColor.systemOrange)
     }
 
+    @Test("power menu styling is normal by default")
+    func powerMenuStylingDefault() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+
+        #expect(monitor.powerMenuColor == .labelColor)
+        #expect(monitor.powerMenuSymbolPaletteColors == nil)
+    }
+
+    @Test("power menu styling turns yellow when low power mode is enabled")
+    func powerMenuStylingLowPowerMode() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(isLowPowerModeEnabled: true)
+
+        #expect(monitor.powerMenuColor == NSColor.systemYellow)
+        #expect(monitor.powerMenuSymbolPaletteColors?.count == 2)
+        #expect(monitor.powerMenuSymbolPaletteColors?[0] == NSColor.systemYellow)
+        #expect(monitor.powerMenuSymbolPaletteColors?[1] == NSColor.systemOrange)
+    }
+
+    @Test("power menu styling turns red at low battery threshold (20%)")
+    func powerMenuStylingLowBatteryAtThreshold() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(battery: BatteryUsage(
+            percentage: 20, isCharging: false, isPluggedIn: false,
+            timeRemaining: nil, cycleCount: 100,
+            designCapacity: 5000, maxCapacity: 4800, health: 96
+        ))
+
+        #expect(monitor.powerMenuColor == NSColor.systemRed)
+        #expect(monitor.powerMenuSymbolPaletteColors?.count == 2)
+        #expect(monitor.powerMenuSymbolPaletteColors?[0] == NSColor.systemRed)
+        #expect(monitor.powerMenuSymbolPaletteColors?[1] == NSColor.systemOrange)
+    }
+
+    @Test("power menu styling stays normal just above low battery threshold (21%)")
+    func powerMenuStylingAboveLowBatteryThreshold() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(battery: BatteryUsage(
+            percentage: 21, isCharging: false, isPluggedIn: false,
+            timeRemaining: nil, cycleCount: 100,
+            designCapacity: 5000, maxCapacity: 4800, health: 96
+        ))
+
+        #expect(monitor.powerMenuColor == .labelColor)
+        #expect(monitor.powerMenuSymbolPaletteColors == nil)
+    }
+
+    @Test("power menu styling ignores low battery while charging")
+    func powerMenuStylingLowBatteryWhileCharging() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(battery: BatteryUsage(
+            percentage: 15, isCharging: true, isPluggedIn: false,
+            timeRemaining: nil, cycleCount: 100,
+            designCapacity: 5000, maxCapacity: 4800, health: 96
+        ))
+
+        #expect(monitor.powerMenuColor == .labelColor)
+        #expect(monitor.powerMenuSymbolPaletteColors == nil)
+    }
+
+    @Test("power menu styling ignores low battery while plugged in")
+    func powerMenuStylingLowBatteryWhilePluggedIn() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(battery: BatteryUsage(
+            percentage: 15, isCharging: false, isPluggedIn: true,
+            timeRemaining: nil, cycleCount: 100,
+            designCapacity: 5000, maxCapacity: 4800, health: 96
+        ))
+
+        #expect(monitor.powerMenuColor == .labelColor)
+        #expect(monitor.powerMenuSymbolPaletteColors == nil)
+    }
+
+    @Test("power menu styling prefers red when low battery and low power mode are both active")
+    func powerMenuStylingLowBatteryTakesPriorityOverLowPowerMode() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(isLowPowerModeEnabled: true)
+        monitor.record(battery: BatteryUsage(
+            percentage: 15, isCharging: false, isPluggedIn: false,
+            timeRemaining: nil, cycleCount: 100,
+            designCapacity: 5000, maxCapacity: 4800, health: 96
+        ))
+
+        #expect(monitor.powerMenuColor == NSColor.systemRed)
+        #expect(monitor.powerMenuSymbolPaletteColors?.count == 2)
+        #expect(monitor.powerMenuSymbolPaletteColors?[0] == NSColor.systemRed)
+        #expect(monitor.powerMenuSymbolPaletteColors?[1] == NSColor.systemOrange)
+    }
+
     // MARK: - formatProcess helpers (known input → known output)
 
     @Test("formatProcessCPU formats one decimal percent")
@@ -1887,6 +1983,74 @@ struct StatusBarTests {
                 panel: .thermal,
                 symbol: "thermometer.medium",
                 text: "CR",
+                color: .systemRed,
+                symbolPaletteColors: [NSColor.systemRed, NSColor.systemOrange]
+            )
+        ])
+    }
+
+    @Test("menu bar items carry power low power mode styling")
+    func menuBarItemsCarryPowerLowPowerModeStyling() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = false
+        settings.showPower = true
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(isLowPowerModeEnabled: true)
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+
+        #expect(monitor.menuBarItems(settings: settings) == [
+            MenuBarItem(
+                panel: .power,
+                symbol: "bolt.fill",
+                text: "21W",
+                color: .systemYellow,
+                symbolPaletteColors: [NSColor.systemYellow, NSColor.systemOrange]
+            )
+        ])
+    }
+
+    @Test("menu bar items carry power low battery styling")
+    func menuBarItemsCarryPowerLowBatteryStyling() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = false
+        settings.showPower = true
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(battery: BatteryUsage(
+            percentage: 15, isCharging: false, isPluggedIn: false,
+            timeRemaining: nil, cycleCount: 100,
+            designCapacity: 5000, maxCapacity: 4800, health: 96
+        ))
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+
+        #expect(monitor.menuBarItems(settings: settings) == [
+            MenuBarItem(
+                panel: .power,
+                symbol: "bolt.fill",
+                text: "21W",
                 color: .systemRed,
                 symbolPaletteColors: [NSColor.systemRed, NSColor.systemOrange]
             )

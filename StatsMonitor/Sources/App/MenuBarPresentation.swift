@@ -66,7 +66,9 @@ extension SystemMonitor {
             isVisible: settings.showPowerPanel && hasPower,
             panel: .power,
             symbol: powerMenuSymbol,
-            text: powerMenuText
+            text: powerMenuText,
+            color: powerMenuColor,
+            symbolPaletteColors: powerMenuSymbolPaletteColors
         )
         appendMenuBarItem(
             to: &items,
@@ -88,6 +90,27 @@ extension SystemMonitor {
     var thermalMenuSymbolPaletteColors: [NSColor]? {
         guard thermalPressureState == .critical else { return nil }
         return [.systemRed, .systemOrange]
+    }
+
+    private static let lowBatteryMenuThresholdPercentage: Double = 20
+
+    private var isLowBatteryForMenu: Bool {
+        guard let currentBatterySample else { return false }
+        return currentBatterySample.percentage <= Self.lowBatteryMenuThresholdPercentage
+            && !currentBatterySample.isCharging
+            && !currentBatterySample.isPluggedIn
+    }
+
+    var powerMenuColor: NSColor {
+        if isLowBatteryForMenu { return .systemRed }
+        if isLowPowerModeEnabled { return .systemYellow }
+        return .labelColor
+    }
+
+    var powerMenuSymbolPaletteColors: [NSColor]? {
+        if isLowBatteryForMenu { return [.systemRed, .systemOrange] }
+        if isLowPowerModeEnabled { return [.systemYellow, .systemOrange] }
+        return nil
     }
 
     private func appendMenuBarItem(

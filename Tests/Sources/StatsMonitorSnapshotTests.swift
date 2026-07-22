@@ -595,6 +595,72 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    @Test("Combined menu bar label shows low power mode state")
+    func combinedMenuBarLabelLowPowerScreenshot() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = false
+        settings.showPower = true
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(isLowPowerModeEnabled: true)
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+
+        let view = menuBarSnapshotView(monitor: monitor, settings: settings)
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "combined-menu-bar-label-low-power",
+            record: snapshotRecordMode
+        )
+    }
+
+    @Test("Combined menu bar label shows low battery state")
+    func combinedMenuBarLabelLowBatteryScreenshot() {
+        let settings = makeTestSettings()
+        settings.showCPU = false
+        settings.showGPU = false
+        settings.showMemory = false
+        settings.showDisk = false
+        settings.showNetwork = false
+        settings.showBattery = false
+        settings.showThermal = false
+        settings.showPower = true
+        settings.showFans = false
+
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(battery: BatteryUsage(
+            percentage: 15, isCharging: false, isPluggedIn: false,
+            timeRemaining: nil, cycleCount: 100,
+            designCapacity: 5000, maxCapacity: 4800, health: 96
+        ))
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+
+        let view = menuBarSnapshotView(monitor: monitor, settings: settings)
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "combined-menu-bar-label-low-battery",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("Main window renders a stable screenshot")
     func mainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()
