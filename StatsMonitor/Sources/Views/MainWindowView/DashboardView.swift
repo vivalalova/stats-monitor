@@ -62,8 +62,8 @@ struct DashboardView: View {
                     title: "Power",
                     value: monitor.powerText,
                     statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
-                    lines: [ChartSeries(history: monitor.paddedPowerHistory, color: .red)],
-                    maxValue: histMax(monitor.paddedPowerHistory)
+                    lines: powerChartLines(monitor: monitor),
+                    maxValue: powerChartUpperBound(monitor: monitor)
                 )
             }
             if monitor.hasFans {
@@ -116,6 +116,20 @@ func powerStatusColor(_ watts: Double) -> Color {
     default:
         return .red
     }
+}
+
+@MainActor
+func powerChartLines(monitor: SystemMonitor) -> [ChartSeries] {
+    var lines = [ChartSeries(history: monitor.paddedPowerHistory, color: .red)]
+    if monitor.hasBattery {
+        lines.append(ChartSeries(history: monitor.paddedBatteryChargePowerHistory, color: .green))
+    }
+    return lines
+}
+
+@MainActor
+func powerChartUpperBound(monitor: SystemMonitor) -> Double {
+    max(powerChartLines(monitor: monitor).flatMap(\.history).max() ?? 0, 1)
 }
 
 func dashboardCardHasChart(lines: [ChartSeries]) -> Bool {

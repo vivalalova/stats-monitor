@@ -7,7 +7,10 @@ struct PowerDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            DetailChart(lines: monitor.hasPower ? [ChartSeries(history: monitor.paddedPowerHistory, color: .red)] : [])
+            DetailChart(
+                lines: monitor.hasPower ? powerChartLines(monitor: monitor) : [],
+                maxValue: monitor.hasPower ? powerChartUpperBound(monitor: monitor) : nil
+            )
             DetailMetricSection(rows: availableDetailMetrics([
                 ("Consumption", monitor.powerText),
                 ("External Input", monitor.externalInputPowerText),

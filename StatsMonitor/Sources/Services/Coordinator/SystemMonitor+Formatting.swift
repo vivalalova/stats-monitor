@@ -377,6 +377,12 @@ extension SystemMonitor {
             capacity: powerSamples.capacity
         )
     }
+    var paddedBatteryChargePowerHistory: [Double] {
+        padded(
+            powerSamples.values.map { $0.batteryChargeWatts ?? 0 },
+            capacity: powerSamples.capacity
+        )
+    }
     var batteryFlowPowerText: String {
         let batteryMilliWatts = power?.batteryMilliWatts ?? 0
         guard batteryMilliWatts != 0 else { return "0.0 W" }

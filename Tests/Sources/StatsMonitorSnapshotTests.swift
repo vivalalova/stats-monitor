@@ -452,6 +452,43 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    @Test("Power main window tab shows the battery charge line while charging")
+    func powerMainWindowChargingScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        seedMonitorSnapshotData(into: snapshotContext.monitor)
+        snapshotContext.monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            mediaEngineMilliWatts: 1_450,
+            totalMilliWatts: 21_300,
+            externalInputMilliWatts: 18_000,
+            batteryMilliWatts: 8_000
+        ))
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .power,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "main-window-power-charging",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("About main window tab renders a stable screenshot")
     func aboutMainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()
@@ -685,6 +722,42 @@ struct StatsMonitorSnapshotTests {
             of: view,
             as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window",
+            record: snapshotRecordMode
+        )
+    }
+
+    @Test("Dashboard power card scales the battery charge line correctly while charging")
+    func mainWindowDashboardChargingScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        seedMonitorSnapshotData(into: snapshotContext.monitor)
+        snapshotContext.monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            mediaEngineMilliWatts: 1_450,
+            totalMilliWatts: 21_300,
+            externalInputMilliWatts: 18_000,
+            batteryMilliWatts: 8_000
+        ))
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "main-window-dashboard-charging",
             record: snapshotRecordMode
         )
     }

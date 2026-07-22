@@ -206,7 +206,7 @@ struct MainWindowView: View {
                 title: "Power",
                 value: monitor.powerText,
                 statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
-                lines: [ChartSeries(history: monitor.paddedPowerHistory, color: .red)]
+                lines: powerChartLines(monitor: monitor)
             )
         default:
             sidebarTextRow(for: tab)
