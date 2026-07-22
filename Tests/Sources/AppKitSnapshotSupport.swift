@@ -47,6 +47,7 @@ func detailPopoverSnapshotView(
 
 @MainActor
 private func snapshotFrameView(for window: NSWindow) -> NSView {
+    window.colorSpace = .sRGB
     window.layoutIfNeeded()
     window.displayIfNeeded()
 
