@@ -50,7 +50,7 @@ fastlane mac install  # Release → /Applications → 啟動
 
 - 框架：Swift Testing（`@Suite`、`@Test`、`#expect`）
 - Snapshot reference：`Tests/Sources/__Snapshots__/StatsMonitorSnapshotTests/` — 看目前 UI 優先看這裡
-- 重錄 snapshot：明確跑 `RECORD_SNAPSHOTS=1 tuist test StatsMonitor --no-selective-testing`
+- 重錄 snapshot：明確跑 `TEST_RUNNER_RECORD_SNAPSHOTS=1 tuist test StatsMonitor --no-selective-testing`（xcodebuild 只把 `TEST_RUNNER_` 前綴的 env 轉進測試進程，裸 `RECORD_SNAPSHOTS=1` 無效）；record mode 是 `.all`，會重寫全部 reference，只想更新部分時錄完把其餘 png `git checkout` 還原
 
 ## Packages/Util
 
