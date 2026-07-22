@@ -38,7 +38,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.fittingSize),
+            as: toleratedImageSnapshot(size: view.fittingSize),
             named: "cpu-detail-panel",
             record: snapshotRecordMode
         )
@@ -167,13 +167,17 @@ struct StatsMonitorSnapshotTests {
 
     @Test("Quit confirmation alert renders a stable screenshot")
     func quitConfirmationAlertScreenshot() {
-        let view = alertSnapshotView(
-            QuitConfirmationAlertFactory.makeAlert(locale: Locale(identifier: "en"))
-        )
+        let alert = QuitConfirmationAlertFactory.makeAlert(locale: Locale(identifier: "en"))
+        alert.icon = NSImage(size: NSSize(width: 64, height: 64), flipped: false) { rect in
+            NSColor(srgbRed: 0.0, green: 0.478, blue: 1.0, alpha: 1.0).setFill()
+            NSBezierPath(roundedRect: rect, xRadius: 12, yRadius: 12).fill()
+            return true
+        }
+        let view = alertSnapshotView(alert)
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "quit-confirmation-alert",
             record: snapshotRecordMode
         )
@@ -202,7 +206,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-general",
             record: snapshotRecordMode
         )
@@ -240,7 +244,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-general-hint-visible",
             record: snapshotRecordMode
         )
@@ -268,7 +272,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-general-desktop-subset",
             record: snapshotRecordMode
         )
@@ -297,7 +301,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-cpu-cores",
             record: snapshotRecordMode
         )
@@ -326,7 +330,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-gpu-engines",
             record: snapshotRecordMode
         )
@@ -355,7 +359,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-memory",
             record: snapshotRecordMode
         )
@@ -384,7 +388,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-disk",
             record: snapshotRecordMode
         )
@@ -413,7 +417,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-network",
             record: snapshotRecordMode
         )
@@ -442,7 +446,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-power",
             record: snapshotRecordMode
         )
@@ -470,7 +474,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-about",
             record: snapshotRecordMode
         )
@@ -499,7 +503,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-diagnostics",
             record: snapshotRecordMode
         )
@@ -559,7 +563,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "combined-menu-bar-label",
             record: snapshotRecordMode
         )
@@ -585,7 +589,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "combined-menu-bar-label-thermal-critical",
             record: snapshotRecordMode
         )
@@ -613,7 +617,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window",
             record: snapshotRecordMode
         )
@@ -642,7 +646,7 @@ struct StatsMonitorSnapshotTests {
 
         assertSnapshot(
             of: view,
-            as: .image(size: view.frame.size),
+            as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-gpu-heavy",
             record: snapshotRecordMode
         )
@@ -713,6 +717,13 @@ private func makePressureOnlySnapshotContext(
 
 private var snapshotRecordMode: SnapshotTestingConfiguration.Record {
     resolvedSnapshotRecordMode(environment: ProcessInfo.processInfo.environment)
+}
+
+/// Single source of truth for the image comparison tolerance used by every snapshot assertion
+/// below. Exact pixel match flakes across runs/machines due to GPU/anti-aliasing rendering jitter
+/// (~0.5% pixel diff, max channel delta 86 observed) even with identical fixture data.
+private func toleratedImageSnapshot(size: CGSize) -> Snapshotting<NSView, NSImage> {
+    .image(precision: 0.99, perceptualPrecision: 0.98, size: size)
 }
 
 private func resolvedSnapshotRecordMode(
@@ -949,7 +960,7 @@ private func assertDetailPanelSnapshot(
 
     assertSnapshot(
         of: view,
-        as: .image(size: view.fittingSize),
+        as: toleratedImageSnapshot(size: view.fittingSize),
         named: name,
         record: snapshotRecordMode
     )
