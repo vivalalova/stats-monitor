@@ -132,5 +132,8 @@ func dashboardCardHeight(lines: [ChartSeries]) -> CGFloat {
     let settings = AppSettings()
     let monitor = SystemMonitor(settings: settings).start()
     DashboardView(settings: settings, monitor: monitor)
-        .frame(width: 820, height: 520)
+        .frame(
+            width: SettingsWindowLayout.defaultWidth,
+            height: SettingsWindowLayout.defaultHeight
+        )
 }

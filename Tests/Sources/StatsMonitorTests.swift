@@ -1628,7 +1628,7 @@ struct SettingsWindowTests {
     func stableWindowConfiguration() {
         #expect(AppSceneID.settingsWindow == "settings-window")
         #expect(SettingsWindowLayout.defaultWidth == 820)
-        #expect(SettingsWindowLayout.defaultHeight == 520)
+        #expect(SettingsWindowLayout.defaultHeight == 600)
         #expect(SettingsWindowLayout.sidebarWidth == 130)
         #expect(SettingsWindowLayout.defaultWidth > SettingsWindowLayout.sidebarWidth)
     }

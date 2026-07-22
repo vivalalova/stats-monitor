@@ -191,5 +191,8 @@ struct DiagnosticsView: View {
     let settings = AppSettings()
     let monitor = SystemMonitor(settings: settings).start()
     DiagnosticsView(settings: settings, monitor: monitor)
-        .frame(width: 820, height: 520)
+        .frame(
+            width: SettingsWindowLayout.defaultWidth,
+            height: SettingsWindowLayout.defaultHeight
+        )
 }

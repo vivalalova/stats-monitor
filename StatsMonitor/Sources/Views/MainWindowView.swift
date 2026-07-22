@@ -7,7 +7,7 @@ enum AppSceneID {
 
 enum SettingsWindowLayout {
     static let defaultWidth: CGFloat = 820
-    static let defaultHeight: CGFloat = 520
+    static let defaultHeight: CGFloat = 600
     static let sidebarWidth: CGFloat = 130
 }
 
@@ -97,7 +97,7 @@ struct MainWindowView: View {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        // 視窗尺寸永久鎖定為 820×520（目前最小尺寸）。刻意設計，不接受調整：
+        // 視窗尺寸永久鎖定為 SettingsWindowLayout 定義的 content size。
         // layout、chart 空間、sidebar 行高、grid 欄寬都以此尺寸為基準校準。
         // 日後任何「讓使用者改大/改小」的需求，先回頭重新審視整套版面計算。
         .frame(
