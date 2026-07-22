@@ -902,37 +902,17 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.powerBalanceText == "+3.5 W")
     }
 
-    // MARK: - Battery charge power history & power chart lines (dual-line power chart)
+    // MARK: - Power chart lines (dual-line power chart: consumption + external input)
 
-    @Test("paddedBatteryChargePowerHistory converts charging samples to watts and zeroes discharge/idle samples, padded to capacity")
-    func paddedBatteryChargePowerHistoryConvertsChargingSamplesOnly() {
-        let settings = makeTestSettings()
-        settings.historyCapacity = 4
-        let monitor = SystemMonitor(settings: settings)
-        defer { monitor.stop() }
-
-        monitor.record(power: PowerUsage(cpuMilliWatts: 0, gpuMilliWatts: 0, totalMilliWatts: 0, batteryMilliWatts: 2_450))
-        monitor.record(power: PowerUsage(cpuMilliWatts: 0, gpuMilliWatts: 0, totalMilliWatts: 0, batteryMilliWatts: -636))
-        monitor.record(power: PowerUsage(cpuMilliWatts: 0, gpuMilliWatts: 0, totalMilliWatts: 0, batteryMilliWatts: 0))
-
-        #expect(monitor.paddedBatteryChargePowerHistory == [0, 2.45, 0, 0])
-    }
-
-    @Test("powerChartLines includes a green battery charge line when a battery is present")
-    func powerChartLinesIncludesChargeLineWithBattery() {
+    @Test("powerChartLines includes a green external input line when external input power is present")
+    func powerChartLinesIncludesExternalInputLineWhenPresent() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.record(battery: BatteryUsage(
-            percentage: 60, isCharging: true, isPluggedIn: true,
-            timeRemaining: nil, cycleCount: 50,
-            designCapacity: 5_000, maxCapacity: 4_800, health: 96
-        ))
         monitor.record(power: PowerUsage(
             cpuMilliWatts: 2_300,
             gpuMilliWatts: 200,
             totalMilliWatts: 11_500,
-            externalInputMilliWatts: 15_000,
-            batteryMilliWatts: 2_450
+            externalInputMilliWatts: 15_000
         ))
 
         let lines = powerChartLines(monitor: monitor)
@@ -941,11 +921,11 @@ struct SystemMonitorPresentationTests {
         #expect(lines[0].color == .red)
         #expect(lines[0].history == monitor.paddedPowerHistory)
         #expect(lines[1].color == .green)
-        #expect(lines[1].history == monitor.paddedBatteryChargePowerHistory)
+        #expect(lines[1].history == monitor.paddedExternalInputPowerHistory)
     }
 
-    @Test("powerChartLines omits the battery charge line when no battery is present")
-    func powerChartLinesOmitsChargeLineWithoutBattery() {
+    @Test("powerChartLines omits the external input line when external input power is unavailable")
+    func powerChartLinesOmitsExternalInputLineWithoutExternalInput() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
         monitor.record(power: PowerUsage(
@@ -961,29 +941,22 @@ struct SystemMonitorPresentationTests {
         #expect(lines[0].history == monitor.paddedPowerHistory)
     }
 
-    @Test("powerChartUpperBound scales to the larger of consumption and battery charge peaks")
-    func powerChartUpperBoundUsesLargerOfConsumptionAndChargePeaks() {
-        let settings = makeTestSettings()
-        settings.historyCapacity = 4
-        let monitor = SystemMonitor(settings: settings)
+    @Test("powerChartUpperBound scales to the larger of consumption and external input peaks")
+    func powerChartUpperBoundUsesLargerOfConsumptionAndExternalInputPeaks() {
+        let monitor = makeMonitor()
         defer { monitor.stop() }
-        monitor.record(battery: BatteryUsage(
-            percentage: 50, isCharging: true, isPluggedIn: true,
-            timeRemaining: nil, cycleCount: 10,
-            designCapacity: 5_000, maxCapacity: 4_800, health: 96
-        ))
         monitor.record(power: PowerUsage(
             cpuMilliWatts: 0,
             gpuMilliWatts: 0,
             totalMilliWatts: 20_000,
-            batteryMilliWatts: 40_000
+            externalInputMilliWatts: 40_000
         ))
 
         #expect(powerChartUpperBound(monitor: monitor) == 40)
     }
 
-    @Test("powerChartUpperBound falls back to the consumption peak when there is no battery")
-    func powerChartUpperBoundUsesConsumptionPeakWithoutBattery() {
+    @Test("powerChartUpperBound falls back to the consumption peak when there is no external input")
+    func powerChartUpperBoundUsesConsumptionPeakWithoutExternalInput() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
         monitor.record(power: PowerUsage(cpuMilliWatts: 0, gpuMilliWatts: 0, totalMilliWatts: 20_000))

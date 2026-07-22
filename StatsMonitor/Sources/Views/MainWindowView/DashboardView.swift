@@ -121,8 +121,8 @@ func powerStatusColor(_ watts: Double) -> Color {
 @MainActor
 func powerChartLines(monitor: SystemMonitor) -> [ChartSeries] {
     var lines = [ChartSeries(history: monitor.paddedPowerHistory, color: .red)]
-    if monitor.hasBattery {
-        lines.append(ChartSeries(history: monitor.paddedBatteryChargePowerHistory, color: .green))
+    if monitor.hasExternalInputPower {
+        lines.append(ChartSeries(history: monitor.paddedExternalInputPowerHistory, color: .green))
     }
     return lines
 }
