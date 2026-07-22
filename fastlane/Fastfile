@@ -36,6 +36,12 @@ platform :mac do
         UI.message("Quitting running #{SCHEME}")
         system("osascript", "-e", %(tell application "#{SCHEME}" to quit), out: File::NULL, err: File::NULL)
         sleep 1
+        # App 的離開確認 alert 會擋下 scripted quit，安裝換版直接終止
+        if system("pgrep", "-x", SCHEME, out: File::NULL)
+          UI.message("Graceful quit blocked (quit-confirmation alert); terminating")
+          system("pkill", "-x", SCHEME, out: File::NULL, err: File::NULL)
+          sleep 1
+        end
       end
 
       UI.header("Installing to #{INSTALL_PATH}")
