@@ -159,7 +159,6 @@ struct MainWindowView: View {
                 tab: .cpuCores,
                 title: "CPU",
                 value: monitor.cpuPercent,
-                statusColor: progressColor(monitor.cpuFraction),
                 lines: [ChartSeries(history: monitor.paddedCPUHistory, color: .blue)]
             )
         case .gpuEngines:
@@ -167,7 +166,6 @@ struct MainWindowView: View {
                 tab: .gpuEngines,
                 title: "GPU",
                 value: monitor.gpuPercent,
-                statusColor: progressColor(monitor.gpuFraction),
                 lines: [ChartSeries(history: monitor.paddedGPUHistory, color: .purple)]
             )
         case .memory:
@@ -175,7 +173,6 @@ struct MainWindowView: View {
                 tab: .memory,
                 title: "Memory",
                 value: monitor.memoryPercent,
-                statusColor: progressColor(monitor.memoryFraction),
                 lines: [ChartSeries(history: monitor.paddedMemoryHistory, color: .cyan)]
             )
         case .disk:
@@ -183,7 +180,6 @@ struct MainWindowView: View {
                 tab: .disk,
                 title: "Disk",
                 value: monitor.diskActivityText,
-                statusColor: .blue,
                 lines: [
                     ChartSeries(history: monitor.paddedDiskReadHistory, color: .teal),
                     ChartSeries(history: monitor.paddedDiskWriteHistory, color: .orange),
@@ -194,18 +190,13 @@ struct MainWindowView: View {
                 tab: .network,
                 title: "Network",
                 value: monitor.networkTotalText,
-                statusColor: .blue,
-                lines: [
-                    ChartSeries(history: monitor.paddedNetworkInHistory, color: .green),
-                    ChartSeries(history: monitor.paddedNetworkOutHistory, color: .red),
-                ]
+                lines: networkChartLines(monitor: monitor)
             )
         case .power:
             sidebarChartRow(
                 tab: .power,
                 title: "Power",
                 value: monitor.powerText,
-                statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
                 lines: powerChartLines(monitor: monitor)
             )
         default:
@@ -217,47 +208,28 @@ struct MainWindowView: View {
         tab: Tab,
         title: String,
         value: String,
-        statusColor: Color,
         lines: [ChartSeries]
     ) -> some View {
         let maxValue = max(lines.flatMap(\.history).max() ?? 0, 1)
-        let isSelected = selection == tab
         return SidebarMetricRow(
             title: title,
             value: value,
-            statusColor: statusColor,
             lines: lines,
-            maxValue: maxValue
+            maxValue: maxValue,
+            isSelected: selection == tab
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(
-                    isSelected ? Color.accentColor : .clear,
-                    lineWidth: 2
-                )
-        }
         .contentShape(Rectangle())
     }
 
-    @ViewBuilder
     private func sidebarTextRow(for tab: Tab) -> some View {
         let isSelected = selection == tab
-        let row = Label(tab.localizedTitle, systemImage: tab.icon)
+        return Label(tab.localizedTitle, systemImage: tab.icon)
+            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
             .contentShape(Rectangle())
-
-        if isSelected {
-            row
-                .foregroundStyle(Color.accentColor)
-                .glassEffect(
-                    .regular.tint(.accentColor.opacity(0.25)).interactive(),
-                    in: RoundedRectangle(cornerRadius: 6)
-                )
-        } else {
-            row
-        }
+            .sidebarSelection(isSelected)
     }
 }
 
