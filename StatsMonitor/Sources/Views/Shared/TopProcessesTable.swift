@@ -9,6 +9,10 @@ struct TopProcessesTable: View {
     @State private var sortColumn: SortColumn
     @State private var ascending: Bool = false
 
+    /// 比例條寬度上限對齊欄寬；顏色淡到不搶數字。
+    private static let barOpacity: Double = 0.18
+    private static let iconSize: CGFloat = 14
+
     init(
         settings: AppSettings,
         monitor: SystemMonitor,
@@ -20,32 +24,14 @@ struct TopProcessesTable: View {
     }
 
     private var mergedProcesses: [ProcInfo] {
-        var byName: [String: ProcInfo] = [:]
-        let gpuAsProcInfo = monitor.topGPUProcesses.map { gpu in
-            ProcInfo(name: gpu.name, cpuPercent: 0, memoryBytes: 0, gpuPercent: gpu.utilizationPercent)
-        }
-        let all = monitor.topCPUProcesses
-            + monitor.topMemoryProcesses
-            + monitor.topDiskProcesses
-            + monitor.topNetworkProcesses
-            + gpuAsProcInfo
-        for proc in all {
-            if let existing = byName[proc.name] {
-                byName[proc.name] = ProcInfo(
-                    name:          proc.name,
-                    cpuPercent:    max(existing.cpuPercent,    proc.cpuPercent),
-                    memoryBytes:   max(existing.memoryBytes,   proc.memoryBytes),
-                    diskReadBPS:   max(existing.diskReadBPS,   proc.diskReadBPS),
-                    diskWriteBPS:  max(existing.diskWriteBPS,  proc.diskWriteBPS),
-                    networkInBPS:  max(existing.networkInBPS,  proc.networkInBPS),
-                    networkOutBPS: max(existing.networkOutBPS, proc.networkOutBPS),
-                    gpuPercent:    max(existing.gpuPercent,    proc.gpuPercent)
-                )
-            } else {
-                byName[proc.name] = proc
-            }
-        }
-        return Array(byName.values).sorted(using: sortColumn, ascending: ascending)
+        SystemMonitor.mergeTopProcesses(
+            cpu: monitor.topCPUProcesses,
+            memory: monitor.topMemoryProcesses,
+            disk: monitor.topDiskProcesses,
+            network: monitor.topNetworkProcesses,
+            gpu: monitor.topGPUProcesses
+        )
+        .sorted(using: sortColumn, ascending: ascending)
     }
 
     private func toggleSort(_ col: SortColumn) {
@@ -67,8 +53,46 @@ struct TopProcessesTable: View {
         .frame(width: width, alignment: .trailing)
     }
 
+    /// 名稱欄：app icon ＋解析後的完整名稱（行程名走 verbatim，不查本地化表）。
+    @ViewBuilder
+    private func nameCell(_ proc: ProcInfo) -> some View {
+        HStack(spacing: 6) {
+            ProcessIconCache.shared.icon(forPath: proc.iconPath)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: Self.iconSize, height: Self.iconSize)
+            Text(verbatim: proc.name)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+    }
+
+    /// 數值欄：右對齊數字；`barFraction > 0` 時墊一條與該欄最大值成比例的淡色底條。
+    /// 無資料（formatter 回破折號）以 tertiary 淡化，跟真的是 0 的列一眼分得開。
+    @ViewBuilder
+    private func valueCell(
+        _ text: String,
+        width: CGFloat,
+        hasValue: Bool,
+        barFraction: Double = 0
+    ) -> some View {
+        Text(verbatim: text)
+            .foregroundStyle(hasValue ? AnyShapeStyle(HierarchicalShapeStyle.primary)
+                                     : AnyShapeStyle(HierarchicalShapeStyle.tertiary))
+            .frame(width: width, alignment: .trailing)
+            .background(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(Color.accentColor.opacity(Self.barOpacity))
+                    .frame(width: width * barFraction)
+            }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let rows = mergedProcesses
+        let cpuMaximum = SystemMonitor.processColumnMaximum(rows.map(\.cpuPercent))
+        let memoryMaximum = SystemMonitor.processColumnMaximum(rows.map { $0.memoryBytes.map { Double($0) } })
+
+        return VStack(alignment: .leading, spacing: 8) {
             Text("Top Processes")
                 .font(.subheadline)
                 .fontWeight(.semibold)
@@ -100,25 +124,41 @@ struct TopProcessesTable: View {
 
                     Divider()
 
-                    ForEach(mergedProcesses, id: \.name) { proc in
+                    ForEach(rows, id: \.mergeKey) { proc in
                         HStack {
-                            Text(proc.name)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+                            nameCell(proc)
                             Spacer()
-                            Text(monitor.formatProcessCPU(proc.cpuPercent))
-                                .frame(width: 60, alignment: .trailing)
-                            Text(proc.gpuPercent > 0
-                                 ? monitor.formatProcessGPU(proc.gpuPercent) : "—")
-                                .frame(width: 60, alignment: .trailing)
-                            Text(monitor.formatProcessMemory(proc.memoryBytes))
-                                .frame(width: 72, alignment: .trailing)
-                            Text(proc.diskTotalBPS > 0
-                                 ? monitor.formatProcessDisk(proc.diskTotalBPS) : "—")
-                                .frame(width: 72, alignment: .trailing)
-                            Text(proc.networkTotalBPS > 0
-                                 ? monitor.formatProcessNetwork(proc.networkTotalBPS) : "—")
-                                .frame(width: 80, alignment: .trailing)
+                            valueCell(
+                                monitor.formatProcessCPU(proc.cpuPercent),
+                                width: 60,
+                                hasValue: proc.cpuPercent != nil,
+                                barFraction: SystemMonitor.processBarFraction(
+                                    proc.cpuPercent, columnMaximum: cpuMaximum
+                                )
+                            )
+                            valueCell(
+                                monitor.formatProcessGPU(proc.gpuPercent),
+                                width: 60,
+                                hasValue: proc.gpuPercent != nil
+                            )
+                            valueCell(
+                                monitor.formatProcessMemory(proc.memoryBytes),
+                                width: 72,
+                                hasValue: proc.memoryBytes != nil,
+                                barFraction: SystemMonitor.processBarFraction(
+                                    proc.memoryBytes.map { Double($0) }, columnMaximum: memoryMaximum
+                                )
+                            )
+                            valueCell(
+                                monitor.formatProcessDisk(proc.diskTotalBPS),
+                                width: 72,
+                                hasValue: proc.diskTotalBPS != nil
+                            )
+                            valueCell(
+                                monitor.formatProcessNetwork(proc.networkTotalBPS),
+                                width: 80,
+                                hasValue: proc.networkTotalBPS != nil
+                            )
                         }
                         .font(.system(size: 12))
                         .monospacedDigit()
@@ -128,6 +168,11 @@ struct TopProcessesTable: View {
                     }
                 }
             }
+        }
+        // icon 是問 LaunchServices／讀 .icns 換來的，載入排在 render pass 之外；
+        // 補進快取後 `ProcessIconCache` 是 `@Observable`，畫面自己重畫。
+        .task(id: rows.map { $0.iconPath ?? "" }.joined(separator: "\n")) {
+            ProcessIconCache.shared.prewarm(rows.map(\.iconPath))
         }
     }
 }
@@ -140,15 +185,22 @@ fileprivate extension Array where Element == ProcInfo {
             let primary: Bool?
             switch col {
             case .name:    primary = a.name == b.name ? nil : a.name < b.name
-            case .cpu:     primary = a.cpuPercent == b.cpuPercent ? nil : a.cpuPercent < b.cpuPercent
-            case .gpu:     primary = a.gpuPercent == b.gpuPercent ? nil : a.gpuPercent < b.gpuPercent
-            case .memory:  primary = a.memoryBytes == b.memoryBytes ? nil : a.memoryBytes < b.memoryBytes
-            case .disk:    primary = a.diskTotalBPS == b.diskTotalBPS ? nil : a.diskTotalBPS < b.diskTotalBPS
-            case .network: primary = a.networkTotalBPS == b.networkTotalBPS ? nil : a.networkTotalBPS < b.networkTotalBPS
+            case .cpu:     primary = compare(a.cpuPercent, b.cpuPercent)
+            case .gpu:     primary = compare(a.gpuPercent, b.gpuPercent)
+            case .memory:  primary = compare(a.memoryBytes, b.memoryBytes)
+            case .disk:    primary = compare(a.diskTotalBPS, b.diskTotalBPS)
+            case .network: primary = compare(a.networkTotalBPS, b.networkTotalBPS)
             }
             if let primary { return ascending ? primary : !primary }
             return a.name < b.name
         }
+    }
+
+    /// 無資料視同最小值排在最後（降冪時）；兩邊相等回 nil 交給名稱決勝，維持既有規則。
+    private func compare<Value: Comparable & ExpressibleByIntegerLiteral>(_ a: Value?, _ b: Value?) -> Bool? {
+        let lhs = a ?? 0
+        let rhs = b ?? 0
+        return lhs == rhs ? nil : lhs < rhs
     }
 }
 

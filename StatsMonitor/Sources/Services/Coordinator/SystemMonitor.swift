@@ -49,7 +49,7 @@ final class SystemMonitor {
     private(set) var currentPowerSample: PowerUsage?
 
     var topCPUProcesses: [ProcInfo] = []
-    var topGPUProcesses: [GPUProcessInfo] = []
+    var topGPUProcesses: [ProcInfo] = []
     var topMemoryProcesses: [ProcInfo] = []
     var topDiskProcesses: [ProcInfo] = []
     var topNetworkProcesses: [ProcInfo] = []
@@ -73,6 +73,7 @@ final class SystemMonitor {
     private var fanMonitor: FanMonitor
 
     private var isNetworkProcessPollInFlight = false
+    private var isGPUProcessResolveInFlight = false
     private var isProcessPollInFlight = false
     private var isRunning = false
 
@@ -162,7 +163,7 @@ final class SystemMonitor {
             displayInfo = displayInfoMonitor.sample()
         }
         pollTick &+= 1
-        topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: intervalSeconds, processCount: count)
+        resolveGPUProcesses(gpuMonitor.sampleTopApps(intervalSeconds: intervalSeconds, processCount: count))
 
         pollNetworkProcesses(processCount: count)
         pollProcessDetails(processCount: count)
@@ -192,6 +193,22 @@ final class SystemMonitor {
         }
     }
 
+    /// GPU 取樣本身要留在 main actor（monitor 需保留上一輪 counter 算 delta），
+    /// 名稱／icon 解析則與其他 top list 一樣丟背景，避免 main actor 付 `proc_pidpath` 與讀 Info.plist 的成本。
+    private func resolveGPUProcesses(_ samples: [GPUProcessInfo]) {
+        guard !isGPUProcessResolveInFlight else { return }
+        isGPUProcessResolveInFlight = true
+        let pending = samples.map { ProcInfo(gpu: $0) }
+        Task { [weak self] in
+            guard let self else { return }
+            let processes = await Task.detached(priority: .utility) {
+                ProcessIdentityCache.shared.resolved(pending)
+            }.value
+            self.isGPUProcessResolveInFlight = false
+            self.topGPUProcesses = processes
+        }
+    }
+
     private func pollNetworkProcesses(processCount: Int) {
         guard !isNetworkProcessPollInFlight else { return }
         isNetworkProcessPollInFlight = true
@@ -201,7 +218,8 @@ final class SystemMonitor {
             let processes = await Task.detached(priority: .utility) {
                 let monitor = previousMonitor
                 let processes = monitor.sampleTopProcesses(processCount: processCount)
-                return processes
+                // 名稱／icon 路徑解析留在背景，main actor 只拿解析好的結果。
+                return ProcessIdentityCache.shared.resolved(processes)
             }.value
             self.isNetworkProcessPollInFlight = false
             self.topNetworkProcesses = processes
@@ -221,11 +239,13 @@ final class SystemMonitor {
                 guard let snapshot = ProcessCountersReader.sample() else {
                     return (cpu: [ProcInfo](), memory: [ProcInfo](), disk: [ProcInfo](), power: [ProcInfo]())
                 }
+                // 名稱／icon 路徑解析留在背景，main actor 只拿解析好的結果。
+                let identities = ProcessIdentityCache.shared
                 return (
-                    cpu: cpuMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
-                    memory: memoryMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
-                    disk: diskMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
-                    power: powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)
+                    cpu: identities.resolved(cpuMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)),
+                    memory: identities.resolved(memoryMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)),
+                    disk: identities.resolved(diskMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)),
+                    power: identities.resolved(powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount))
                 )
             }.value
             self.isProcessPollInFlight = false
@@ -328,5 +348,64 @@ final class SystemMonitor {
             power: MetricHistory(capacity: capacity),
             fans: MetricHistory(capacity: capacity)
         )
+    }
+}
+
+// MARK: - Top Processes 合併
+
+/// 熱門行程表的資料推導：五份 top list 併成一列一行程。放在 store 側，View 只負責排序與呈現。
+extension SystemMonitor {
+    /// 以 pid 為合併鍵（同名不同 pid 不併），各數值欄取各 list 的最大值。
+    /// pid 取不到的列（pid 0，只來自 nettop key 解析失敗）一律以名稱自成一列：
+    /// 有 pid 的列名稱已被 `ProcessIdentityCache` 換成 bundle display name，
+    /// 與 pid 0 列身上的原始 nettop 名不同源，拿名稱互併只會誤併到不相干的行程。
+    static func mergeTopProcesses(
+        cpu: [ProcInfo],
+        memory: [ProcInfo],
+        disk: [ProcInfo],
+        network: [ProcInfo],
+        gpu: [ProcInfo]
+    ) -> [ProcInfo] {
+        let all = cpu + memory + disk + network + gpu
+        var merged: [String: ProcInfo] = [:]
+        var order: [String] = []
+        func absorb(_ proc: ProcInfo, key: String) {
+            if let existing = merged[key] {
+                merged[key] = existing.merged(with: proc)
+            } else {
+                merged[key] = proc
+                order.append(key)
+            }
+        }
+
+        // 第一輪：有 pid 的列先定錨。
+        for proc in all where proc.pid > 0 {
+            absorb(proc, key: proc.mergeKey)
+        }
+
+        // 第二輪：沒有 pid 的列以名稱自成一列。
+        for proc in all where proc.pid == 0 {
+            absorb(proc, key: proc.mergeKey)
+        }
+
+        return order.compactMap { merged[$0] }
+    }
+
+    /// 比例條分母：該欄有資料列的最大值；全欄無資料時回 0。
+    static func processColumnMaximum(_ values: [Double?]) -> Double {
+        values.compactMap { $0 }.max() ?? 0
+    }
+
+    /// 比例條長度（0…1）。無資料、非正值或分母為 0 時回 0 ＝不畫 bar。
+    static func processBarFraction(_ value: Double?, columnMaximum: Double) -> Double {
+        guard let value, value > 0, columnMaximum > 0 else { return 0 }
+        return min(value / columnMaximum, 1)
+    }
+}
+
+private extension ProcInfo {
+    /// GPU top list 只帶 GPU 使用率，其餘欄位在合併時由別的 list 補上。
+    init(gpu: GPUProcessInfo) {
+        self.init(pid: gpu.pid, name: gpu.name, gpuPercent: gpu.utilizationPercent)
     }
 }

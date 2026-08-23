@@ -12,21 +12,19 @@ struct PowerChartsView: View {
             MetricChartCard(
                 title: "Total",
                 value: monitor.powerText,
-                statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
+                status: MetricStatus(watts: monitor.power?.totalWatts ?? 0),
                 lines: powerChartLines(monitor: monitor),
                 maxValue: powerChartMax
             )
             MetricChartCard(
                 title: "CPU",
                 value: monitor.cpuPowerText,
-                statusColor: .orange,
                 lines: [ChartSeries(history: monitor.paddedCPUPowerHistory, color: .orange)],
                 maxValue: powerChartMax
             )
             MetricChartCard(
                 title: "GPU",
                 value: monitor.gpuPowerText,
-                statusColor: .purple,
                 lines: [ChartSeries(history: monitor.paddedGPUPowerHistory, color: .purple)],
                 maxValue: powerChartMax
             )
@@ -34,7 +32,6 @@ struct PowerChartsView: View {
                 MetricChartCard(
                     title: "Media Engine",
                     value: monitor.gpuMediaEnginePowerText,
-                    statusColor: .pink,
                     lines: [ChartSeries(history: monitor.paddedGPUMediaEngineHistory, color: .pink)],
                     maxValue: powerChartMax
                 )
@@ -43,7 +40,6 @@ struct PowerChartsView: View {
                 MetricChartCard(
                     title: "External Input",
                     value: monitor.externalInputPowerText,
-                    statusColor: .blue,
                     lines: [ChartSeries(history: monitor.paddedExternalInputPowerHistory, color: .blue)],
                     maxValue: powerChartMax
                 )
@@ -52,7 +48,6 @@ struct PowerChartsView: View {
                 MetricChartCard(
                     title: "Battery Flow",
                     value: monitor.batteryFlowPowerText,
-                    statusColor: batteryFlowStatusColor,
                     lines: [ChartSeries(history: monitor.paddedBatteryFlowPowerHistory, color: .green)],
                     maxValue: powerChartMax
                 )
@@ -76,17 +71,6 @@ struct PowerChartsView: View {
         )
     }
 
-    private var batteryFlowStatusColor: Color {
-        let batteryMilliWatts = monitor.power?.batteryMilliWatts ?? 0
-        switch batteryMilliWatts {
-        case let value where value > 0:
-            return .green
-        case let value where value < 0:
-            return .red
-        default:
-            return .secondary
-        }
-    }
 }
 
 private struct TopPowerProcessesTable: View {
@@ -118,7 +102,7 @@ private struct TopPowerProcessesTable: View {
 
                         Divider()
 
-                        ForEach(monitor.topPowerProcesses, id: \.name) { process in
+                        ForEach(monitor.topPowerProcesses, id: \.mergeKey) { process in
                             HStack {
                                 Text(process.name)
                                     .lineLimit(1)

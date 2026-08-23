@@ -98,8 +98,8 @@ final class PowerMonitor: @unchecked Sendable {
                 .filter { $0.powerImpact > 0 }
                 .map { entry in
                     ProcInfo(
+                        pid: Int(entry.pid),
                         name: entry.name,
-                        cpuPercent: 0,
                         memoryBytes: entry.memoryBytes,
                         powerImpact: entry.powerImpact
                     )

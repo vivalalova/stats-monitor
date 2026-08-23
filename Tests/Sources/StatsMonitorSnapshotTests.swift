@@ -1,5 +1,6 @@
 import AppKit
 import SnapshotTesting
+import SwiftUI
 import Testing
 @testable import StatsMonitor
 
@@ -800,6 +801,66 @@ struct StatsMonitorSnapshotTests {
     func snapshotRecordModeAllowsExplicitRerecording() {
         #expect(resolvedSnapshotRecordMode(environment: ["RECORD_SNAPSHOTS": "1"]) == .all)
     }
+
+    @Test("Top processes table renders zero and missing values consistently")
+    func topProcessesTableEmptyValuesScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        let monitor = snapshotContext.monitor
+        // 一列有完整數值、一列全 0、一列只有 CPU、一列無 CPU 資料
+        monitor.topCPUProcesses = [
+            ProcInfo(
+                pid: 1001,
+                name: "Xcode",
+                cpuPercent: 48.2,
+                memoryBytes: 1_824_000_000,
+                diskReadBPS: 2_097_152,
+                diskWriteBPS: 1_048_576,
+                networkInBPS: 1_572_864,
+                networkOutBPS: 196_608
+            ),
+            ProcInfo(
+                pid: 1002,
+                name: "ZeroValues",
+                cpuPercent: 0,
+                memoryBytes: 0,
+                diskReadBPS: 0,
+                diskWriteBPS: 0,
+                networkInBPS: 0,
+                networkOutBPS: 0
+            ),
+            ProcInfo(pid: 1003, name: "CPUOnly", cpuPercent: 3.4, memoryBytes: 12_582_912),
+            // 只出現在網路 list 的行程：CPU／GPU／磁碟欄皆無資料，CPU% 應顯示破折號而非 0.0%
+            ProcInfo(pid: 1004, name: "NetworkOnly", networkInBPS: 262_144, networkOutBPS: 131_072),
+        ]
+
+        let view = topProcessesTableSnapshotView(
+            settings: snapshotContext.settings,
+            monitor: monitor
+        )
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.fittingSize),
+            named: "top-processes-table-empty-values",
+            record: snapshotRecordMode
+        )
+    }
+}
+
+@MainActor
+private func topProcessesTableSnapshotView(
+    settings: AppSettings,
+    monitor: SystemMonitor,
+    width: CGFloat = 600
+) -> NSView {
+    let view = NSHostingView(
+        rootView: TopProcessesTable(settings: settings, monitor: monitor, initialSort: .cpu)
+            .frame(width: width)
+            .padding()
+    )
+    let size = view.fittingSize
+    view.frame = CGRect(origin: .zero, size: size)
+    return view
 }
 
 @MainActor
@@ -876,7 +937,7 @@ private func seedSettingsValues(into settings: AppSettings) {
     settings.pollInterval = 5
     settings.historyCapacity = 300
     settings.processCount = 15
-    settings.dashboardColumns = 5
+    settings.dashboardColumns = AppSettings.defaultDashboardColumns
     settings.launchAtLogin = true
     settings.showCPU = true
     settings.showGPU = true
@@ -987,28 +1048,28 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         refreshRateHz: 120
     ))
     monitor.topCPUProcesses = [
-        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000),
-        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000),
+        ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000),
+        ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000),
+        ProcInfo(pid: 1002, name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000),
     ]
     monitor.topMemoryProcesses = monitor.topCPUProcesses
     monitor.topGPUProcesses = [
-        GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 23.5, commandQueueCount: 4),
-        GPUProcessInfo(pid: 1235, name: "Safari", utilizationPercent: 9.8, commandQueueCount: 2),
-        GPUProcessInfo(pid: 1232, name: "Fork", utilizationPercent: 4.1, commandQueueCount: 1),
+        ProcInfo(pid: 601, name: "WindowServer", gpuPercent: 23.5),
+        ProcInfo(pid: 1235, name: "Safari", gpuPercent: 9.8),
+        ProcInfo(pid: 1232, name: "Fork", gpuPercent: 4.1),
     ]
     monitor.topDiskProcesses = [
-        ProcInfo(name: "mdworker", cpuPercent: 1.2, memoryBytes: 120_000_000, diskReadBPS: 4_194_304, diskWriteBPS: 524_288),
-        ProcInfo(name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000, diskReadBPS: 2_097_152, diskWriteBPS: 1_048_576),
+        ProcInfo(pid: 1003, name: "mdworker", cpuPercent: 1.2, memoryBytes: 120_000_000, diskReadBPS: 4_194_304, diskWriteBPS: 524_288),
+        ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000, diskReadBPS: 2_097_152, diskWriteBPS: 1_048_576),
     ]
     monitor.topNetworkProcesses = [
-        ProcInfo(name: "Safari", cpuPercent: 3.1, memoryBytes: 640_000_000, networkInBPS: 1_572_864, networkOutBPS: 196_608),
-        ProcInfo(name: "curl", cpuPercent: 0.4, memoryBytes: 18_000_000, networkInBPS: 262_144, networkOutBPS: 131_072),
+        ProcInfo(pid: 1235, name: "Safari", cpuPercent: 3.1, memoryBytes: 640_000_000, networkInBPS: 1_572_864, networkOutBPS: 196_608),
+        ProcInfo(pid: 1004, name: "curl", cpuPercent: 0.4, memoryBytes: 18_000_000, networkInBPS: 262_144, networkOutBPS: 131_072),
     ]
     monitor.topPowerProcesses = [
-        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000, powerImpact: 45.1),
-        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, powerImpact: 14.1),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, powerImpact: 12.7),
+        ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000, powerImpact: 45.1),
+        ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, powerImpact: 14.1),
+        ProcInfo(pid: 1002, name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, powerImpact: 12.7),
     ]
 }
 
@@ -1047,16 +1108,16 @@ private func seedGPUHeavyMonitorSnapshotData(into monitor: SystemMonitor) {
     monitor.record(disk: DiskUsage(used: 400_000_000_000, total: 1_000_000_000_000, readBPS: 0, writeBPS: 0))
     monitor.record(network: NetworkUsage(bytesInPerSec: 0, bytesOutPerSec: 0, interfaces: []))
     monitor.topCPUProcesses = [
-        ProcInfo(name: "Xcode", cpuPercent: 42.1, memoryBytes: 1_600_000_000),
-        ProcInfo(name: "clang", cpuPercent: 18.4, memoryBytes: 320_000_000),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 6.7, memoryBytes: 90_000_000),
+        ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 42.1, memoryBytes: 1_600_000_000),
+        ProcInfo(pid: 1005, name: "clang", cpuPercent: 18.4, memoryBytes: 320_000_000),
+        ProcInfo(pid: 1002, name: "StatsMonitor", cpuPercent: 6.7, memoryBytes: 90_000_000),
     ]
     monitor.topMemoryProcesses = monitor.topCPUProcesses
     monitor.topGPUProcesses = [
-        GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 34.8, commandQueueCount: 4),
-        GPUProcessInfo(pid: 2050, name: "com.apple.WebKit", utilizationPercent: 21.2, commandQueueCount: 3),
-        GPUProcessInfo(pid: 1240, name: "Finder", utilizationPercent: 6.5, commandQueueCount: 1),
-        GPUProcessInfo(pid: 1268, name: "com.apple.dock.e", utilizationPercent: 3.1, commandQueueCount: 1),
+        ProcInfo(pid: 601, name: "WindowServer", gpuPercent: 34.8),
+        ProcInfo(pid: 2050, name: "com.apple.WebKit", gpuPercent: 21.2),
+        ProcInfo(pid: 1240, name: "Finder", gpuPercent: 6.5),
+        ProcInfo(pid: 1268, name: "com.apple.dock.e", gpuPercent: 3.1),
     ]
     monitor.topDiskProcesses = []
     monitor.topNetworkProcesses = []

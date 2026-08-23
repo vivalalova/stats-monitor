@@ -117,13 +117,14 @@ struct CPUMonitor: Sendable {
 
             let deltaNanoseconds = deltaTicks * nanosecondsPerTick
             return ProcInfo(
+                pid: Int(entry.pid),
                 name: entry.name,
                 cpuPercent: (deltaNanoseconds / 1_000_000_000.0) / elapsed * 100,
                 memoryBytes: entry.memoryBytes
             )
         }
 
-        return Array(processes.sorted { $0.cpuPercent > $1.cpuPercent }.prefix(processCount))
+        return Array(processes.sorted { ($0.cpuPercent ?? 0) > ($1.cpuPercent ?? 0) }.prefix(processCount))
     }
 
     // MARK: - Frequency

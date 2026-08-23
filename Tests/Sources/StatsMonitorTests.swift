@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import SwiftUI
 @testable import StatsMonitor
@@ -455,9 +456,9 @@ struct CPUMonitorTests {
 
         #expect(processes.count == 2)
         #expect(processes[0].name == "FullCore")
-        #expect(abs(processes[0].cpuPercent - 100.0) < 0.01)
+        #expect(abs((processes[0].cpuPercent ?? 0) - 100.0) < 0.01)
         #expect(processes[1].name == "HalfCore")
-        #expect(abs(processes[1].cpuPercent - 50.0) < 0.01)
+        #expect(abs((processes[1].cpuPercent ?? 0) - 50.0) < 0.01)
     }
 
     @Test("CPU tick deltas handle 32-bit counter wrap")
@@ -986,14 +987,14 @@ struct SystemMonitorPresentationTests {
             allocatedMemoryBytes: 10_747_871_232
         ))
         monitor.topGPUProcesses = [
-            GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 23.5, commandQueueCount: 4)
+            ProcInfo(pid: 601, name: "WindowServer", gpuPercent: 23.5)
         ]
 
         #expect(monitor.gpuTilerPercent == "17.0%")
         #expect(monitor.gpuVramUsedText == "653 MB")
         #expect(monitor.gpuDriverMemoryText == "50 MB")
         #expect(monitor.gpuAllocatedMemoryText == "10.0 GB")
-        #expect(monitor.formatProcessGPU(monitor.topGPUProcesses[0]) == "23.5%")
+        #expect(monitor.formatProcessGPU(monitor.topGPUProcesses[0].gpuPercent) == "23.5%")
         #expect(monitor.formatProcessGPU(42.5) == "42.5%")
         #expect(monitor.formatProcessGPU(0) == "0.0%")
     }
@@ -2933,9 +2934,9 @@ struct WiFiMonitorTests {
         #expect(WiFiMonitor.bandLabel(for: .band6GHz) == "6 GHz")
     }
 
-    @Test("unknown band becomes em-dash")
+    @Test("unknown band has no label")
     func unknownBand() {
-        #expect(WiFiMonitor.bandLabel(for: .bandUnknown) == "—")
+        #expect(WiFiMonitor.bandLabel(for: .bandUnknown) == nil)
     }
 }
 
@@ -3028,5 +3029,296 @@ struct SystemMonitorPresentationAdditionsTests {
         monitor.record(displayInfo: DisplayInfo(widthPixels: 3456, heightPixels: 2234, refreshRateHz: 120))
         #expect(monitor.displayInfoText == "3456 × 2234 @ 120 Hz")
         #expect(monitor.hasDisplayInfo)
+    }
+}
+
+// MARK: - Network Chart Palette (#4)
+
+@Suite("Network Chart Palette")
+@MainActor
+struct NetworkChartPaletteTests {
+
+    @Test("網路上下行配色為單一來源常數，沿用 Dashboard 藍（in）／綠（out）")
+    func paletteIsSingleSource() {
+        #expect(NetworkChartPalette.inbound == Color.blue)
+        #expect(NetworkChartPalette.outbound == Color.green)
+        #expect(NetworkChartPalette.inbound != NetworkChartPalette.outbound)
+    }
+
+    @Test("共用 networkChartLines 依序回傳 in／out 兩線並取用同一組常數")
+    func sharedNetworkChartLinesUsePalette() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        monitor.record(network: NetworkUsage(
+            bytesInPerSec: 2_048, bytesOutPerSec: 1_024,
+            tcpConnectionCount: 0, udpConnectionCount: 0
+        ))
+
+        let lines = networkChartLines(monitor: monitor)
+
+        #expect(lines.count == 2)
+        #expect(lines.map(\.color) == [NetworkChartPalette.inbound, NetworkChartPalette.outbound])
+        #expect(lines[0].history == monitor.paddedNetworkInHistory)
+        #expect(lines[1].history == monitor.paddedNetworkOutHistory)
+    }
+
+    @Test("單向卡片的線色同樣來自共用常數")
+    func singleDirectionLinesUsePalette() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        monitor.record(network: NetworkUsage(
+            bytesInPerSec: 2_048, bytesOutPerSec: 1_024,
+            tcpConnectionCount: 0, udpConnectionCount: 0
+        ))
+
+        #expect(networkInChartLine(monitor: monitor).color == NetworkChartPalette.inbound)
+        #expect(networkOutChartLine(monitor: monitor).color == NetworkChartPalette.outbound)
+    }
+}
+
+// MARK: - Dashboard Visual Refresh (#1)
+
+@Suite("Dashboard Visual Refresh")
+@MainActor
+struct DashboardVisualRefreshTests {
+
+    @Test("Dashboard 預設欄數為 3")
+    func defaultDashboardColumnsIsThree() {
+        #expect(DashboardGridSizing.defaultColumnCount == 3)
+        #expect(AppSettings.defaultDashboardColumns == 3)
+        #expect(AppSettings.dashboardColumnRange == 3...6)
+    }
+
+    @Test("使用率門檻分級，含 0.6／0.8 邊界")
+    func metricStatusFractionThresholds() {
+        #expect(MetricStatus(fraction: 0.1) == .normal)
+        #expect(MetricStatus(fraction: 0.599) == .normal)
+        #expect(MetricStatus(fraction: 0.6) == .elevated)
+        #expect(MetricStatus(fraction: 0.799) == .elevated)
+        #expect(MetricStatus(fraction: 0.8) == .high)
+        #expect(MetricStatus(fraction: 0.95) == .high)
+    }
+
+    @Test("功耗門檻分級，含 10 W／30 W 邊界")
+    func metricStatusWattThresholds() {
+        #expect(MetricStatus(watts: 5) == .normal)
+        #expect(MetricStatus(watts: 10) == .elevated)
+        #expect(MetricStatus(watts: 20) == .elevated)
+        #expect(MetricStatus(watts: 30) == .high)
+        #expect(MetricStatus(watts: 50) == .high)
+    }
+
+    @Test("狀態 capsule 文案與配色對映三級")
+    func metricStatusCaptionAndColor() {
+        #expect(MetricStatus.normal.caption == LocalizedStringKey("Normal"))
+        #expect(MetricStatus.elevated.caption == LocalizedStringKey("Elevated"))
+        #expect(MetricStatus.high.caption == LocalizedStringKey("High"))
+        #expect(MetricStatus.normal.color == .green)
+        #expect(MetricStatus.elevated.color == .orange)
+        #expect(MetricStatus.high.color == .red)
+    }
+
+    @Test("progressColor 與 MetricStatus 共用同一組門檻")
+    func progressColorDelegatesToMetricStatus() {
+        for fraction in [0.0, 0.3, 0.599, 0.6, 0.75, 0.8, 1.2] {
+            #expect(progressColor(fraction) == MetricStatus(fraction: fraction).color)
+        }
+    }
+
+    @Test("未指定狀態的卡片不顯示 capsule（裝飾色卡片一律走這條）")
+    func metricChartCardHasNoStatusByDefault() {
+        let card = MetricChartCard(
+            title: "Read",
+            value: "1.0 MB/s",
+            lines: [ChartSeries(history: [1, 2, 3], color: .teal)],
+            maxValue: 3
+        )
+        #expect(card.status == nil)
+    }
+
+    @Test("狀態 capsule 新 key 在 xcstrings 皆有 zh-Hant 譯文")
+    func statusCaptionKeysHaveTraditionalChinese() throws {
+        let catalog = try loadLocalizableStringCatalog()
+        let expected = [
+            "Normal": "正常",
+            "Elevated": "偏高",
+            "High": "過高",
+        ]
+
+        for (key, translation) in expected {
+            let unit = try #require(
+                catalog[key]?["localizations"]
+                    .flatMap { $0 as? [String: Any] }?["zh-Hant"]
+                    .flatMap { $0 as? [String: Any] }?["stringUnit"]
+                    .flatMap { $0 as? [String: Any] },
+                "缺少 \(key) 的 zh-Hant 譯文"
+            )
+            #expect(unit["state"] as? String == "translated")
+            #expect(unit["value"] as? String == translation)
+        }
+    }
+}
+
+/// 直接讀取專案的 String Catalog，才驗得到 `state: translated` 這個檔案層事實。
+private func loadLocalizableStringCatalog(file: StaticString = #filePath) throws -> [String: [String: Any]] {
+    let testsFile = URL(fileURLWithPath: "\(file)")
+    let repoRoot = testsFile
+        .deletingLastPathComponent()   // Tests/Sources
+        .deletingLastPathComponent()   // Tests
+        .deletingLastPathComponent()   // repo root
+    let catalogURL = repoRoot
+        .appendingPathComponent("StatsMonitor/Resources/Localizable.xcstrings")
+    let data = try Data(contentsOf: catalogURL)
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    return try #require(json?["strings"] as? [String: [String: Any]], "無法解析 Localizable.xcstrings")
+}
+
+// MARK: - #2 熱門行程表空值 formatter
+
+@Suite("Top Processes Value Formatting")
+@MainActor
+struct TopProcessesValueFormattingTests {
+
+    private func makeMonitor() -> SystemMonitor {
+        SystemMonitor(settings: makeTestSettings())
+    }
+
+    @Test("CPU 欄：nil 顯示破折號、0 與正值顯示數值")
+    func formatsProcessCPUEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessCPU(nil as Double?) == "—")
+        #expect(monitor.formatProcessCPU(0 as Double?) == "0.0%")
+        #expect(monitor.formatProcessCPU(48.2 as Double?) == "48.2%")
+    }
+
+    @Test("GPU 欄：nil 顯示破折號、0 與正值顯示數值")
+    func formatsProcessGPUEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessGPU(nil as Double?) == "—")
+        #expect(monitor.formatProcessGPU(0 as Double?) == "0.0%")
+        #expect(monitor.formatProcessGPU(23.5 as Double?) == "23.5%")
+    }
+
+    @Test("記憶體欄：nil 顯示破折號、0 顯示 0 B")
+    func formatsProcessMemoryEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessMemory(nil as UInt64?) == "—")
+        #expect(monitor.formatProcessMemory(0 as UInt64?) == "0 B")
+        #expect(monitor.formatProcessMemory(1_073_741_824 as UInt64?) == "1.0 GB")
+    }
+
+    @Test("磁碟欄：nil 顯示破折號、0 顯示 0 KB/s")
+    func formatsProcessDiskEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessDisk(nil as Double?) == "—")
+        #expect(monitor.formatProcessDisk(0 as Double?) == "0 KB/s")
+        #expect(monitor.formatProcessDisk(1_048_576 as Double?) == "1.0 MB/s")
+    }
+
+    @Test("網路欄：nil 顯示破折號、0 顯示 0 KB/s")
+    func formatsProcessNetworkEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessNetwork(nil as Double?) == "—")
+        #expect(monitor.formatProcessNetwork(0 as Double?) == "0 KB/s")
+        #expect(monitor.formatProcessNetwork(262_144 as Double?) == "256 KB/s")
+    }
+}
+
+// MARK: - #3 ProcInfo 帶 pid 與名稱解析
+
+@Suite("Top Processes Merge By PID")
+@MainActor
+struct TopProcessesMergeTests {
+
+    @Test("同名不同 pid 不合併")
+    func keepsSameNameDifferentPIDSeparate() {
+        let merged = SystemMonitor.mergeTopProcesses(
+            cpu: [
+                ProcInfo(pid: 101, name: "Google Chrome Helper", cpuPercent: 12, memoryBytes: 100),
+                ProcInfo(pid: 102, name: "Google Chrome Helper", cpuPercent: 4, memoryBytes: 200),
+            ],
+            memory: [],
+            disk: [],
+            network: [],
+            gpu: []
+        )
+        #expect(merged.count == 2)
+        #expect(Set(merged.map(\.pid)) == [101, 102])
+    }
+
+    @Test("同 pid 跨清單合併並取各欄最大值")
+    func mergesSamePIDAcrossLists() {
+        let merged = SystemMonitor.mergeTopProcesses(
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 100)],
+            memory: [ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 734_000_000)],
+            disk: [ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 0, diskReadBPS: 4_194_304)],
+            network: [ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 0, networkInBPS: 262_144)],
+            gpu: [ProcInfo(pid: 601, name: "WindowServer", gpuPercent: 23.5)]
+        )
+        #expect(merged.count == 1)
+        guard let proc = merged.first else { return }
+        #expect(proc.pid == 601)
+        #expect(proc.cpuPercent == 16.2)
+        #expect(proc.memoryBytes == 734_000_000)
+        #expect(proc.diskReadBPS == 4_194_304)
+        #expect(proc.networkInBPS == 262_144)
+        #expect(proc.gpuPercent == 23.5)
+    }
+
+    @Test("只出現在非 CPU 清單的行程，CPU 欄維持無資料而非 0")
+    func keepsCPUNilForProcessMissingFromCPUList() {
+        let merged = SystemMonitor.mergeTopProcesses(
+            cpu: [],
+            memory: [],
+            disk: [],
+            network: [ProcInfo(pid: 777, name: "netdaemon", networkInBPS: 262_144)],
+            gpu: [ProcInfo(pid: 888, name: "WindowServer", gpuPercent: 12.5)]
+        )
+        #expect(merged.count == 2)
+        #expect(merged.allSatisfy { $0.cpuPercent == nil })
+
+        let monitor = SystemMonitor(settings: makeTestSettings())
+        #expect(monitor.formatProcessCPU(merged[0].cpuPercent) == "—")
+    }
+}
+
+@Suite("Process Name Resolution")
+struct ProcessNameResolverTests {
+
+    @Test("能定位 bundle 時顯示 bundle display name")
+    func prefersBundleDisplayName() {
+        #expect(ProcessNameResolver.displayName(
+            bundleDisplayName: "Google Chrome",
+            executableFileName: "Google Chrome Helper",
+            commName: "Google Chrome He"
+        ) == "Google Chrome")
+    }
+
+    @Test("無 bundle 時 fallback 執行檔檔名")
+    func fallsBackToExecutableFileName() {
+        #expect(ProcessNameResolver.displayName(
+            bundleDisplayName: nil,
+            executableFileName: "com.apple.WebKit.WebContent",
+            commName: "com.apple.WebKi"
+        ) == "com.apple.WebKit.WebContent")
+    }
+
+    @Test("bundle 與執行檔路徑都取不到才 fallback p_comm")
+    func fallsBackToCommName() {
+        #expect(ProcessNameResolver.displayName(
+            bundleDisplayName: nil,
+            executableFileName: nil,
+            commName: "2.1.241"
+        ) == "2.1.241")
+    }
+
+    @Test("執行檔路徑往上找到最近的 .app bundle")
+    func findsNearestAppBundleAncestor() {
+        let path = "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper"
+        #expect(ProcessNameResolver.appBundlePath(forExecutablePath: path)
+            == "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/Google Chrome Helper.app")
+    }
+
+    @Test("非 app 執行檔沒有 bundle 路徑")
+    func returnsNilForNonAppExecutable() {
+        #expect(ProcessNameResolver.appBundlePath(forExecutablePath: "/usr/bin/zsh") == nil)
     }
 }
