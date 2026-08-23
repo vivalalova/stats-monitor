@@ -30,7 +30,7 @@ struct GPUDetailView: View {
                 data: Array(monitor.topGPUProcesses.enumerated()),
                 id: \.element.pid
             ) { entry in
-                statRow(verbatim: entry.element.name, value: monitor.formatProcessGPU(entry.element))
+                statRow(verbatim: entry.element.name, value: monitor.formatProcessGPU(entry.element.gpuPercent))
             }
         }
     }

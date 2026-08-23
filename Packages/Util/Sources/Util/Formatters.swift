@@ -34,3 +34,9 @@ public func formatThroughput(_ bytesPerSec: Double) -> String {
     let kb = bytesPerSec / 1_024
     return String(format: "%.0f KB/s", kb)
 }
+
+// MARK: - Empty state
+
+/// 無資料的統一呈現（em dash U+2014）。「無資料」與「真的是 0」要分得開：
+/// 取不到值一律用這個字串，取得到的值（含 0）一律顯示數值。
+public let noDataText = "—"
