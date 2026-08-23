@@ -202,6 +202,17 @@
         }
       }
     },
+    "Card Size" : {
+      "comment" : "Dashboard toolbar slider label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片大小"
+          }
+        }
+      }
+    },
     "Channel" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -671,6 +682,18 @@
         }
       }
     },
+    "Elevated" : {
+      "comment" : "Metric card status capsule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "偏高"
+          }
+        }
+      }
+    },
     "Engines" : {
       "comment" : "GPU detail",
       "extractionState" : "stale",
@@ -774,6 +797,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "硬體"
+          }
+        }
+      }
+    },
+    "High" : {
+      "comment" : "Metric card status capsule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "過高"
           }
         }
       }
@@ -982,6 +1017,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "雜訊"
+          }
+        }
+      }
+    },
+    "Normal" : {
+      "comment" : "Metric card status capsule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正常"
           }
         }
       }
