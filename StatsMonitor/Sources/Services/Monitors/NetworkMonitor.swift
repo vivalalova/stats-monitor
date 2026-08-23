@@ -169,9 +169,9 @@ struct NetworkMonitor: Sendable {
             guard inPerSec > 0 || outPerSec > 0 else { return nil }
 
             return ProcInfo(
+                pid: processPID(from: key),
                 name: processName(from: key),
-                cpuPercent: 0,
-                memoryBytes: 0,
+                memoryBytes: nil,
                 networkInBPS: inPerSec,
                 networkOutBPS: outPerSec
             )
@@ -179,7 +179,7 @@ struct NetworkMonitor: Sendable {
 
         return Array(
             processes
-                .sorted { $0.networkTotalBPS > $1.networkTotalBPS }
+                .sorted { ($0.networkTotalBPS ?? 0) > ($1.networkTotalBPS ?? 0) }
                 .prefix(processCount)
         )
     }
@@ -207,6 +207,14 @@ struct NetworkMonitor: Sendable {
     private static func processName(from key: String) -> String {
         guard let lastDot = key.lastIndex(of: ".") else { return key }
         return String(key[..<lastDot])
+    }
+
+    /// nettop key 是 `名稱.pid`；尾段不是數字（key 格式異常）時回 0 ＝ pid 未知。
+    private static func processPID(from key: String) -> Int {
+        guard let lastDot = key.lastIndex(of: "."),
+              let pid = Int(key[key.index(after: lastDot)...])
+        else { return 0 }
+        return pid
     }
 
     static func readConnectionCounts() -> (tcp: Int, udp: Int)? {

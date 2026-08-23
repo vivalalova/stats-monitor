@@ -3,7 +3,7 @@ import Observation
 import ServiceManagement
 
 enum DashboardGridSizing {
-    static let defaultColumnCount = 4
+    static let defaultColumnCount = 3
     static let columnRange = 3...6
 }
 

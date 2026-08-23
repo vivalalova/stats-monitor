@@ -12,14 +12,15 @@ struct MemoryChartsView: View {
             MetricChartCard(
                 title: "Used",
                 value: monitor.memoryPercent,
-                statusColor: progressColor(monitor.memoryFraction),
+                status: MetricStatus(fraction: monitor.memoryFraction),
                 lines: [ChartSeries(history: monitor.paddedMemoryHistory, color: .cyan)],
                 maxValue: 100
             )
+            // 「可用」是反向指標：正常／偏高／過高 套上去字面與含義相反，
+            // 而記憶體壓力已由上面的「已用」卡呈現，這裡不重複給狀態。
             MetricChartCard(
                 title: "Free",
                 value: monitor.memoryFreeText,
-                statusColor: progressColor(1 - freeMemoryFraction),
                 lines: [ChartSeries(history: monitor.paddedMemoryFreeHistory, color: .green)],
                 maxValue: monitor.memoryChartMaxBytes
             )
@@ -45,7 +46,7 @@ struct MemoryChartsView: View {
                 MetricChartCard(
                     title: "Swap Used",
                     value: monitor.memorySwapUsedText.isEmpty ? "0 B" : monitor.memorySwapUsedText,
-                    statusColor: progressColor(memorySwapFraction),
+                    status: MetricStatus(fraction: memorySwapFraction),
                     lines: [ChartSeries(history: monitor.paddedMemorySwapHistory, color: .pink)],
                     maxValue: monitor.memorySwapChartMaxBytes
                 )
@@ -54,7 +55,6 @@ struct MemoryChartsView: View {
                 MetricChartCard(
                     title: "Page I/O",
                     value: monitor.memoryPagingSummaryText,
-                    statusColor: .yellow,
                     lines: [
                         ChartSeries(history: monitor.paddedMemoryPageInHistory, color: .teal),
                         ChartSeries(history: monitor.paddedMemoryPageOutHistory, color: .orange),
@@ -65,11 +65,6 @@ struct MemoryChartsView: View {
         } footer: {
             TopProcessesTable(settings: settings, monitor: monitor, initialSort: .memory)
         }
-    }
-
-    private var freeMemoryFraction: Double {
-        guard monitor.memoryChartMaxBytes > 0 else { return 0 }
-        return (monitor.paddedMemoryFreeHistory.last ?? 0) / monitor.memoryChartMaxBytes
     }
 
     private var memorySwapFraction: Double {
@@ -94,7 +89,7 @@ struct MemoryChartsView: View {
         MetricChartCard(
             title: title,
             value: value,
-            statusColor: progressColor((history.last ?? 0) / monitor.memoryChartMaxBytes),
+            status: MetricStatus(fraction: (history.last ?? 0) / monitor.memoryChartMaxBytes),
             lines: [ChartSeries(history: history, color: color)],
             maxValue: monitor.memoryChartMaxBytes
         )

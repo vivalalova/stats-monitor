@@ -49,7 +49,7 @@ final class SystemMonitor {
     private(set) var currentPowerSample: PowerUsage?
 
     var topCPUProcesses: [ProcInfo] = []
-    var topGPUProcesses: [GPUProcessInfo] = []
+    var topGPUProcesses: [ProcInfo] = []
     var topMemoryProcesses: [ProcInfo] = []
     var topDiskProcesses: [ProcInfo] = []
     var topNetworkProcesses: [ProcInfo] = []
@@ -73,6 +73,7 @@ final class SystemMonitor {
     private var fanMonitor: FanMonitor
 
     private var isNetworkProcessPollInFlight = false
+    private var isGPUProcessResolveInFlight = false
     private var isProcessPollInFlight = false
     private var isRunning = false
 
@@ -162,7 +163,7 @@ final class SystemMonitor {
             displayInfo = displayInfoMonitor.sample()
         }
         pollTick &+= 1
-        topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: intervalSeconds, processCount: count)
+        resolveGPUProcesses(gpuMonitor.sampleTopApps(intervalSeconds: intervalSeconds, processCount: count))
 
         pollNetworkProcesses(processCount: count)
         pollProcessDetails(processCount: count)
@@ -192,6 +193,22 @@ final class SystemMonitor {
         }
     }
 
+    /// GPU 取樣本身要留在 main actor（monitor 需保留上一輪 counter 算 delta），
+    /// 名稱／icon 解析則與其他 top list 一樣丟背景，避免 main actor 付 `proc_pidpath` 與讀 Info.plist 的成本。
+    private func resolveGPUProcesses(_ samples: [GPUProcessInfo]) {
+        guard !isGPUProcessResolveInFlight else { return }
+        isGPUProcessResolveInFlight = true
+        let pending = samples.map { ProcInfo(gpu: $0) }
+        Task { [weak self] in
+            guard let self else { return }
+            let processes = await Task.detached(priority: .utility) {
+                ProcessIdentityCache.shared.resolved(pending)
+            }.value
+            self.isGPUProcessResolveInFlight = false
+            self.topGPUProcesses = processes
+        }
+    }
+
     private func pollNetworkProcesses(processCount: Int) {
         guard !isNetworkProcessPollInFlight else { return }
         isNetworkProcessPollInFlight = true
@@ -201,7 +218,8 @@ final class SystemMonitor {
             let processes = await Task.detached(priority: .utility) {
                 let monitor = previousMonitor
                 let processes = monitor.sampleTopProcesses(processCount: processCount)
-                return processes
+                // 名稱／icon 路徑解析留在背景，main actor 只拿解析好的結果。
+                return ProcessIdentityCache.shared.resolved(processes)
             }.value
             self.isNetworkProcessPollInFlight = false
             self.topNetworkProcesses = processes
@@ -221,11 +239,21 @@ final class SystemMonitor {
                 guard let snapshot = ProcessCountersReader.sample() else {
                     return (cpu: [ProcInfo](), memory: [ProcInfo](), disk: [ProcInfo](), power: [ProcInfo]())
                 }
+                // 名稱／icon 路徑解析留在背景，main actor 只拿解析好的結果。
+                let identities = ProcessIdentityCache.shared
+                // CPU 取樣一輪只能做一次（sampler 要留 ticks 算下一輪 delta），所以先拿全表：
+                // 顯示用的 CPU top N 是它的 prefix，高耗能行程表借 CPU% 用的是全表。
+                // 全表刻意不過 `identities.resolved` —— 快取只有 512 格而常駐行程 400–600，
+                // 整表解析會逼快取每輪清空重建；合併只借 pid → cpuPercent，不需要名稱與 icon。
+                let cpuAll = cpuMonitor.sampleAllProcesses(from: snapshot)
+                let power = identities.resolved(
+                    powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)
+                )
                 return (
-                    cpu: cpuMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
-                    memory: memoryMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
-                    disk: diskMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
-                    power: powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)
+                    cpu: identities.resolved(Array(cpuAll.prefix(processCount))),
+                    memory: identities.resolved(memoryMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)),
+                    disk: identities.resolved(diskMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)),
+                    power: SystemMonitor.mergePowerProcesses(power: power, cpu: cpuAll)
                 )
             }.value
             self.isProcessPollInFlight = false
@@ -328,5 +356,82 @@ final class SystemMonitor {
             power: MetricHistory(capacity: capacity),
             fans: MetricHistory(capacity: capacity)
         )
+    }
+}
+
+// MARK: - Top Processes 合併
+
+/// 熱門行程表的資料推導：五份 top list 併成一列一行程。放在 store 側，View 只負責排序與呈現。
+extension SystemMonitor {
+    /// 以 pid 為合併鍵（同名不同 pid 不併），各數值欄取各 list 的最大值。
+    /// pid 取不到的列（pid 0，只來自 nettop key 解析失敗）一律以名稱自成一列：
+    /// 有 pid 的列名稱已被 `ProcessIdentityCache` 換成 bundle display name，
+    /// 與 pid 0 列身上的原始 nettop 名不同源，拿名稱互併只會誤併到不相干的行程。
+    static func mergeTopProcesses(
+        cpu: [ProcInfo],
+        memory: [ProcInfo],
+        disk: [ProcInfo],
+        network: [ProcInfo],
+        gpu: [ProcInfo]
+    ) -> [ProcInfo] {
+        let all = cpu + memory + disk + network + gpu
+        var merged: [String: ProcInfo] = [:]
+        var order: [String] = []
+        func absorb(_ proc: ProcInfo, key: String) {
+            if let existing = merged[key] {
+                merged[key] = existing.merged(with: proc)
+            } else {
+                merged[key] = proc
+                order.append(key)
+            }
+        }
+
+        // 第一輪：有 pid 的列先定錨。
+        for proc in all where proc.pid > 0 {
+            absorb(proc, key: proc.mergeKey)
+        }
+
+        // 第二輪：沒有 pid 的列以名稱自成一列。
+        for proc in all where proc.pid == 0 {
+            absorb(proc, key: proc.mergeKey)
+        }
+
+        return order.compactMap { merged[$0] }
+    }
+
+    /// 高耗能行程表的 CPU% 欄：`PowerMonitor` 產出的列本來就沒有 CPU%，靠 pid 對上 CPU list 才有值。
+    /// 與 `mergeTopProcesses` 規則不同 —— 這裡 power list 是主，CPU list 只借出 `cpuPercent` 一欄：
+    /// 不取兩邊最大值、不補進只在 CPU list 的行程、不改名，所以另立契約而非重用 `ProcInfo.merged(with:)`。
+    /// `cpu` 要餵該輪的**全表**（`CPUMonitor.sampleAllProcesses`）而非顯示用的 top N：
+    /// 只餵 top N 會讓進 power 榜但沒進 CPU 前 N 名的行程顯示成量不到，而它的 CPU% 明明算得出來。
+    /// pid 不在全表（前一輪沒見過或這輪無 tick 增量）＝這一輪真的量不到，一律回 nil（顯示破折號），
+    /// 不留 power 列身上的舊值。
+    /// 取樣在背景（`Task.detached`）做完就併，全表不進 main actor，所以 `nonisolated`。
+    nonisolated static func mergePowerProcesses(power: [ProcInfo], cpu: [ProcInfo]) -> [ProcInfo] {
+        // pid 同源於一份 `ProcessCountersSnapshot`，本來就唯一；真出現重複代表上游壞了，讓它炸。
+        let cpuByPID = Dictionary(uniqueKeysWithValues: cpu.map { ($0.pid, $0) })
+        return power.map { row in
+            var merged = row
+            merged.cpuPercent = cpuByPID[row.pid]?.cpuPercent
+            return merged
+        }
+    }
+
+    /// 比例條分母：該欄有資料列的最大值；全欄無資料時回 0。
+    static func processColumnMaximum(_ values: [Double?]) -> Double {
+        values.compactMap { $0 }.max() ?? 0
+    }
+
+    /// 比例條長度（0…1）。無資料、非正值或分母為 0 時回 0 ＝不畫 bar。
+    static func processBarFraction(_ value: Double?, columnMaximum: Double) -> Double {
+        guard let value, value > 0, columnMaximum > 0 else { return 0 }
+        return min(value / columnMaximum, 1)
+    }
+}
+
+private extension ProcInfo {
+    /// GPU top list 只帶 GPU 使用率，其餘欄位在合併時由別的 list 補上。
+    init(gpu: GPUProcessInfo) {
+        self.init(pid: gpu.pid, name: gpu.name, gpuPercent: gpu.utilizationPercent)
     }
 }

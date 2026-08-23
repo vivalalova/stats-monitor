@@ -191,12 +191,9 @@ func compactRows<Data: RandomAccessCollection, ID: Hashable, Content: View>(
     }
 }
 
+/// 門檻與配色都住在 `MetricStatus`，這裡只做轉接，避免同一組門檻兩處定義。
 func progressColor(_ fraction: Double) -> Color {
-    switch fraction {
-    case ..<0.6:  .green
-    case ..<0.8:  .orange
-    default:      .red
-    }
+    MetricStatus(fraction: fraction).color
 }
 
 #Preview("BarView", traits: .sizeThatFitsLayout) {

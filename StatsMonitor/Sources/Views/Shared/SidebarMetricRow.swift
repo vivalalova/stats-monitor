@@ -3,27 +3,25 @@ import SwiftUI
 struct SidebarMetricRow: View {
     let title: String
     let value: String
-    let statusColor: Color
     let lines: [ChartSeries]
     let maxValue: Double
+    var isSelected: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
+        HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(LocalizedStringKey(title))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Spacer(minLength: 4)
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 6, height: 6)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(value)
+                    .font(.system(size: 11))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            Text(value)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             LineChartView(
                 lines: lines,
                 maxValue: maxValue,
@@ -31,13 +29,35 @@ struct SidebarMetricRow: View {
                 cornerRadius: 0,
                 showsBackground: false
             )
+            .frame(width: SidebarRowLayout.chartWidth)
             .frame(maxHeight: .infinity)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .frame(height: 64, alignment: .topLeading)
+        .frame(height: SidebarRowLayout.height)
         .frame(maxWidth: .infinity)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
+        .sidebarSelection(isSelected)
+    }
+}
+
+enum SidebarRowLayout {
+    static let height: CGFloat = 48
+    static let chartWidth: CGFloat = 48
+    static let cornerRadius: CGFloat = 8
+}
+
+extension View {
+    /// sidebar 選取態的唯一樣式來源：chart 列與文字導覽列共用同一套 Liquid Glass 語言。
+    @ViewBuilder
+    func sidebarSelection(_ isSelected: Bool) -> some View {
+        if isSelected {
+            glassEffect(
+                .regular.tint(.accentColor.opacity(0.25)).interactive(),
+                in: RoundedRectangle(cornerRadius: SidebarRowLayout.cornerRadius)
+            )
+        } else {
+            self
+        }
     }
 }
 
@@ -47,17 +67,16 @@ struct SidebarMetricRow: View {
         SidebarMetricRow(
             title: "CPU",
             value: "29.1%",
-            statusColor: .green,
             lines: [ChartSeries(history: history, color: .blue)],
-            maxValue: 100
+            maxValue: 100,
+            isSelected: true
         )
         SidebarMetricRow(
             title: "Network",
             value: "↓5 KB/s",
-            statusColor: .blue,
             lines: [
-                ChartSeries(history: history, color: .green),
-                ChartSeries(history: Array(history.reversed()), color: .red)
+                ChartSeries(history: history, color: NetworkChartPalette.inbound),
+                ChartSeries(history: Array(history.reversed()), color: NetworkChartPalette.outbound),
             ],
             maxValue: 100
         )

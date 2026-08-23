@@ -21,13 +21,20 @@ struct LineChartView: View {
                     return CGPoint(x: x, y: y)
                 }
 
-                // Fill area under the line
+                // Fill area under the line：線色 → 透明的垂直漸層
                 var fillPath = Path()
                 fillPath.move(to: CGPoint(x: points[0].x, y: size.height))
                 for pt in points { fillPath.addLine(to: pt) }
                 fillPath.addLine(to: CGPoint(x: points.last!.x, y: size.height))
                 fillPath.closeSubpath()
-                context.fill(fillPath, with: .color(line.color.opacity(0.15)))
+                context.fill(
+                    fillPath,
+                    with: .linearGradient(
+                        Gradient(colors: [line.color.opacity(0.35), line.color.opacity(0)]),
+                        startPoint: CGPoint(x: 0, y: 0),
+                        endPoint: CGPoint(x: 0, y: size.height)
+                    )
+                )
 
                 // Stroke the line
                 var linePath = Path()

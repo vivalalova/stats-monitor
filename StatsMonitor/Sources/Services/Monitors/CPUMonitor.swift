@@ -81,8 +81,11 @@ struct CPUMonitor: Sendable {
         )
     }
 
-    func sampleTopProcesses(from snapshot: ProcessCountersSnapshot, processCount: Int = 10) -> [ProcInfo] {
-        processSampler.sampleTopProcesses(from: snapshot, processCount: processCount)
+    /// 該輪的 CPU 全表（依 CPU% 遞減），不截斷。
+    /// 取樣有副作用（`CPUProcessSampler` 要留這一輪的 ticks 算下一輪 delta），一輪只能呼叫一次 ——
+    /// 所以這一次就要拿全表：top N 由呼叫端 `prefix`，需要 pid → CPU% 對照的（高耗能行程表）拿全表。
+    func sampleAllProcesses(from snapshot: ProcessCountersSnapshot) -> [ProcInfo] {
+        processSampler.sampleAllProcesses(from: snapshot)
     }
 
     static func cpuTickDelta(current: UInt32, previous: UInt32) -> UInt64 {
@@ -107,6 +110,22 @@ struct CPUMonitor: Sendable {
         processCount: Int,
         nanosecondsPerTick: Double = machNanosecondsPerTick
     ) -> [ProcInfo] {
+        Array(
+            computeAllProcesses(
+                snapshot: snapshot,
+                previousSnapshots: previousSnapshots,
+                nanosecondsPerTick: nanosecondsPerTick
+            )
+            .prefix(processCount)
+        )
+    }
+
+    /// 全表：所有算得出 CPU% 的行程（依 CPU% 遞減）。前一輪沒見過、或這輪沒有 tick 增量的行程算不出來，不入表。
+    static func computeAllProcesses(
+        snapshot: ProcessCountersSnapshot,
+        previousSnapshots: [Int32: ProcessSnapshot],
+        nanosecondsPerTick: Double = machNanosecondsPerTick
+    ) -> [ProcInfo] {
         let processes = snapshot.entries.compactMap { entry -> ProcInfo? in
             guard let previous = previousSnapshots[entry.pid] else { return nil }
             let elapsed = snapshot.date.timeIntervalSince(previous.date)
@@ -117,13 +136,14 @@ struct CPUMonitor: Sendable {
 
             let deltaNanoseconds = deltaTicks * nanosecondsPerTick
             return ProcInfo(
+                pid: Int(entry.pid),
                 name: entry.name,
                 cpuPercent: (deltaNanoseconds / 1_000_000_000.0) / elapsed * 100,
                 memoryBytes: entry.memoryBytes
             )
         }
 
-        return Array(processes.sorted { $0.cpuPercent > $1.cpuPercent }.prefix(processCount))
+        return processes.sorted { ($0.cpuPercent ?? 0) > ($1.cpuPercent ?? 0) }
     }
 
     // MARK: - Frequency
@@ -154,11 +174,10 @@ struct CPUMonitor: Sendable {
 private final class CPUProcessSampler: @unchecked Sendable {
     private var previousSnapshots: [Int32: CPUMonitor.ProcessSnapshot] = [:]
 
-    func sampleTopProcesses(from snapshot: ProcessCountersSnapshot, processCount: Int) -> [ProcInfo] {
-        let processes = CPUMonitor.computeTopProcesses(
+    func sampleAllProcesses(from snapshot: ProcessCountersSnapshot) -> [ProcInfo] {
+        let processes = CPUMonitor.computeAllProcesses(
             snapshot: snapshot,
-            previousSnapshots: previousSnapshots,
-            processCount: processCount
+            previousSnapshots: previousSnapshots
         )
         previousSnapshots = Dictionary(
             uniqueKeysWithValues: snapshot.entries.map { entry in

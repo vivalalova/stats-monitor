@@ -13,7 +13,6 @@ struct GPUEnginesView: View {
                 MetricChartCard(
                     title: "Frequency",
                     value: monitor.gpuFrequencyText,
-                    statusColor: .orange,
                     lines: [ChartSeries(history: monitor.paddedGPUFrequencyHistory, color: .orange)],
                     maxValue: max(monitor.gpuFrequencyMaxHz, 1)
                 )
@@ -22,7 +21,6 @@ struct GPUEnginesView: View {
                 MetricChartCard(
                     title: "Media Engine",
                     value: monitor.gpuMediaEnginePowerText,
-                    statusColor: .red,
                     lines: [ChartSeries(history: monitor.paddedGPUMediaEngineHistory, color: .red)],
                     maxValue: max(monitor.paddedGPUMediaEngineHistory.max() ?? 0, 0.5)
                 )
@@ -31,7 +29,7 @@ struct GPUEnginesView: View {
                 MetricChartCard(
                     title: entry.name,
                     value: engineValue(entry.name),
-                    statusColor: progressColor((monitor.gpuEngines[entry.name] ?? 0) / 100),
+                    status: MetricStatus(fraction: (monitor.gpuEngines[entry.name] ?? 0) / 100),
                     lines: [ChartSeries(history: entry.history, color: .purple)],
                     maxValue: 100
                 )

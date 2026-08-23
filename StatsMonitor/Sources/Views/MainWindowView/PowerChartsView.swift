@@ -12,21 +12,19 @@ struct PowerChartsView: View {
             MetricChartCard(
                 title: "Total",
                 value: monitor.powerText,
-                statusColor: powerStatusColor(monitor.power?.totalWatts ?? 0),
+                status: MetricStatus(watts: monitor.power?.totalWatts ?? 0),
                 lines: powerChartLines(monitor: monitor),
                 maxValue: powerChartMax
             )
             MetricChartCard(
                 title: "CPU",
                 value: monitor.cpuPowerText,
-                statusColor: .orange,
                 lines: [ChartSeries(history: monitor.paddedCPUPowerHistory, color: .orange)],
                 maxValue: powerChartMax
             )
             MetricChartCard(
                 title: "GPU",
                 value: monitor.gpuPowerText,
-                statusColor: .purple,
                 lines: [ChartSeries(history: monitor.paddedGPUPowerHistory, color: .purple)],
                 maxValue: powerChartMax
             )
@@ -34,7 +32,6 @@ struct PowerChartsView: View {
                 MetricChartCard(
                     title: "Media Engine",
                     value: monitor.gpuMediaEnginePowerText,
-                    statusColor: .pink,
                     lines: [ChartSeries(history: monitor.paddedGPUMediaEngineHistory, color: .pink)],
                     maxValue: powerChartMax
                 )
@@ -43,7 +40,6 @@ struct PowerChartsView: View {
                 MetricChartCard(
                     title: "External Input",
                     value: monitor.externalInputPowerText,
-                    statusColor: .blue,
                     lines: [ChartSeries(history: monitor.paddedExternalInputPowerHistory, color: .blue)],
                     maxValue: powerChartMax
                 )
@@ -52,7 +48,6 @@ struct PowerChartsView: View {
                 MetricChartCard(
                     title: "Battery Flow",
                     value: monitor.batteryFlowPowerText,
-                    statusColor: batteryFlowStatusColor,
                     lines: [ChartSeries(history: monitor.paddedBatteryFlowPowerHistory, color: .green)],
                     maxValue: powerChartMax
                 )
@@ -76,17 +71,6 @@ struct PowerChartsView: View {
         )
     }
 
-    private var batteryFlowStatusColor: Color {
-        let batteryMilliWatts = monitor.power?.batteryMilliWatts ?? 0
-        switch batteryMilliWatts {
-        case let value where value > 0:
-            return .green
-        case let value where value < 0:
-            return .red
-        default:
-            return .secondary
-        }
-    }
 }
 
 private struct TopPowerProcessesTable: View {
@@ -105,11 +89,11 @@ private struct TopPowerProcessesTable: View {
                             Text("Name")
                             Spacer()
                             Text("Impact")
-                                .frame(width: 74, alignment: .trailing)
+                                .frame(width: ProcessColumnWidth.impact, alignment: .trailing)
                             Text("CPU%")
-                                .frame(width: 60, alignment: .trailing)
+                                .frame(width: ProcessColumnWidth.cpu, alignment: .trailing)
                             Text("Memory")
-                                .frame(width: 80, alignment: .trailing)
+                                .frame(width: ProcessColumnWidth.memory, alignment: .trailing)
                         }
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
@@ -118,28 +102,38 @@ private struct TopPowerProcessesTable: View {
 
                         Divider()
 
-                        ForEach(monitor.topPowerProcesses, id: \.name) { process in
+                        ForEach(monitor.topPowerProcesses, id: \.mergeKey) { process in
                             HStack {
-                                Text(process.name)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
+                                ProcessNameCell(process: process)
                                 Spacer()
-                                Text(monitor.formatProcessPower(process))
-                                    .frame(width: 74, alignment: .trailing)
-                                Text(monitor.formatProcessCPU(process.cpuPercent))
-                                    .frame(width: 60, alignment: .trailing)
-                                Text(monitor.formatProcessMemory(process.memoryBytes))
-                                    .frame(width: 80, alignment: .trailing)
+                                // powerImpact 非 optional，這一欄永遠有值。
+                                ProcessValueCell(
+                                    text: monitor.formatProcessPower(process),
+                                    width: ProcessColumnWidth.impact,
+                                    hasValue: true
+                                )
+                                ProcessValueCell(
+                                    text: monitor.formatProcessCPU(process.cpuPercent),
+                                    width: ProcessColumnWidth.cpu,
+                                    hasValue: process.cpuPercent != nil
+                                )
+                                ProcessValueCell(
+                                    text: monitor.formatProcessMemory(process.memoryBytes),
+                                    width: ProcessColumnWidth.memory,
+                                    hasValue: process.memoryBytes != nil
+                                )
                             }
                             .font(.system(size: 12))
                             .monospacedDigit()
                             .padding(.vertical, 4)
                             .padding(.horizontal, 8)
                             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 4))
+                            .processTerminationContextMenu(for: process)
                         }
                     }
                 }
             }
+            .prewarmProcessIcons(monitor.topPowerProcesses)
         }
     }
 }

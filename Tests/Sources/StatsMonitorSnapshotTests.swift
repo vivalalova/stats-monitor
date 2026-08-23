@@ -1,5 +1,6 @@
 import AppKit
 import SnapshotTesting
+import SwiftUI
 import Testing
 @testable import StatsMonitor
 
@@ -168,17 +169,48 @@ struct StatsMonitorSnapshotTests {
     @Test("Quit confirmation alert renders a stable screenshot")
     func quitConfirmationAlertScreenshot() {
         let alert = QuitConfirmationAlertFactory.makeAlert(locale: Locale(identifier: "en"))
-        alert.icon = NSImage(size: NSSize(width: 64, height: 64), flipped: false) { rect in
-            NSColor(srgbRed: 0.0, green: 0.478, blue: 1.0, alpha: 1.0).setFill()
-            NSBezierPath(roundedRect: rect, xRadius: 12, yRadius: 12).fill()
-            return true
-        }
+        alert.icon = deterministicAlertIcon()
         let view = alertSnapshotView(alert)
 
         assertSnapshot(
             of: view,
             as: toleratedImageSnapshot(size: view.frame.size),
             named: "quit-confirmation-alert",
+            record: snapshotRecordMode
+        )
+    }
+
+    @Test("Force quit confirmation alert renders a stable screenshot")
+    func forceQuitConfirmationAlertScreenshot() {
+        let alert = ProcessTerminationAlertFactory.makeForceQuitConfirmation(
+            processName: "Xcode",
+            locale: Locale(identifier: "en")
+        )
+        alert.icon = deterministicAlertIcon()
+        let view = alertSnapshotView(alert)
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "force-quit-confirmation-alert",
+            record: snapshotRecordMode
+        )
+    }
+
+    @Test("Process termination failure alert renders a stable screenshot")
+    func processTerminationFailureAlertScreenshot() {
+        let alert = ProcessTerminationAlertFactory.makeFailureAlert(
+            processName: "Xcode",
+            error: .permissionDenied,
+            locale: Locale(identifier: "en")
+        )
+        alert.icon = deterministicAlertIcon()
+        let view = alertSnapshotView(alert)
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "process-termination-failure-alert",
             record: snapshotRecordMode
         )
     }
@@ -485,6 +517,50 @@ struct StatsMonitorSnapshotTests {
             of: view,
             as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-power-charging",
+            record: snapshotRecordMode
+        )
+    }
+
+    /// 高耗能行程表要與 Top Processes 表同款：名稱左側有 app icon，CPU% 由 pid 併 CPU list 補上。
+    /// icon 在 snapshot 裡一律是通用執行檔 icon（`ProcessIconCache` 的 `prewarm` 掛在 `.task`，
+    /// 同步 render 不會跑），所以這張圖驗的是 icon 欄存不存在與版面，不是 icon 圖樣本身。
+    @Test("Power tab top energy table shows icons and CPU% merged from the CPU list")
+    func powerMainWindowProcessIconsScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        seedMonitorSnapshotData(into: snapshotContext.monitor)
+        let monitor = snapshotContext.monitor
+        // `PowerMonitor` 產出的列沒有 CPU%（`cpuPercent` 為 nil），這裡照實模擬；
+        // backupd 刻意不在該輪 CPU 全表（前一輪沒見過或無 tick 增量＝真的量不到），
+        // CPU% 應顯示破折號而非 0.0%。
+        monitor.topPowerProcesses = SystemMonitor.mergePowerProcesses(
+            power: [
+                ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 734_000_000, powerImpact: 45.1),
+                ProcInfo(pid: 1001, name: "Xcode", memoryBytes: 1_824_000_000, powerImpact: 14.1),
+                ProcInfo(pid: 2002, name: "backupd", memoryBytes: 62_000_000, powerImpact: 9.4),
+            ],
+            cpu: monitor.topCPUProcesses
+        )
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .power,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "main-window-power-process-icons",
             record: snapshotRecordMode
         )
     }
@@ -800,6 +876,66 @@ struct StatsMonitorSnapshotTests {
     func snapshotRecordModeAllowsExplicitRerecording() {
         #expect(resolvedSnapshotRecordMode(environment: ["RECORD_SNAPSHOTS": "1"]) == .all)
     }
+
+    @Test("Top processes table renders zero and missing values consistently")
+    func topProcessesTableEmptyValuesScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        let monitor = snapshotContext.monitor
+        // 一列有完整數值、一列全 0、一列只有 CPU、一列無 CPU 資料
+        monitor.topCPUProcesses = [
+            ProcInfo(
+                pid: 1001,
+                name: "Xcode",
+                cpuPercent: 48.2,
+                memoryBytes: 1_824_000_000,
+                diskReadBPS: 2_097_152,
+                diskWriteBPS: 1_048_576,
+                networkInBPS: 1_572_864,
+                networkOutBPS: 196_608
+            ),
+            ProcInfo(
+                pid: 1002,
+                name: "ZeroValues",
+                cpuPercent: 0,
+                memoryBytes: 0,
+                diskReadBPS: 0,
+                diskWriteBPS: 0,
+                networkInBPS: 0,
+                networkOutBPS: 0
+            ),
+            ProcInfo(pid: 1003, name: "CPUOnly", cpuPercent: 3.4, memoryBytes: 12_582_912),
+            // 只出現在網路 list 的行程：CPU／GPU／磁碟欄皆無資料，CPU% 應顯示破折號而非 0.0%
+            ProcInfo(pid: 1004, name: "NetworkOnly", networkInBPS: 262_144, networkOutBPS: 131_072),
+        ]
+
+        let view = topProcessesTableSnapshotView(
+            settings: snapshotContext.settings,
+            monitor: monitor
+        )
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.fittingSize),
+            named: "top-processes-table-empty-values",
+            record: snapshotRecordMode
+        )
+    }
+}
+
+@MainActor
+private func topProcessesTableSnapshotView(
+    settings: AppSettings,
+    monitor: SystemMonitor,
+    width: CGFloat = 600
+) -> NSView {
+    let view = NSHostingView(
+        rootView: TopProcessesTable(settings: settings, monitor: monitor, initialSort: .cpu)
+            .frame(width: width)
+            .padding()
+    )
+    let size = view.fittingSize
+    view.frame = CGRect(origin: .zero, size: size)
+    return view
 }
 
 @MainActor
@@ -858,6 +994,16 @@ private var snapshotRecordMode: SnapshotTestingConfiguration.Record {
     resolvedSnapshotRecordMode(environment: ProcessInfo.processInfo.environment)
 }
 
+/// Alerts normally carry the app icon, which renders differently across build configurations.
+/// Every alert snapshot swaps in this flat square so the reference only pins the alert layout.
+private func deterministicAlertIcon() -> NSImage {
+    NSImage(size: NSSize(width: 64, height: 64), flipped: false) { rect in
+        NSColor(srgbRed: 0.0, green: 0.478, blue: 1.0, alpha: 1.0).setFill()
+        NSBezierPath(roundedRect: rect, xRadius: 12, yRadius: 12).fill()
+        return true
+    }
+}
+
 /// Single source of truth for the image comparison tolerance used by every snapshot assertion
 /// below. Exact pixel match flakes across runs/machines due to GPU/anti-aliasing rendering jitter
 /// (~0.5% pixel diff, max channel delta 86 observed) even with identical fixture data.
@@ -876,7 +1022,7 @@ private func seedSettingsValues(into settings: AppSettings) {
     settings.pollInterval = 5
     settings.historyCapacity = 300
     settings.processCount = 15
-    settings.dashboardColumns = 5
+    settings.dashboardColumns = AppSettings.defaultDashboardColumns
     settings.launchAtLogin = true
     settings.showCPU = true
     settings.showGPU = true
@@ -987,28 +1133,28 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         refreshRateHz: 120
     ))
     monitor.topCPUProcesses = [
-        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000),
-        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000),
+        ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000),
+        ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000),
+        ProcInfo(pid: 1002, name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000),
     ]
     monitor.topMemoryProcesses = monitor.topCPUProcesses
     monitor.topGPUProcesses = [
-        GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 23.5, commandQueueCount: 4),
-        GPUProcessInfo(pid: 1235, name: "Safari", utilizationPercent: 9.8, commandQueueCount: 2),
-        GPUProcessInfo(pid: 1232, name: "Fork", utilizationPercent: 4.1, commandQueueCount: 1),
+        ProcInfo(pid: 601, name: "WindowServer", gpuPercent: 23.5),
+        ProcInfo(pid: 1235, name: "Safari", gpuPercent: 9.8),
+        ProcInfo(pid: 1232, name: "Fork", gpuPercent: 4.1),
     ]
     monitor.topDiskProcesses = [
-        ProcInfo(name: "mdworker", cpuPercent: 1.2, memoryBytes: 120_000_000, diskReadBPS: 4_194_304, diskWriteBPS: 524_288),
-        ProcInfo(name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000, diskReadBPS: 2_097_152, diskWriteBPS: 1_048_576),
+        ProcInfo(pid: 1003, name: "mdworker", cpuPercent: 1.2, memoryBytes: 120_000_000, diskReadBPS: 4_194_304, diskWriteBPS: 524_288),
+        ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000, diskReadBPS: 2_097_152, diskWriteBPS: 1_048_576),
     ]
     monitor.topNetworkProcesses = [
-        ProcInfo(name: "Safari", cpuPercent: 3.1, memoryBytes: 640_000_000, networkInBPS: 1_572_864, networkOutBPS: 196_608),
-        ProcInfo(name: "curl", cpuPercent: 0.4, memoryBytes: 18_000_000, networkInBPS: 262_144, networkOutBPS: 131_072),
+        ProcInfo(pid: 1235, name: "Safari", cpuPercent: 3.1, memoryBytes: 640_000_000, networkInBPS: 1_572_864, networkOutBPS: 196_608),
+        ProcInfo(pid: 1004, name: "curl", cpuPercent: 0.4, memoryBytes: 18_000_000, networkInBPS: 262_144, networkOutBPS: 131_072),
     ]
     monitor.topPowerProcesses = [
-        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000, powerImpact: 45.1),
-        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, powerImpact: 14.1),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, powerImpact: 12.7),
+        ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000, powerImpact: 45.1),
+        ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, powerImpact: 14.1),
+        ProcInfo(pid: 1002, name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, powerImpact: 12.7),
     ]
 }
 
@@ -1047,16 +1193,16 @@ private func seedGPUHeavyMonitorSnapshotData(into monitor: SystemMonitor) {
     monitor.record(disk: DiskUsage(used: 400_000_000_000, total: 1_000_000_000_000, readBPS: 0, writeBPS: 0))
     monitor.record(network: NetworkUsage(bytesInPerSec: 0, bytesOutPerSec: 0, interfaces: []))
     monitor.topCPUProcesses = [
-        ProcInfo(name: "Xcode", cpuPercent: 42.1, memoryBytes: 1_600_000_000),
-        ProcInfo(name: "clang", cpuPercent: 18.4, memoryBytes: 320_000_000),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 6.7, memoryBytes: 90_000_000),
+        ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 42.1, memoryBytes: 1_600_000_000),
+        ProcInfo(pid: 1005, name: "clang", cpuPercent: 18.4, memoryBytes: 320_000_000),
+        ProcInfo(pid: 1002, name: "StatsMonitor", cpuPercent: 6.7, memoryBytes: 90_000_000),
     ]
     monitor.topMemoryProcesses = monitor.topCPUProcesses
     monitor.topGPUProcesses = [
-        GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 34.8, commandQueueCount: 4),
-        GPUProcessInfo(pid: 2050, name: "com.apple.WebKit", utilizationPercent: 21.2, commandQueueCount: 3),
-        GPUProcessInfo(pid: 1240, name: "Finder", utilizationPercent: 6.5, commandQueueCount: 1),
-        GPUProcessInfo(pid: 1268, name: "com.apple.dock.e", utilizationPercent: 3.1, commandQueueCount: 1),
+        ProcInfo(pid: 601, name: "WindowServer", gpuPercent: 34.8),
+        ProcInfo(pid: 2050, name: "com.apple.WebKit", gpuPercent: 21.2),
+        ProcInfo(pid: 1240, name: "Finder", gpuPercent: 6.5),
+        ProcInfo(pid: 1268, name: "com.apple.dock.e", gpuPercent: 3.1),
     ]
     monitor.topDiskProcesses = []
     monitor.topNetworkProcesses = []

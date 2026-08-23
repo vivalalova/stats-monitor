@@ -1,6 +1,50 @@
 import Foundation
 import AppKit
+import SwiftUI
 import Util
+
+/// 指標的健康程度。只有真的由數值推導得出狀態的卡片才給，裝飾色卡片一律不給（不顯示 capsule）。
+/// 語意是型別自己帶的，不從顏色反推 —— 顏色分不出「語意狀態色」與「純裝飾線色」。
+enum MetricStatus: Sendable {
+    case normal
+    case elevated
+    case high
+
+    /// 使用率／佔比（0…1）的門檻，也是 `progressColor` 的唯一來源。
+    init(fraction: Double) {
+        switch fraction {
+        case ..<0.6: self = .normal
+        case ..<0.8: self = .elevated
+        default:     self = .high
+        }
+    }
+
+    /// 功耗（W）的門檻。
+    init(watts: Double) {
+        switch watts {
+        case ..<10: self = .normal
+        case ..<30: self = .elevated
+        default:    self = .high
+        }
+    }
+
+    /// 計算屬性而非 `static let`：`LocalizedStringKey` 非 Sendable，存成常數在 Swift 6 是錯誤。
+    var caption: LocalizedStringKey {
+        switch self {
+        case .normal:   "Normal"
+        case .elevated: "Elevated"
+        case .high:     "High"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .normal:   .green
+        case .elevated: .orange
+        case .high:     .red
+        }
+    }
+}
 
 @MainActor
 extension SystemMonitor {
@@ -241,7 +285,7 @@ extension SystemMonitor {
     }
     var wifiChannelText: String {
         guard let link = wifiLink, let number = link.channelNumber else { return "" }
-        guard let band = link.band, band != "—" else { return "Channel \(number)" }
+        guard let band = link.band else { return "Channel \(number)" }
         return "Channel \(number) (\(band))"
     }
     var wifiAddressText: String {
@@ -409,7 +453,7 @@ extension SystemMonitor {
         return String(format: "%.1f°C", thermal.cpuTemperature)
     }
     var gpuTempText: String {
-        guard let gpuTemp = thermal?.gpuTemperature else { return "—" }
+        guard let gpuTemp = thermal?.gpuTemperature else { return noDataText }
         return String(format: "%.1f°C", gpuTemp)
     }
     var paddedCPUTempHistory: [Double] { padded(thermalSamples.values.map(\.cpuTemperature), capacity: thermalSamples.capacity) }
@@ -464,15 +508,9 @@ extension SystemMonitor {
         displayInfo.widthPixels > 0 && displayInfo.heightPixels > 0
     }
 
-    func formatProcessCPU(_ percent: Double) -> String { formatPercent(percent) }
-    func formatProcessGPU(_ process: GPUProcessInfo) -> String { formatPercent(process.utilizationPercent) }
-    func formatProcessGPU(_ percent: Double) -> String { formatPercent(percent) }
-    func formatProcessMemory(_ bytes: UInt64) -> String { formatBytes(bytes) }
-    func formatProcessDisk(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }
     func formatNetworkInterface(_ interface: NetworkInterfaceUsage) -> String {
         "↓\(formatThroughput(interface.bytesInPerSec)) ↑\(formatThroughput(interface.bytesOutPerSec))"
     }
-    func formatProcessNetwork(_ bytesPerSecond: Double) -> String { formatThroughput(bytesPerSecond) }
     func formatProcessPower(_ process: ProcInfo) -> String { String(format: "%.1f impact", process.powerImpact) }
     func fanRPMText(_ fan: FanUsage) -> String { String(format: "%.0f RPM", fan.currentRPM) }
     func fanRangeText(_ fan: FanUsage) -> String { String(format: "%.0f–%.0f RPM", fan.minRPM, fan.maxRPM) }
@@ -589,5 +627,38 @@ extension SystemMonitor {
         @unknown default:
             return ""
         }
+    }
+}
+
+// MARK: - Top Processes 空值規則
+
+/// 熱門行程表的欄位 formatter：`nil` ＝該行程在這個指標上沒有資料，一律顯示 `noDataText`；
+/// 有值（含 0）才走數值 formatter。空值規則只住在這裡，View 不再自己判斷。
+/// 每個指標只留這一個 formatter —— 曾另有非 optional 版本，overload resolution 會讓非 optional 的
+/// 呼叫端靜默命中它、把「無資料」印成 `0.0%`，故一併移除。
+extension SystemMonitor {
+    func formatProcessCPU(_ percent: Double?) -> String {
+        guard let percent else { return noDataText }
+        return formatPercent(percent)
+    }
+
+    func formatProcessGPU(_ percent: Double?) -> String {
+        guard let percent else { return noDataText }
+        return formatPercent(percent)
+    }
+
+    func formatProcessMemory(_ bytes: UInt64?) -> String {
+        guard let bytes else { return noDataText }
+        return formatBytes(bytes)
+    }
+
+    func formatProcessDisk(_ bytesPerSecond: Double?) -> String {
+        guard let bytesPerSecond else { return noDataText }
+        return formatThroughput(bytesPerSecond)
+    }
+
+    func formatProcessNetwork(_ bytesPerSecond: Double?) -> String {
+        guard let bytesPerSecond else { return noDataText }
+        return formatThroughput(bytesPerSecond)
     }
 }

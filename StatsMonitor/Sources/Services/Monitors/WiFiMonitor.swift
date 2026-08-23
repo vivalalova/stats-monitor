@@ -16,7 +16,7 @@ struct WiFiMonitor: Sendable {
             noiseDBm: noise != 0 ? noise : nil,
             linkRateMbps: rate > 0 ? rate : nil,
             channelNumber: channel?.channelNumber,
-            band: channel.map { Self.bandLabel(for: $0.channelBand) },
+            band: channel.flatMap { Self.bandLabel(for: $0.channelBand) },
             hardwareAddress: interface.hardwareAddress()
         )
 
@@ -27,13 +27,15 @@ struct WiFiMonitor: Sendable {
         return info
     }
 
-    static func bandLabel(for band: CWChannelBand) -> String {
+    /// 頻段標籤；認不出的頻段回 `nil` ＝沒有頻段資訊。
+    /// 不回破折號字面量：空值的呈現由上層 formatter 決定，monitor 只負責「有沒有值」。
+    static func bandLabel(for band: CWChannelBand) -> String? {
         switch band {
         case .band2GHz: "2.4 GHz"
         case .band5GHz: "5 GHz"
         case .band6GHz: "6 GHz"
-        case .bandUnknown: "—"
-        @unknown default: "—"
+        case .bandUnknown: nil
+        @unknown default: nil
         }
     }
 }
