@@ -490,6 +490,50 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    /// 高耗能行程表要與 Top Processes 表同款：名稱左側有 app icon，CPU% 由 pid 併 CPU list 補上。
+    /// icon 在 snapshot 裡一律是通用執行檔 icon（`ProcessIconCache` 的 `prewarm` 掛在 `.task`，
+    /// 同步 render 不會跑），所以這張圖驗的是 icon 欄存不存在與版面，不是 icon 圖樣本身。
+    @Test("Power tab top energy table shows icons and CPU% merged from the CPU list")
+    func powerMainWindowProcessIconsScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        seedSettingsValues(into: snapshotContext.settings)
+        seedMonitorSnapshotData(into: snapshotContext.monitor)
+        let monitor = snapshotContext.monitor
+        // `PowerMonitor` 產出的列沒有 CPU%（`cpuPercent` 為 nil），這裡照實模擬；
+        // backupd 刻意不在該輪 CPU 全表（前一輪沒見過或無 tick 增量＝真的量不到），
+        // CPU% 應顯示破折號而非 0.0%。
+        monitor.topPowerProcesses = SystemMonitor.mergePowerProcesses(
+            power: [
+                ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 734_000_000, powerImpact: 45.1),
+                ProcInfo(pid: 1001, name: "Xcode", memoryBytes: 1_824_000_000, powerImpact: 14.1),
+                ProcInfo(pid: 2002, name: "backupd", memoryBytes: 62_000_000, powerImpact: 9.4),
+            ],
+            cpu: monitor.topCPUProcesses
+        )
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: snapshotContext.settings,
+                monitor: snapshotContext.monitor,
+                selection: .power,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "main-window-power-process-icons",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("About main window tab renders a stable screenshot")
     func aboutMainWindowScreenshot() {
         let snapshotContext = makeSnapshotContext()

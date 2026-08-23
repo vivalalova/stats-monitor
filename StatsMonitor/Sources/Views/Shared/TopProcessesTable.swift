@@ -9,10 +9,6 @@ struct TopProcessesTable: View {
     @State private var sortColumn: SortColumn
     @State private var ascending: Bool = false
 
-    /// 比例條寬度上限對齊欄寬；顏色淡到不搶數字。
-    private static let barOpacity: Double = 0.18
-    private static let iconSize: CGFloat = 14
-
     init(
         settings: AppSettings,
         monitor: SystemMonitor,
@@ -53,40 +49,6 @@ struct TopProcessesTable: View {
         .frame(width: width, alignment: .trailing)
     }
 
-    /// 名稱欄：app icon ＋解析後的完整名稱（行程名走 verbatim，不查本地化表）。
-    @ViewBuilder
-    private func nameCell(_ proc: ProcInfo) -> some View {
-        HStack(spacing: 6) {
-            ProcessIconCache.shared.icon(forPath: proc.iconPath)
-                .resizable()
-                .interpolation(.high)
-                .frame(width: Self.iconSize, height: Self.iconSize)
-            Text(verbatim: proc.name)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-    }
-
-    /// 數值欄：右對齊數字；`barFraction > 0` 時墊一條與該欄最大值成比例的淡色底條。
-    /// 無資料（formatter 回破折號）以 tertiary 淡化，跟真的是 0 的列一眼分得開。
-    @ViewBuilder
-    private func valueCell(
-        _ text: String,
-        width: CGFloat,
-        hasValue: Bool,
-        barFraction: Double = 0
-    ) -> some View {
-        Text(verbatim: text)
-            .foregroundStyle(hasValue ? AnyShapeStyle(HierarchicalShapeStyle.primary)
-                                     : AnyShapeStyle(HierarchicalShapeStyle.tertiary))
-            .frame(width: width, alignment: .trailing)
-            .background(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(Color.accentColor.opacity(Self.barOpacity))
-                    .frame(width: width * barFraction)
-            }
-    }
-
     var body: some View {
         let rows = mergedProcesses
         let cpuMaximum = SystemMonitor.processColumnMaximum(rows.map(\.cpuPercent))
@@ -111,11 +73,11 @@ struct TopProcessesTable: View {
                         }
                         .buttonStyle(.plain)
                         Spacer()
-                        colHeader("CPU%",    col: .cpu,     width: 60)
-                        colHeader("GPU%",    col: .gpu,     width: 60)
-                        colHeader("Memory",  col: .memory,  width: 72)
-                        colHeader("Disk",    col: .disk,    width: 72)
-                        colHeader("Network", col: .network, width: 80)
+                        colHeader("CPU%",    col: .cpu,     width: ProcessColumnWidth.cpu)
+                        colHeader("GPU%",    col: .gpu,     width: ProcessColumnWidth.gpu)
+                        colHeader("Memory",  col: .memory,  width: ProcessColumnWidth.memory)
+                        colHeader("Disk",    col: .disk,    width: ProcessColumnWidth.disk)
+                        colHeader("Network", col: .network, width: ProcessColumnWidth.network)
                     }
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
@@ -126,37 +88,37 @@ struct TopProcessesTable: View {
 
                     ForEach(rows, id: \.mergeKey) { proc in
                         HStack {
-                            nameCell(proc)
+                            ProcessNameCell(process: proc)
                             Spacer()
-                            valueCell(
-                                monitor.formatProcessCPU(proc.cpuPercent),
-                                width: 60,
+                            ProcessValueCell(
+                                text: monitor.formatProcessCPU(proc.cpuPercent),
+                                width: ProcessColumnWidth.cpu,
                                 hasValue: proc.cpuPercent != nil,
                                 barFraction: SystemMonitor.processBarFraction(
                                     proc.cpuPercent, columnMaximum: cpuMaximum
                                 )
                             )
-                            valueCell(
-                                monitor.formatProcessGPU(proc.gpuPercent),
-                                width: 60,
+                            ProcessValueCell(
+                                text: monitor.formatProcessGPU(proc.gpuPercent),
+                                width: ProcessColumnWidth.gpu,
                                 hasValue: proc.gpuPercent != nil
                             )
-                            valueCell(
-                                monitor.formatProcessMemory(proc.memoryBytes),
-                                width: 72,
+                            ProcessValueCell(
+                                text: monitor.formatProcessMemory(proc.memoryBytes),
+                                width: ProcessColumnWidth.memory,
                                 hasValue: proc.memoryBytes != nil,
                                 barFraction: SystemMonitor.processBarFraction(
                                     proc.memoryBytes.map { Double($0) }, columnMaximum: memoryMaximum
                                 )
                             )
-                            valueCell(
-                                monitor.formatProcessDisk(proc.diskTotalBPS),
-                                width: 72,
+                            ProcessValueCell(
+                                text: monitor.formatProcessDisk(proc.diskTotalBPS),
+                                width: ProcessColumnWidth.disk,
                                 hasValue: proc.diskTotalBPS != nil
                             )
-                            valueCell(
-                                monitor.formatProcessNetwork(proc.networkTotalBPS),
-                                width: 80,
+                            ProcessValueCell(
+                                text: monitor.formatProcessNetwork(proc.networkTotalBPS),
+                                width: ProcessColumnWidth.network,
                                 hasValue: proc.networkTotalBPS != nil
                             )
                         }
@@ -169,11 +131,7 @@ struct TopProcessesTable: View {
                 }
             }
         }
-        // icon 是問 LaunchServices／讀 .icns 換來的，載入排在 render pass 之外；
-        // 補進快取後 `ProcessIconCache` 是 `@Observable`，畫面自己重畫。
-        .task(id: rows.map { $0.iconPath ?? "" }.joined(separator: "\n")) {
-            ProcessIconCache.shared.prewarm(rows.map(\.iconPath))
-        }
+        .prewarmProcessIcons(rows)
     }
 }
 

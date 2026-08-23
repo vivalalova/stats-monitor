@@ -465,6 +465,85 @@ struct CPUMonitorTests {
     func cpuTickDeltaHandlesCounterWrap() {
         #expect(CPUMonitor.cpuTickDelta(current: 4, previous: UInt32.max - 2) == 7)
     }
+
+    /// 高耗能行程表借 CPU% 時要看該輪 CPU 全表，而不是只看 top N：
+    /// 進 power 榜卻沒進 CPU 前 N 名的行程，CPU% 在同一份 snapshot 裡算得出來，
+    /// 顯示成「量不到」是假的。全表版負責不截斷，top 版只是它的 prefix。
+    @Test("全表版不截斷：每個有 delta 的行程都在，且依 CPU% 遞減")
+    func computesAllProcessesWithoutTruncation() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let entryCount = 12
+        let snapshot = ProcessCountersSnapshot(
+            entries: (0..<entryCount).map { index in
+                .init(
+                    pid: Int32(1_000 + index),
+                    name: "proc\(index)",
+                    cpuTicks: UInt64((entryCount - index) * 100_000_000),
+                    memoryBytes: 0,
+                    diskReadBytes: 0,
+                    diskWriteBytes: 0,
+                    powerImpact: 0
+                )
+            },
+            date: now
+        )
+        let previous = Dictionary(uniqueKeysWithValues: (0..<entryCount).map { index in
+            (Int32(1_000 + index), CPUMonitor.ProcessSnapshot(ticks: 0, date: now.addingTimeInterval(-2)))
+        })
+
+        let all = CPUMonitor.computeAllProcesses(
+            snapshot: snapshot,
+            previousSnapshots: previous,
+            nanosecondsPerTick: 1.0
+        )
+
+        #expect(all.count == entryCount)
+        #expect(all.map(\.name) == (0..<entryCount).map { "proc\($0)" })
+
+        // top 版 = 全表 prefix，兩者不得各自為政。
+        let top = CPUMonitor.computeTopProcesses(
+            snapshot: snapshot,
+            previousSnapshots: previous,
+            processCount: 3,
+            nanosecondsPerTick: 1.0
+        )
+        #expect(top.map(\.name) == Array(all.prefix(3)).map(\.name))
+        #expect(top.count == 3)
+    }
+
+    /// `CPUProcessSampler` 的 previousSnapshots 有副作用，一輪只能取樣一次 ——
+    /// 所以那一次必須拿到全表，top N 由呼叫端自己 prefix。
+    @Test("sampleAllProcesses：首輪無前值回空，次輪回全表不截斷")
+    func sampleAllProcessesReturnsFullTable() {
+        let monitor = CPUMonitor()
+        let start = Date(timeIntervalSince1970: 1_000)
+        let entryCount = 12
+        func makeSnapshot(ticks: UInt64, date: Date) -> ProcessCountersSnapshot {
+            ProcessCountersSnapshot(
+                entries: (0..<entryCount).map { index in
+                    .init(
+                        pid: Int32(1_000 + index),
+                        name: "proc\(index)",
+                        cpuTicks: ticks * UInt64(entryCount - index),
+                        memoryBytes: 0,
+                        diskReadBytes: 0,
+                        diskWriteBytes: 0,
+                        powerImpact: 0
+                    )
+                },
+                date: date
+            )
+        }
+
+        let first = monitor.sampleAllProcesses(from: makeSnapshot(ticks: 0, date: start))
+        #expect(first.isEmpty)
+
+        let second = monitor.sampleAllProcesses(
+            from: makeSnapshot(ticks: 100_000_000, date: start.addingTimeInterval(2))
+        )
+        #expect(second.count == entryCount)
+        #expect(second.allSatisfy { ($0.cpuPercent ?? 0) > 0 })
+    }
 }
 
 @Suite("DiskMonitor")
@@ -3277,6 +3356,131 @@ struct TopProcessesMergeTests {
 
         let monitor = SystemMonitor(settings: makeTestSettings())
         #expect(monitor.formatProcessCPU(merged[0].cpuPercent) == "—")
+    }
+}
+
+// MARK: - 高耗能行程表的 CPU% 欄：以 pid 併 CPU list
+
+/// `PowerMonitor` 產出的列本來就沒有 CPU%，CPU% 欄要靠 pid 對上 CPU top list 才有值。
+/// 與 `mergeTopProcesses` 的規則不同：這裡 power list 是主，CPU list 只借出 `cpuPercent` 一欄，
+/// 不取最大值、不補列、不改名，所以另立契約而非重用 `ProcInfo.merged(with:)`。
+@Suite("Power Processes CPU Merge")
+@MainActor
+struct PowerProcessesCPUMergeTests {
+
+    @Test("同 pid：CPU% 取 CPU list 的值")
+    func takesCPUPercentFromCPUListForMatchingPID() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 734_000_000, powerImpact: 45.1)],
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000)]
+        )
+        #expect(merged.count == 1)
+        #expect(merged.first?.cpuPercent == 16.2)
+    }
+
+    @Test("同 pid：CPU list 的值較小也照用，不取兩邊最大值")
+    func overwritesStalePowerRowCPUPercentWithSmallerCPUListValue() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 99.9, memoryBytes: 734_000_000, powerImpact: 45.1)],
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000)]
+        )
+        #expect(merged.first?.cpuPercent == 16.2)
+    }
+
+    @Test("pid 不在 CPU list：CPU% 為無資料，power 列身上的舊值不留")
+    func clearsCPUPercentForPIDMissingFromCPUList() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [ProcInfo(pid: 2002, name: "backupd", cpuPercent: 5.5, memoryBytes: 62_000_000, powerImpact: 9.4)],
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000)]
+        )
+        #expect(merged.count == 1)
+        #expect(merged.first?.cpuPercent == nil)
+
+        let monitor = SystemMonitor(settings: makeTestSettings())
+        #expect(monitor.formatProcessCPU(merged.first?.cpuPercent) == "—")
+    }
+
+    @Test("CPU list 為空：所有列的 CPU% 都是無資料")
+    func clearsCPUPercentWhenCPUListIsEmpty() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [
+                ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, powerImpact: 45.1),
+                ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 48.2, powerImpact: 14.1),
+            ],
+            cpu: []
+        )
+        #expect(merged.count == 2)
+        #expect(merged.allSatisfy { $0.cpuPercent == nil })
+    }
+
+    @Test("以 pid 對應而非名稱：同名不同 pid 不借值")
+    func matchesByPIDNotByName() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [ProcInfo(pid: 101, name: "Google Chrome Helper", powerImpact: 21.0)],
+            cpu: [ProcInfo(pid: 102, name: "Google Chrome Helper", cpuPercent: 33.3)]
+        )
+        #expect(merged.first?.cpuPercent == nil)
+    }
+
+    @Test("除 CPU% 外各欄維持 power 列的值")
+    func keepsPowerRowValuesForEveryOtherColumn() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [
+                ProcInfo(
+                    pid: 1001,
+                    name: "Xcode",
+                    memoryBytes: 1_824_000_000,
+                    powerImpact: 14.1,
+                    iconPath: "/Applications/Xcode.app"
+                )
+            ],
+            // CPU list 同 pid 但名稱更長、記憶體更大、powerImpact 更高、無 icon 路徑：
+            // 取最大值或取較長名稱的實作都會在這裡露餡。
+            cpu: [
+                ProcInfo(
+                    pid: 1001,
+                    name: "Xcode Beta Build Service",
+                    cpuPercent: 48.2,
+                    memoryBytes: 9_000_000_000,
+                    powerImpact: 99.9
+                )
+            ]
+        )
+        #expect(merged.count == 1)
+        guard let proc = merged.first else { return }
+        #expect(proc.pid == 1001)
+        #expect(proc.name == "Xcode")
+        #expect(proc.memoryBytes == 1_824_000_000)
+        #expect(proc.powerImpact == 14.1)
+        #expect(proc.iconPath == "/Applications/Xcode.app")
+        #expect(proc.cpuPercent == 48.2)
+    }
+
+    @Test("順序與列數比照 power list：不重排、不補進只在 CPU list 的行程")
+    func preservesPowerListOrderAndDoesNotAppendCPUOnlyProcesses() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [
+                ProcInfo(pid: 601, name: "WindowServer", powerImpact: 45.1),
+                ProcInfo(pid: 2002, name: "backupd", powerImpact: 9.4),
+                ProcInfo(pid: 1001, name: "Xcode", powerImpact: 14.1),
+            ],
+            cpu: [
+                ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 48.2),
+                ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2),
+                ProcInfo(pid: 1002, name: "StatsMonitor", cpuPercent: 8.3),
+            ]
+        )
+        #expect(merged.map(\.pid) == [601, 2002, 1001])
+        #expect(merged.map(\.cpuPercent) == [16.2, nil, 48.2])
+    }
+
+    @Test("power list 為空：結果為空")
+    func returnsEmptyForEmptyPowerList() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [],
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2)]
+        )
+        #expect(merged.isEmpty)
     }
 }
 

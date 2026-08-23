@@ -89,11 +89,11 @@ private struct TopPowerProcessesTable: View {
                             Text("Name")
                             Spacer()
                             Text("Impact")
-                                .frame(width: 74, alignment: .trailing)
+                                .frame(width: ProcessColumnWidth.impact, alignment: .trailing)
                             Text("CPU%")
-                                .frame(width: 60, alignment: .trailing)
+                                .frame(width: ProcessColumnWidth.cpu, alignment: .trailing)
                             Text("Memory")
-                                .frame(width: 80, alignment: .trailing)
+                                .frame(width: ProcessColumnWidth.memory, alignment: .trailing)
                         }
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
@@ -104,16 +104,24 @@ private struct TopPowerProcessesTable: View {
 
                         ForEach(monitor.topPowerProcesses, id: \.mergeKey) { process in
                             HStack {
-                                Text(process.name)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
+                                ProcessNameCell(process: process)
                                 Spacer()
-                                Text(monitor.formatProcessPower(process))
-                                    .frame(width: 74, alignment: .trailing)
-                                Text(monitor.formatProcessCPU(process.cpuPercent))
-                                    .frame(width: 60, alignment: .trailing)
-                                Text(monitor.formatProcessMemory(process.memoryBytes))
-                                    .frame(width: 80, alignment: .trailing)
+                                // powerImpact 非 optional，這一欄永遠有值。
+                                ProcessValueCell(
+                                    text: monitor.formatProcessPower(process),
+                                    width: ProcessColumnWidth.impact,
+                                    hasValue: true
+                                )
+                                ProcessValueCell(
+                                    text: monitor.formatProcessCPU(process.cpuPercent),
+                                    width: ProcessColumnWidth.cpu,
+                                    hasValue: process.cpuPercent != nil
+                                )
+                                ProcessValueCell(
+                                    text: monitor.formatProcessMemory(process.memoryBytes),
+                                    width: ProcessColumnWidth.memory,
+                                    hasValue: process.memoryBytes != nil
+                                )
                             }
                             .font(.system(size: 12))
                             .monospacedDigit()
@@ -124,6 +132,7 @@ private struct TopPowerProcessesTable: View {
                     }
                 }
             }
+            .prewarmProcessIcons(monitor.topPowerProcesses)
         }
     }
 }

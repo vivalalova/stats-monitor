@@ -241,11 +241,19 @@ final class SystemMonitor {
                 }
                 // 名稱／icon 路徑解析留在背景，main actor 只拿解析好的結果。
                 let identities = ProcessIdentityCache.shared
+                // CPU 取樣一輪只能做一次（sampler 要留 ticks 算下一輪 delta），所以先拿全表：
+                // 顯示用的 CPU top N 是它的 prefix，高耗能行程表借 CPU% 用的是全表。
+                // 全表刻意不過 `identities.resolved` —— 快取只有 512 格而常駐行程 400–600，
+                // 整表解析會逼快取每輪清空重建；合併只借 pid → cpuPercent，不需要名稱與 icon。
+                let cpuAll = cpuMonitor.sampleAllProcesses(from: snapshot)
+                let power = identities.resolved(
+                    powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)
+                )
                 return (
-                    cpu: identities.resolved(cpuMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)),
+                    cpu: identities.resolved(Array(cpuAll.prefix(processCount))),
                     memory: identities.resolved(memoryMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)),
                     disk: identities.resolved(diskMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)),
-                    power: identities.resolved(powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount))
+                    power: SystemMonitor.mergePowerProcesses(power: power, cpu: cpuAll)
                 )
             }.value
             self.isProcessPollInFlight = false
@@ -389,6 +397,24 @@ extension SystemMonitor {
         }
 
         return order.compactMap { merged[$0] }
+    }
+
+    /// 高耗能行程表的 CPU% 欄：`PowerMonitor` 產出的列本來就沒有 CPU%，靠 pid 對上 CPU list 才有值。
+    /// 與 `mergeTopProcesses` 規則不同 —— 這裡 power list 是主，CPU list 只借出 `cpuPercent` 一欄：
+    /// 不取兩邊最大值、不補進只在 CPU list 的行程、不改名，所以另立契約而非重用 `ProcInfo.merged(with:)`。
+    /// `cpu` 要餵該輪的**全表**（`CPUMonitor.sampleAllProcesses`）而非顯示用的 top N：
+    /// 只餵 top N 會讓進 power 榜但沒進 CPU 前 N 名的行程顯示成量不到，而它的 CPU% 明明算得出來。
+    /// pid 不在全表（前一輪沒見過或這輪無 tick 增量）＝這一輪真的量不到，一律回 nil（顯示破折號），
+    /// 不留 power 列身上的舊值。
+    /// 取樣在背景（`Task.detached`）做完就併，全表不進 main actor，所以 `nonisolated`。
+    nonisolated static func mergePowerProcesses(power: [ProcInfo], cpu: [ProcInfo]) -> [ProcInfo] {
+        // pid 同源於一份 `ProcessCountersSnapshot`，本來就唯一；真出現重複代表上游壞了，讓它炸。
+        let cpuByPID = Dictionary(uniqueKeysWithValues: cpu.map { ($0.pid, $0) })
+        return power.map { row in
+            var merged = row
+            merged.cpuPercent = cpuByPID[row.pid]?.cpuPercent
+            return merged
+        }
     }
 
     /// 比例條分母：該欄有資料列的最大值；全欄無資料時回 0。

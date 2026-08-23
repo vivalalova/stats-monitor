@@ -14,7 +14,7 @@ import UniformTypeIdentifiers
 final class ProcessIconCache {
     static let shared = ProcessIconCache()
 
-    /// 快取上限：路徑數量遠少於行程數，超過就整批丟掉重建。
+    /// 快取上限：路徑數量遠少於行程數，超過就把不在當前這批的路徑丟掉。
     private static let capacity = 256
 
     private var icons: [String: Image] = [:]
@@ -29,9 +29,17 @@ final class ProcessIconCache {
     }
 
     /// 把還沒載入的路徑補進快取。在 render pass 外呼叫（View 的 `.task`）。
+    /// 容量滿時只淘汰不在本批的路徑 —— 整批丟掉會連本批稍早載入的一起抹掉，
+    /// 而 `.task(id:)` 對同一份路徑清單不會再觸發，那些列的 icon 就再也補不回來。
     func prewarm(_ paths: [String?]) {
-        for path in paths.compactMap({ $0 }) where !path.isEmpty && icons[path] == nil {
-            if icons.count >= Self.capacity { icons.removeAll(keepingCapacity: true) }
+        let wanted = Set(paths.compactMap { $0 }.filter { !$0.isEmpty })
+        let missing = wanted.subtracting(icons.keys)
+        guard !missing.isEmpty else { return }
+
+        if icons.count + missing.count > Self.capacity {
+            icons = icons.filter { wanted.contains($0.key) }
+        }
+        for path in missing {
             icons[path] = Image(nsImage: NSWorkspace.shared.icon(forFile: path))
         }
     }
