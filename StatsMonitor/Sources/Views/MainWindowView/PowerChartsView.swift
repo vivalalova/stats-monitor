@@ -128,6 +128,7 @@ private struct TopPowerProcessesTable: View {
                             .padding(.vertical, 4)
                             .padding(.horizontal, 8)
                             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 4))
+                            .processTerminationContextMenu(for: process)
                         }
                     }
                 }

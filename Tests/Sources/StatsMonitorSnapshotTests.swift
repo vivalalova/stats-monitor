@@ -169,17 +169,48 @@ struct StatsMonitorSnapshotTests {
     @Test("Quit confirmation alert renders a stable screenshot")
     func quitConfirmationAlertScreenshot() {
         let alert = QuitConfirmationAlertFactory.makeAlert(locale: Locale(identifier: "en"))
-        alert.icon = NSImage(size: NSSize(width: 64, height: 64), flipped: false) { rect in
-            NSColor(srgbRed: 0.0, green: 0.478, blue: 1.0, alpha: 1.0).setFill()
-            NSBezierPath(roundedRect: rect, xRadius: 12, yRadius: 12).fill()
-            return true
-        }
+        alert.icon = deterministicAlertIcon()
         let view = alertSnapshotView(alert)
 
         assertSnapshot(
             of: view,
             as: toleratedImageSnapshot(size: view.frame.size),
             named: "quit-confirmation-alert",
+            record: snapshotRecordMode
+        )
+    }
+
+    @Test("Force quit confirmation alert renders a stable screenshot")
+    func forceQuitConfirmationAlertScreenshot() {
+        let alert = ProcessTerminationAlertFactory.makeForceQuitConfirmation(
+            processName: "Xcode",
+            locale: Locale(identifier: "en")
+        )
+        alert.icon = deterministicAlertIcon()
+        let view = alertSnapshotView(alert)
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "force-quit-confirmation-alert",
+            record: snapshotRecordMode
+        )
+    }
+
+    @Test("Process termination failure alert renders a stable screenshot")
+    func processTerminationFailureAlertScreenshot() {
+        let alert = ProcessTerminationAlertFactory.makeFailureAlert(
+            processName: "Xcode",
+            error: .permissionDenied,
+            locale: Locale(identifier: "en")
+        )
+        alert.icon = deterministicAlertIcon()
+        let view = alertSnapshotView(alert)
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "process-termination-failure-alert",
             record: snapshotRecordMode
         )
     }
@@ -961,6 +992,16 @@ private func makePressureOnlySnapshotContext(
 
 private var snapshotRecordMode: SnapshotTestingConfiguration.Record {
     resolvedSnapshotRecordMode(environment: ProcessInfo.processInfo.environment)
+}
+
+/// Alerts normally carry the app icon, which renders differently across build configurations.
+/// Every alert snapshot swaps in this flat square so the reference only pins the alert layout.
+private func deterministicAlertIcon() -> NSImage {
+    NSImage(size: NSSize(width: 64, height: 64), flipped: false) { rect in
+        NSColor(srgbRed: 0.0, green: 0.478, blue: 1.0, alpha: 1.0).setFill()
+        NSBezierPath(roundedRect: rect, xRadius: 12, yRadius: 12).fill()
+        return true
+    }
 }
 
 /// Single source of truth for the image comparison tolerance used by every snapshot assertion
