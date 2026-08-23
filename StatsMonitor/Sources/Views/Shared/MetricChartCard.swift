@@ -34,7 +34,7 @@ struct MetricChartCard: View {
         .padding(8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
-        .frame(height: height ?? dashboardCardHeight(lines: lines))
+        .frame(height: height ?? dashboardCardHeight(lines: lines, hasLegend: !legendItems.isEmpty))
     }
 
     private var hasChart: Bool {

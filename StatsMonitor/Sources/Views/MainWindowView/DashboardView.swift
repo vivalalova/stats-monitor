@@ -162,9 +162,12 @@ func dashboardCardHasChart(lines: [ChartSeries]) -> Bool {
     !lines.isEmpty
 }
 
-// 卡片高度以「標題 caption + .title2 數值 + 圖表（+ legend）」的排版下限抓，改字級要一起重算。
-func dashboardCardHeight(lines: [ChartSeries]) -> CGFloat {
-    dashboardCardHasChart(lines: lines) ? 136 : 72
+// 卡片高度 = 固定開銷（padding、caption 標題、.title2 數值、spacing ≈ 64pt）+ chart 區；
+// chart 區取原本 72pt 的七成（≈ 48pt）讓多卡頁少捲動，legend 卡另補 legend 自身高度（≈ 16pt），
+// 兩種卡的 chart 區才一樣高。改字級或 legend 樣式要一起重算。
+func dashboardCardHeight(lines: [ChartSeries], hasLegend: Bool) -> CGFloat {
+    guard dashboardCardHasChart(lines: lines) else { return 72 }
+    return hasLegend ? 128 : 112
 }
 
 // MARK: - Preview

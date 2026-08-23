@@ -3166,6 +3166,14 @@ struct DashboardVisualRefreshTests {
         #expect(AppSettings.dashboardColumnRange == 3...6)
     }
 
+    @Test("metric 卡片高度：chart 區縮到原本七成（72→~51pt），legend 卡補回 legend 高度，無 chart 維持 72")
+    func metricCardHeightIsCompact() {
+        let line = ChartSeries(history: [0.5], color: .blue)
+        #expect(dashboardCardHeight(lines: [line], hasLegend: false) == 112)
+        #expect(dashboardCardHeight(lines: [line], hasLegend: true) == 128)
+        #expect(dashboardCardHeight(lines: [], hasLegend: false) == 72)
+    }
+
     @Test("使用率門檻分級，含 0.6／0.8 邊界")
     func metricStatusFractionThresholds() {
         #expect(MetricStatus(fraction: 0.1) == .normal)
