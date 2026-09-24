@@ -7,6 +7,10 @@ struct StatsMonitorApp: App {
     var body: some Scene {
         Window("Settings", id: AppSceneID.settingsWindow) {
             MainWindowView(settings: appDelegate.settings, monitor: appDelegate.monitor)
+                .onAppear { appDelegate.settings.refreshLaunchAtLoginState() }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                    appDelegate.settings.refreshLaunchAtLoginState()
+                }
         }
         .defaultSize(
             width: SettingsWindowLayout.defaultWidth,
@@ -56,8 +60,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func quitConfirmationReply() -> NSApplication.TerminateReply {
+        if Self.isSystemInitiatedQuit(NSAppleEventManager.shared().currentAppleEvent) { return .terminateNow }
         let alert = QuitConfirmationAlertFactory.makeAlert()
         NSApp.activate(ignoringOtherApps: true)
         return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+
+    private static let systemQuitReasons = Set([
+        kAEQuitAll, kAELogOut, kAEReallyLogOut, kAEShowRestartDialog, kAERestart, kAEShowShutdownDialog, kAEShutDown,
+    ].map { OSType($0) })
+
+    /// Logout / restart / shutdown must not be blocked by a modal; only a user-initiated quit asks.
+    static func isSystemInitiatedQuit(_ event: NSAppleEventDescriptor?) -> Bool {
+        guard let event, event.eventID == OSType(kAEQuitApplication) else { return false }
+        let keyword = AEKeyword(kAEQuitReason)
+        guard let reason = event.attributeDescriptor(forKeyword: keyword) ?? event.paramDescriptor(forKeyword: keyword)
+        else { return false }
+        return systemQuitReasons.contains(reason.enumCodeValue)
     }
 }

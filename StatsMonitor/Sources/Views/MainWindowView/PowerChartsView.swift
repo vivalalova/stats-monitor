@@ -118,7 +118,7 @@ private struct TopPowerProcessesTable: View {
 
                         Divider()
 
-                        ForEach(monitor.topPowerProcesses, id: \.name) { process in
+                        ForEach(monitor.topPowerProcesses) { process in
                             HStack {
                                 Text(process.name)
                                     .lineLimit(1)

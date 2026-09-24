@@ -101,7 +101,8 @@ final class PowerMonitor: @unchecked Sendable {
                         name: entry.name,
                         cpuPercent: 0,
                         memoryBytes: entry.memoryBytes,
-                        powerImpact: entry.powerImpact
+                        powerImpact: entry.powerImpact,
+                        pid: entry.pid
                     )
                 }
                 .sorted { lhs, rhs in
@@ -249,66 +250,29 @@ final class PowerMonitor: @unchecked Sendable {
         return nil
     }
 
-    static func samplePowerImpactByPID() -> [Int32: Double] {
-        guard let output = runProcessCapturingOutput(
-            executableURL: URL(fileURLWithPath: "/usr/bin/top"),
-            arguments: ["-l", "2", "-s", "0", "-o", "power", "-stats", "pid,command,power"]
-        ),
-              output.terminationStatus == 0
-        else {
-            return [:]
-        }
-
-        return parseTopPowerOutput(output.stdout)
-    }
-
     static func runProcessCapturingOutput(executableURL: URL, arguments: [String]) -> ProcessOutput? {
         let process = Process()
         process.executableURL = executableURL
         process.arguments = arguments
 
         let pipe = Pipe()
-        let standardError = FileHandle(forWritingAtPath: "/dev/null")
         process.standardOutput = pipe
-        process.standardError = standardError
-        defer { standardError?.closeFile() }
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
             let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
-            guard let stdout = String(data: outputData, encoding: .utf8) else { return nil }
+            // top/nettop truncate command names by bytes, so multi-byte names can end mid-character.
+            let stdout = String(decoding: outputData, as: UTF8.self)
             return ProcessOutput(terminationStatus: process.terminationStatus, stdout: stdout)
         } catch {
             return nil
         }
     }
 
-    private static let topPowerRegex = try! NSRegularExpression(pattern: #"^\s*(\d+)\s+.+\s+([0-9]+(?:\.[0-9]+)?)\s*$"#)
-
     static func parseTopPowerOutput(_ output: String) -> [Int32: Double] {
-        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
-        guard let lastHeaderIndex = lines.lastIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("PID") }) else {
-            return [:]
-        }
-
-        var powerByPID: [Int32: Double] = [:]
-        for line in lines[(lastHeaderIndex + 1)...] {
-            let rawLine = String(line)
-            let range = NSRange(rawLine.startIndex..<rawLine.endIndex, in: rawLine)
-            guard let match = topPowerRegex.firstMatch(in: rawLine, range: range),
-                  let pidRange = Range(match.range(at: 1), in: rawLine),
-                  let powerRange = Range(match.range(at: 2), in: rawLine),
-                  let pid = Int32(rawLine[pidRange]),
-                  let powerImpact = Double(rawLine[powerRange])
-            else {
-                continue
-            }
-
-            powerByPID[pid] = powerImpact
-        }
-
-        return powerByPID
+        ProcessCountersReader.parseTopOutput(output).compactMapValues(\.powerImpact)
     }
 
     // MARK: - C function types

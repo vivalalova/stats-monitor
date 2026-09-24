@@ -47,6 +47,8 @@ final class SystemMonitor {
     private(set) var currentBatterySample: BatteryUsage?
     private(set) var currentThermalSample: ThermalUsage?
     private(set) var currentPowerSample: PowerUsage?
+    /// Hardware capability latch: never cleared, so a nil sample (e.g. PowerMonitor's first delta) doesn't hide Power UI.
+    private(set) var hasPowerTelemetry = false
 
     var topCPUProcesses: [ProcInfo] = []
     var topGPUProcesses: [GPUProcessInfo] = []
@@ -72,6 +74,7 @@ final class SystemMonitor {
     private var thermalMonitor: ThermalMonitor
     private var fanMonitor: FanMonitor
 
+    private var networkConnectionCounts: (tcp: Int, udp: Int)?
     private var isNetworkProcessPollInFlight = false
     private var isProcessPollInFlight = false
     private var isRunning = false
@@ -125,11 +128,14 @@ final class SystemMonitor {
 
     private func scheduleTimer() {
         let interval = settings.pollInterval
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.poll()
             }
         }
+        // `.common` keeps sampling while a window is dragged or a modal alert runs the loop in another mode.
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     private func poll() {
@@ -140,6 +146,8 @@ final class SystemMonitor {
         let disk    = diskMonitor.sample()
         var network = networkMonitor.sample()
         network.wifi = wifiMonitor.sample()
+        network.tcpConnectionCount = networkConnectionCounts?.tcp ?? 0
+        network.udpConnectionCount = networkConnectionCounts?.udp ?? 0
         let battery = batteryMonitor.sample()
         let thermalSample = thermalMonitor.sample()
         let fans    = fanMonitor.sample()
@@ -162,7 +170,6 @@ final class SystemMonitor {
             displayInfo = displayInfoMonitor.sample()
         }
         pollTick &+= 1
-        topGPUProcesses = gpuMonitor.sampleTopApps(intervalSeconds: intervalSeconds, processCount: count)
 
         pollNetworkProcesses(processCount: count)
         pollProcessDetails(processCount: count)
@@ -198,13 +205,16 @@ final class SystemMonitor {
         let previousMonitor = networkMonitor
         Task { [weak self] in
             guard let self else { return }
-            let processes = await Task.detached(priority: .utility) {
+            let result = await Task.detached(priority: .utility) {
                 let monitor = previousMonitor
-                let processes = monitor.sampleTopProcesses(processCount: processCount)
-                return processes
+                return (
+                    processes: monitor.sampleTopProcesses(processCount: processCount),
+                    connections: monitor.sampleConnectionCounts()
+                )
             }.value
             self.isNetworkProcessPollInFlight = false
-            self.topNetworkProcesses = processes
+            self.topNetworkProcesses = result.processes
+            self.networkConnectionCounts = result.connections
         }
     }
 
@@ -215,20 +225,24 @@ final class SystemMonitor {
         let memoryMonitor = self.memoryMonitor
         let diskMonitor = self.diskMonitor
         let powerMonitor = self.powerMonitor
+        let gpuAppUsageSampler = gpuMonitor.appUsageSampler
         Task { [weak self] in
             guard let self else { return }
             let result = await Task.detached(priority: .utility) {
+                let gpu = gpuAppUsageSampler.sampleTopApps(processCount: processCount)
                 guard let snapshot = ProcessCountersReader.sample() else {
-                    return (cpu: [ProcInfo](), memory: [ProcInfo](), disk: [ProcInfo](), power: [ProcInfo]())
+                    return (cpu: [ProcInfo](), memory: [ProcInfo](), disk: [ProcInfo](), power: [ProcInfo](), gpu: gpu)
                 }
                 return (
                     cpu: cpuMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
                     memory: memoryMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
                     disk: diskMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
-                    power: powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount)
+                    power: powerMonitor.sampleTopProcesses(from: snapshot, processCount: processCount),
+                    gpu: gpu
                 )
             }.value
             self.isProcessPollInFlight = false
+            self.topGPUProcesses = result.gpu
             self.topCPUProcesses = result.cpu
             self.topMemoryProcesses = result.memory
             self.topDiskProcesses = result.disk
@@ -244,8 +258,10 @@ final class SystemMonitor {
         applySampleStores(Self.makeSampleStores(capacity: cap))
     }
 
-    func record(cpu sample: CPUUsage) {
-        cpuSamples.record(sample)
+    func record(cpu sample: CPUUsage?) {
+        if let sample {
+            cpuSamples.record(sample)
+        }
     }
 
     func record(gpu sample: GPUUsage) {
@@ -293,6 +309,7 @@ final class SystemMonitor {
     func record(power sample: PowerUsage?) {
         currentPowerSample = sample
         if let sample {
+            hasPowerTelemetry = true
             powerSamples.record(sample)
         }
     }
@@ -311,9 +328,6 @@ final class SystemMonitor {
         thermalSamples = sampleStores.thermal
         powerSamples = sampleStores.power
         fansSamples = sampleStores.fans
-        currentBatterySample = nil
-        currentThermalSample = nil
-        currentPowerSample = nil
     }
 
     private static func makeSampleStores(capacity: Int) -> SampleStores {

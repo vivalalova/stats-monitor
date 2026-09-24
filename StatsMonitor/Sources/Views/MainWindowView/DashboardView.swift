@@ -57,7 +57,7 @@ struct DashboardView: View {
                 ],
                 maxValue: histMax(monitor.paddedDiskReadHistory + monitor.paddedDiskWriteHistory)
             )
-            if monitor.hasPower {
+            if monitor.hasPowerTelemetry {
                 MetricChartCard(
                     title: "Power",
                     value: monitor.powerText,

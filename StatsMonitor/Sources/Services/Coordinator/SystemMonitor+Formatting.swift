@@ -105,6 +105,7 @@ extension SystemMonitor {
     var anePowerMilliWatts: Double { currentGPU.anePowerMilliWatts }
     var anePowerText: String {
         let milliWatts = currentGPU.anePowerMilliWatts
+        guard milliWatts > 0 else { return "" }
         return milliWatts >= 1000
             ? String(format: "%.1f W", milliWatts / 1000)
             : String(format: "%.0f mW", milliWatts)
@@ -311,26 +312,26 @@ extension SystemMonitor {
         return "On Battery"
     }
     var batteryHealthText: String {
-        guard let battery else { return "" }
-        return String(format: "%.0f%%", battery.health)
+        guard let health = battery?.health else { return "" }
+        return String(format: "%.0f%%", health)
     }
     var batteryCyclesText: String {
         guard let battery else { return "" }
         return "\(battery.cycleCount) cycles"
     }
+    /// Only while on AC: on battery `batteryStatusText` already shows the remaining time.
     var batteryTimeRemainingText: String {
-        guard let battery else { return "" }
-        guard !battery.isCharging, !battery.isPluggedIn else { return batteryStatusText }
-        guard let mins = battery.timeRemaining else { return "Estimating" }
+        guard let battery, battery.isCharging || battery.isPluggedIn,
+              let mins = battery.timeRemaining else { return "" }
         return formatMinutes(mins)
     }
     var batteryMaxCapacityText: String {
-        guard let battery else { return "" }
-        return "\(battery.maxCapacity) mAh"
+        guard let maxCapacity = battery?.maxCapacity else { return "" }
+        return "\(maxCapacity) mAh"
     }
     var batteryDesignCapacityText: String {
-        guard let battery else { return "" }
-        return "\(battery.designCapacity) mAh"
+        guard let designCapacity = battery?.designCapacity else { return "" }
+        return "\(designCapacity) mAh"
     }
     var batteryVoltageText: String {
         guard let battery, battery.voltageMilliVolts > 0 else { return "" }
@@ -413,7 +414,7 @@ extension SystemMonitor {
         return String(format: "%.1f°C", gpuTemp)
     }
     var paddedCPUTempHistory: [Double] { padded(thermalSamples.values.map(\.cpuTemperature), capacity: thermalSamples.capacity) }
-    var paddedGPUTempHistory: [Double] { padded(thermalSamples.values.compactMap(\.gpuTemperature), capacity: thermalSamples.capacity) }
+    var paddedGPUTempHistory: [Double] { padded(thermalSamples.values.map { $0.gpuTemperature ?? 0 }, capacity: thermalSamples.capacity) }
     var thermalSummaryText: String {
         guard thermal != nil else { return "" }
         guard let gpuTemp = thermal?.gpuTemperature else { return "CPU \(cpuTempText)" }
@@ -491,6 +492,7 @@ extension SystemMonitor {
         formatCompactMenuValue(
             bytesPerSec / 1_024,
             units: ["K", "M", "G", "T"],
+            base: 1_024,
             maxLength: MenuBarTextLayout.slotLength(for: .disk)
         )
     }
@@ -499,6 +501,7 @@ extension SystemMonitor {
         formatCompactMenuValue(
             watts,
             units: ["W", "K"],
+            base: 1_000,
             maxLength: MenuBarTextLayout.slotLength(for: .power)
         )
     }
@@ -526,6 +529,7 @@ extension SystemMonitor {
         formatCompactMenuValue(
             rpm,
             units: ["R", "K"],
+            base: 1_000,
             maxLength: MenuBarTextLayout.slotLength(for: .fans)
         )
     }
@@ -534,29 +538,26 @@ extension SystemMonitor {
         String(format: "%.1f%%", value)
     }
 
-    private func formatCompactMenuValue(_ value: Double, units: [String], maxLength: Int) -> String {
+    private func formatCompactMenuValue(_ value: Double, units: [String], base: Double, maxLength: Int) -> String {
         guard value > 0 else { return "0\(units[0])" }
 
         var scaledValue = value
         var unitIndex = 0
-        while scaledValue >= 1_000, unitIndex < units.count - 1 {
-            scaledValue /= 1_000
+        while true {
+            let compactValue = "\(compactMenuNumber(scaledValue))\(units[unitIndex])"
+            // Promote after rounding so e.g. 999.96 or a 1000–1023 KiB value never renders past the slot.
+            let needsPromotion = scaledValue.rounded() >= base || compactValue.count > maxLength
+            guard needsPromotion, unitIndex < units.count - 1 else { return compactValue }
+            scaledValue /= base
             unitIndex += 1
         }
+    }
 
-        let number: String
-        if scaledValue < 10, scaledValue.rounded() != scaledValue {
-            number = String(format: "%.1f", scaledValue)
-        } else {
-            number = String(format: "%.0f", scaledValue)
-        }
-
-        let compactNumber = number.hasSuffix(".0") ? String(number.dropLast(2)) : number
-        let compactValue = "\(compactNumber)\(units[unitIndex])"
-        guard compactValue.count <= maxLength else {
-            return "\(Int(scaledValue.rounded()))\(units[unitIndex])"
-        }
-        return compactValue
+    private func compactMenuNumber(_ value: Double) -> String {
+        let number = value < 10 && value.rounded() != value
+            ? String(format: "%.1f", value)
+            : String(format: "%.0f", value)
+        return number.hasSuffix(".0") ? String(number.dropLast(2)) : number
     }
 
     private func formatAverageFrequency(_ frequencies: [CPUCoreFrequency]) -> String {

@@ -9,7 +9,7 @@ struct GPUMonitor {
         var commandQueueCount: Int
     }
 
-    private var previousAppTotalsByPID: [Int: UInt64] = [:]
+    let appUsageSampler = GPUAppUsageSampler()
     private let frequencySampler = FrequencySampler()
     private let neuralEnginePowerSampler = NeuralEnginePowerSampler()
 
@@ -24,8 +24,7 @@ struct GPUMonitor {
         }
         defer { IOObjectRelease(iterator) }
 
-        var service: io_object_t = IOIteratorNext(iterator)
-        while service != IO_OBJECT_NULL {
+        while case let service = IOIteratorNext(iterator), service != IO_OBJECT_NULL {
             defer { IOObjectRelease(service) }
 
             var props: Unmanaged<CFMutableDictionary>?
@@ -34,24 +33,11 @@ struct GPUMonitor {
                let perf = dict["PerformanceStatistics"] as? [String: Any] {
                 usage = Self.merge(usage, with: Self.parseUsage(from: perf))
             }
-
-            service = IOIteratorNext(iterator)
         }
 
         usage.anePowerMilliWatts = neuralEnginePowerSampler.sample(intervalSeconds: intervalSeconds)
         usage.frequency = frequencySampler.sample()
         return usage
-    }
-
-    mutating func sampleTopApps(intervalSeconds: Double, processCount: Int) -> [GPUProcessInfo] {
-        let result = Self.computeTopApps(
-            currentSnapshots: readAppUsageSnapshots(),
-            previousTotalsByPID: previousAppTotalsByPID,
-            intervalSeconds: intervalSeconds,
-            processCount: processCount
-        )
-        previousAppTotalsByPID = result.updatedTotalsByPID
-        return result.apps
     }
 
     static func parseUsage(from performanceStatistics: [String: Any]) -> GPUUsage {
@@ -104,8 +90,7 @@ struct GPUMonitor {
         }
 
         let apps = currentTotalsByPID.compactMap { pid, snapshot -> GPUProcessInfo? in
-            guard intervalSeconds > 0 else { return nil }
-            let previousTotal = previousTotalsByPID[pid] ?? 0
+            guard intervalSeconds > 0, let previousTotal = previousTotalsByPID[pid] else { return nil }
             let delta = snapshot.total > previousTotal ? snapshot.total - previousTotal : 0
             guard delta > 0 else { return nil }
             let utilizationPercent = min(Double(delta) / (intervalSeconds * 1_000_000_000) * 100, 100)
@@ -127,7 +112,7 @@ struct GPUMonitor {
         return (Array(apps.prefix(processCount)), updatedTotals)
     }
 
-    private mutating func readAppUsageSnapshots() -> [AppUsageSnapshot] {
+    static func readAppUsageSnapshots() -> [AppUsageSnapshot] {
         // AGXDeviceUserClient entries are not registered in IOService lookup table
         // (they appear with `!registered` in ioreg), so IOServiceGetMatchingServices
         // returns an empty iterator. Walk the IOService plane recursively and filter
@@ -526,4 +511,23 @@ private final class NeuralEnginePowerSampler: @unchecked Sendable {
 
     private typealias GetStringFn = @convention(c) (CFDictionary) -> Unmanaged<CFString>?
     private typealias SimpleGetIntFn = @convention(c) (CFDictionary, Int32) -> Int64
+}
+
+/// Walks the whole IOService plane, so it runs on the detached process-collection path.
+final class GPUAppUsageSampler: @unchecked Sendable {
+    private var previousTotalsByPID: [Int: UInt64] = [:]
+    private var previousDate: Date?
+
+    func sampleTopApps(processCount: Int) -> [GPUProcessInfo] {
+        let now = Date.now
+        let result = GPUMonitor.computeTopApps(
+            currentSnapshots: GPUMonitor.readAppUsageSnapshots(),
+            previousTotalsByPID: previousTotalsByPID,
+            intervalSeconds: previousDate.map { now.timeIntervalSince($0) } ?? 0,
+            processCount: processCount
+        )
+        previousTotalsByPID = result.updatedTotalsByPID
+        previousDate = now
+        return result.apps
+    }
 }

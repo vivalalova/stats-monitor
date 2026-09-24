@@ -2,6 +2,19 @@ import SwiftUI
 
 enum PanelID: String, CaseIterable {
     case cpu, gpu, memory, disk, network, thermal, power, fans
+
+    var accessibilityName: String {
+        switch self {
+        case .cpu:     String(localized: "CPU")
+        case .gpu:     String(localized: "GPU")
+        case .memory:  String(localized: "Memory")
+        case .disk:    String(localized: "Disk")
+        case .network: String(localized: "Network")
+        case .thermal: String(localized: "Thermal")
+        case .power:   String(localized: "Power")
+        case .fans:    String(localized: "Fans")
+        }
+    }
 }
 
 struct PanelView<Content: View>: View {

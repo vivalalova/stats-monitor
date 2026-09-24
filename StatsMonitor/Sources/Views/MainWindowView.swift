@@ -84,6 +84,15 @@ struct MainWindowView: View {
         _isSidebarVisible = State(initialValue: sidebarVisible)
     }
 
+    private var visibleChartTabs: [Tab] {
+        Tab.chartTabs.filter { $0 != .power || monitor.hasPowerTelemetry }
+    }
+
+    /// Falls back to Dashboard when the selected tab has no hardware behind it.
+    private var effectiveSelection: Tab {
+        selection == .power && !monitor.hasPowerTelemetry ? .dashboard : selection
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             if isSidebarVisible {
@@ -108,7 +117,7 @@ struct MainWindowView: View {
             ToolbarItem(placement: .navigation) {
                 SidebarToggleButton(isVisible: $isSidebarVisible)
             }
-            if selection.showsGridSizeSlider {
+            if effectiveSelection.showsGridSizeSlider {
                 ToolbarItem(placement: .primaryAction) {
                     DashboardColumnsSlider(settings: settings)
                 }
@@ -120,16 +129,15 @@ struct MainWindowView: View {
     private var sidebar: some View {
         GlassEffectContainer(spacing: 4) {
             VStack(spacing: 4) {
-                ForEach(Tab.chartTabs, id: \.self) { tab in
-                    sidebarRow(for: tab)
-                        .contentShape(Rectangle())
-                        .onTapGesture { selection = tab }
+                ForEach(visibleChartTabs, id: \.self) { tab in
+                    Button { selection = tab } label: { sidebarRow(for: tab) }
+                        .buttonStyle(.plain)
                 }
                 Divider()
                     .padding(.vertical, 4)
                 ForEach(Tab.textTabs, id: \.self) { tab in
-                    sidebarTextRow(for: tab)
-                        .onTapGesture { selection = tab }
+                    Button { selection = tab } label: { sidebarTextRow(for: tab) }
+                        .buttonStyle(.plain)
                 }
             }
         }
@@ -137,7 +145,7 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var detail: some View {
-        switch selection {
+        switch effectiveSelection {
         case .cpuCores:   CPUCoreChartsView(settings: settings, monitor: monitor)
         case .gpuEngines: GPUEnginesView(settings: settings, monitor: monitor)
         case .memory:     MemoryChartsView(settings: settings, monitor: monitor)
@@ -221,7 +229,7 @@ struct MainWindowView: View {
         lines: [ChartSeries]
     ) -> some View {
         let maxValue = max(lines.flatMap(\.history).max() ?? 0, 1)
-        let isSelected = selection == tab
+        let isSelected = effectiveSelection == tab
         return SidebarMetricRow(
             title: title,
             value: value,
@@ -241,7 +249,7 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private func sidebarTextRow(for tab: Tab) -> some View {
-        let isSelected = selection == tab
+        let isSelected = effectiveSelection == tab
         let row = Label(tab.localizedTitle, systemImage: tab.icon)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
@@ -292,7 +300,7 @@ private struct GeneralSettingsView: View {
     private var anyMenuBarItemChecked: Bool {
         AppSettings.anyMenuBarItemChecked(
             settings: settings,
-            hasPower: monitor.hasPower,
+            hasPower: monitor.hasPowerTelemetry,
             hasThermal: monitor.hasThermal,
             hasFans: monitor.hasFans
         )
@@ -305,7 +313,7 @@ private struct GeneralSettingsView: View {
         Toggle("Memory",  isOn: $settings.showMemory)
         Toggle("Disk",    isOn: $settings.showDisk)
         Toggle("Network", isOn: $settings.showNetwork)
-        if monitor.hasPower   { Toggle("Power",   isOn: powerPanelBinding) }
+        if monitor.hasPowerTelemetry { Toggle("Power", isOn: powerPanelBinding) }
         if monitor.hasThermal { Toggle("Thermal", isOn: $settings.showThermal) }
         if monitor.hasFans    { Toggle("Fans",    isOn: $settings.showFans) }
     }
@@ -315,6 +323,15 @@ private struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: 24) {
                 settingsSection("System") {
                     Toggle("Launch at Login", isOn: $settings.launchAtLogin)
+                    if settings.launchAtLoginRequiresApproval {
+                        HStack(spacing: 8) {
+                            Text("Launch at Login needs your approval in System Settings.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Button("Open Login Items…") { settings.openLoginItemsSettings() }
+                                .controlSize(.small)
+                        }
+                    }
                 }
 
                 settingsSection("Update Frequency") {
@@ -356,7 +373,7 @@ private struct GeneralSettingsView: View {
                         VStack(alignment: .leading, spacing: 8) { menuBarToggles }
                     }
                     if !anyMenuBarItemChecked {
-                        Text("Keep at least one item to avoid hiding the app completely.")
+                        Text("With every item off, CPU stays in the menu bar so the app remains reachable.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

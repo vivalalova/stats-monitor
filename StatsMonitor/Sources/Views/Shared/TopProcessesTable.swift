@@ -20,9 +20,9 @@ struct TopProcessesTable: View {
     }
 
     private var mergedProcesses: [ProcInfo] {
-        var byName: [String: ProcInfo] = [:]
+        var byID: [ProcInfo.ID: ProcInfo] = [:]
         let gpuAsProcInfo = monitor.topGPUProcesses.map { gpu in
-            ProcInfo(name: gpu.name, cpuPercent: 0, memoryBytes: 0, gpuPercent: gpu.utilizationPercent)
+            ProcInfo(name: gpu.name, cpuPercent: 0, memoryBytes: 0, gpuPercent: gpu.utilizationPercent, pid: Int32(gpu.pid))
         }
         let all = monitor.topCPUProcesses
             + monitor.topMemoryProcesses
@@ -30,22 +30,23 @@ struct TopProcessesTable: View {
             + monitor.topNetworkProcesses
             + gpuAsProcInfo
         for proc in all {
-            if let existing = byName[proc.name] {
-                byName[proc.name] = ProcInfo(
-                    name:          proc.name,
+            if let existing = byID[proc.id] {
+                byID[proc.id] = ProcInfo(
+                    name:          existing.name,
                     cpuPercent:    max(existing.cpuPercent,    proc.cpuPercent),
                     memoryBytes:   max(existing.memoryBytes,   proc.memoryBytes),
                     diskReadBPS:   max(existing.diskReadBPS,   proc.diskReadBPS),
                     diskWriteBPS:  max(existing.diskWriteBPS,  proc.diskWriteBPS),
                     networkInBPS:  max(existing.networkInBPS,  proc.networkInBPS),
                     networkOutBPS: max(existing.networkOutBPS, proc.networkOutBPS),
-                    gpuPercent:    max(existing.gpuPercent,    proc.gpuPercent)
+                    gpuPercent:    max(existing.gpuPercent,    proc.gpuPercent),
+                    pid:           existing.pid
                 )
             } else {
-                byName[proc.name] = proc
+                byID[proc.id] = proc
             }
         }
-        return Array(byName.values).sorted(using: sortColumn, ascending: ascending)
+        return Array(byID.values).sorted(using: sortColumn, ascending: ascending)
     }
 
     private func toggleSort(_ col: SortColumn) {
@@ -100,7 +101,7 @@ struct TopProcessesTable: View {
 
                     Divider()
 
-                    ForEach(mergedProcesses, id: \.name) { proc in
+                    ForEach(mergedProcesses) { proc in
                         HStack {
                             Text(proc.name)
                                 .lineLimit(1)

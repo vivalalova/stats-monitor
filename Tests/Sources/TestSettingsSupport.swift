@@ -14,12 +14,14 @@ func makeTestDefaults() -> UserDefaults {
 @MainActor
 func makeTestSettings(
     defaults: UserDefaults? = nil,
-    launchAtLoginEnabled: Bool = false
+    launchAtLoginEnabled: Bool = false,
+    launchAtLoginRequiresApproval: Bool = false
 ) -> AppSettings {
     let isolatedDefaults = defaults ?? makeTestDefaults()
     return AppSettings(
         defaults: isolatedDefaults,
         launchAtLoginStateProvider: { launchAtLoginEnabled },
-        launchAtLoginHandler: { _ in }
+        launchAtLoginHandler: { _ in },
+        launchAtLoginApprovalProvider: { launchAtLoginRequiresApproval }
     )
 }

@@ -24,8 +24,9 @@ struct CPUCoreChartsView: View {
     }
 
     private func coreColor(for index: Int) -> Color {
-        guard let pCount = monitor.cpuCoreFrequencies.pCoreCount else { return .blue }
-        return index < pCount ? .blue : .green
+        let frequencies = monitor.cpuCoreFrequencies
+        guard frequencies.indices.contains(index), frequencies[index].isPerformanceCore == false else { return .blue }
+        return .green
     }
 
     private func currentCoreUsage(for index: Int) -> Double {

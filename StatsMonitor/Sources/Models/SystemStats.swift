@@ -4,6 +4,7 @@ import Util
 struct CPUCoreFrequency: Sendable {
     var currentHz: UInt64   // 0 = unavailable
     var maxHz: UInt64       // 0 = unavailable
+    var isPerformanceCore: Bool? = nil   // nil = no P/E cluster distinction (Intel)
 
     static let zero = CPUCoreFrequency(currentHz: 0, maxHz: 0)
 
@@ -15,16 +16,6 @@ struct CPUCoreFrequency: Sendable {
         return ghzString(maxHz)
     }
 
-}
-
-extension Array where Element == CPUCoreFrequency {
-    /// Count of leading P-cores (highest `maxHz`). Returns `nil` when cluster distinction is unavailable.
-    var pCoreCount: Int? {
-        guard !isEmpty else { return nil }
-        let distinctMax = Set(map(\.maxHz).filter { $0 > 0 })
-        guard distinctMax.count >= 2, let highMax = distinctMax.max() else { return nil }
-        return prefix(while: { $0.maxHz == highMax }).count
-    }
 }
 
 struct CPUUsage: Sendable {
@@ -132,7 +123,7 @@ struct GPUProcessInfo: Sendable {
     var commandQueueCount: Int = 0
 }
 
-struct ProcInfo: Sendable {
+struct ProcInfo: Sendable, Identifiable {
     var name: String
     var cpuPercent: Double
     var memoryBytes: UInt64
@@ -142,7 +133,9 @@ struct ProcInfo: Sendable {
     var networkOutBPS: Double = 0
     var powerImpact: Double = 0
     var gpuPercent: Double = 0
+    var pid: Int32
 
+    var id: Int32 { pid }
     var diskTotalBPS: Double { diskReadBPS + diskWriteBPS }
     var networkTotalBPS: Double { networkInBPS + networkOutBPS }
 }
@@ -153,9 +146,9 @@ struct BatteryUsage: Sendable {
     var isPluggedIn: Bool       // AC power connected (may not be actively charging)
     var timeRemaining: Int?     // minutes; nil while estimating
     var cycleCount: Int
-    var designCapacity: Int     // mAh
-    var maxCapacity: Int        // mAh (current maximum)
-    var health: Double          // maxCapacity / designCapacity × 100
+    var designCapacity: Int?    // mAh; nil when the battery reports no mAh capacity
+    var maxCapacity: Int?       // mAh (current maximum)
+    var health: Double?         // maxCapacity / designCapacity × 100
     var voltageMilliVolts: Int = 0       // 0 = unavailable
     var amperageMilliAmps: Int = 0       // signed; + = charging, − = discharging; 0 = idle/unavailable
     var temperatureCelsius: Double? = nil

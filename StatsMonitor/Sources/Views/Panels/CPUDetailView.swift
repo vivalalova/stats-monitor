@@ -62,8 +62,11 @@ private struct CoreGridView: View {
     }
 
     private func barColor(for index: Int) -> Color {
-        guard let pCount = frequencies.pCoreCount else { return progressColor(cores[index] / 100) }
-        return index < pCount ? .blue : .green
+        switch frequencies.indices.contains(index) ? frequencies[index].isPerformanceCore : nil {
+        case true?: .blue
+        case false?: .green
+        case nil: progressColor(cores[index] / 100)
+        }
     }
 
     var body: some View {

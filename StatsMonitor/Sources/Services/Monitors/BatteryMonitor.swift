@@ -27,15 +27,22 @@ struct BatteryMonitor {
               let reportedMax = positiveInt(from: dict["MaxCapacity"])
         else { return nil }
 
-        let designCap = positiveInt(from: dict["DesignCapacity"]) ?? reportedMax
-        let nominalMaxCapacity = positiveInt(from: dict["NominalChargeCapacity"])
-        let rawMaxCapacity = positiveInt(from: dict["AppleRawMaxCapacity"])
-        let maxCap = nominalMaxCapacity
-            ?? rawMaxCapacity
-            ?? (reportedMax > 100 ? reportedMax : nil)
-            ?? reportedMax
+        // macOS 27 moved mAh capacities into the BatteryData sub-dictionary; top-level MaxCapacity is then a percentage.
+        let batteryData = dict["BatteryData"] as? [String: Any]
+        func capacity(_ key: String) -> Int? {
+            positiveInt(from: dict[key]) ?? positiveInt(from: batteryData?[key])
+        }
+        let reportedMilliAmpHours = reportedMax > 100 ? reportedMax : nil
+        let maxCap = capacity("NominalChargeCapacity")
+            ?? capacity("AppleRawMaxCapacity")
+            ?? reportedMilliAmpHours
+        let designCap = capacity("DesignCapacity")
+        let health: Double? = if let maxCap, let designCap {
+            clamp(Double(maxCap) / Double(designCap) * 100.0)
+        } else {
+            nil
+        }
 
-        let safeDesign = designCap > 0 ? designCap : maxCap
         let isCharging  = dict["IsCharging"]        as? Bool ?? false
         let isPluggedIn = dict["ExternalConnected"] as? Bool ?? false
         let cycleCount  = dict["CycleCount"]        as? Int ?? 0
@@ -54,9 +61,9 @@ struct BatteryMonitor {
             isPluggedIn:    isPluggedIn,
             timeRemaining:  timeRemaining,
             cycleCount:     cycleCount,
-            designCapacity: safeDesign,
+            designCapacity: designCap,
             maxCapacity:    maxCap,
-            health:         clamp(Double(maxCap) / Double(safeDesign) * 100.0),
+            health:         health,
             voltageMilliVolts: max(voltage, 0),
             amperageMilliAmps: signedAmperage(amperage, isCharging: isCharging),
             temperatureCelsius: temperature

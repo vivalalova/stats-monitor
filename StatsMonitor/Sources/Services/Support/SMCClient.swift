@@ -87,41 +87,37 @@ final class SMCClient: @unchecked Sendable {
     // MARK: - Public API
 
     /// Reads an SMC key and decodes it as a Celsius temperature.
-    /// Supports `sp78` (signed 7.8 fixed-point) and `flt ` (32-bit float) types.
     /// Returns nil when the key is unavailable or the decoded value is outside –40…150 °C.
     func readTemperature(_ key: String) -> Double? {
-        guard let (bytes, dataType) = readRaw(key) else { return nil }
-
-        let sp78Code = fourCC("sp78")
-        let fltCode  = fourCC("flt ")
-
-        let celsius: Double
-        switch dataType {
-        case sp78Code where bytes.count >= 2:
-            // Signed 7.8 fixed-point, big-endian
-            let raw = Int16(bitPattern: UInt16(bytes[0]) << 8 | UInt16(bytes[1]))
-            celsius = Double(raw) / 256.0
-        case fltCode where bytes.count >= 4:
-            // 32-bit float, big-endian
-            let bits = UInt32(bytes[0]) << 24 | UInt32(bytes[1]) << 16
-                     | UInt32(bytes[2]) << 8  | UInt32(bytes[3])
-            celsius = Double(Float(bitPattern: bits))
-        default:
-            return nil
-        }
-
+        guard let (bytes, dataType) = readRaw(key),
+              let celsius = Self.decodeNumeric(dataType: dataType, bytes: bytes) else { return nil }
         return (-40.0...150.0).contains(celsius) ? celsius : nil
     }
 
-    /// Reads an SMC key decoded as fan RPM.
-    /// Validates that the key's SMC data type is `fpe2` (unsigned 14.2 fixed-point, big-endian).
-    /// Returns nil when the key is missing or the data type is unexpected.
+    /// Reads an SMC key decoded as fan RPM (Intel `fpe2`, Apple Silicon `flt `).
     func readFanRPM(_ key: String) -> Double? {
-        guard let (bytes, dataType) = readRaw(key),
-              dataType == fourCC("fpe2"),
-              bytes.count >= 2 else { return nil }
-        let raw = UInt16(bytes[0]) << 8 | UInt16(bytes[1])
-        return Double(raw) / 4.0
+        guard let (bytes, dataType) = readRaw(key) else { return nil }
+        return Self.decodeNumeric(dataType: dataType, bytes: bytes)
+    }
+
+    /// Decodes a numeric SMC value by its reported data type; nil for unsupported types.
+    /// `sp78` / `fpe2` are big-endian fixed-point; `flt ` is a little-endian Float32.
+    static func decodeNumeric(dataType: UInt32, bytes: [UInt8]) -> Double? {
+        switch dataType {
+        case fourCC("sp78") where bytes.count >= 2:
+            let raw = Int16(bitPattern: UInt16(bytes[0]) << 8 | UInt16(bytes[1]))
+            return Double(raw) / 256.0
+        case fourCC("fpe2") where bytes.count >= 2:
+            let raw = UInt16(bytes[0]) << 8 | UInt16(bytes[1])
+            return Double(raw) / 4.0
+        case fourCC("flt ") where bytes.count >= 4:
+            let bits = UInt32(bytes[3]) << 24 | UInt32(bytes[2]) << 16
+                     | UInt32(bytes[1]) << 8  | UInt32(bytes[0])
+            let value = Float(bitPattern: bits)
+            return value.isFinite ? Double(value) : nil
+        default:
+            return nil
+        }
     }
 
     /// Reads an SMC key decoded as a single UInt8 (e.g. `FNum` for fan count).
@@ -140,7 +136,7 @@ final class SMCClient: @unchecked Sendable {
     private func readRaw(_ key: String) -> (bytes: [UInt8], dataType: UInt32)? {
         // Step 1: get key info (data size + type)
         var infoReq = SMCParamStruct()
-        infoReq.key  = fourCC(key)
+        infoReq.key  = Self.fourCC(key)
         infoReq.data8 = 9  // kSMCGetKeyInfo
         guard let info = callSMC(infoReq), info.result == 0 else { return nil }
 
@@ -149,7 +145,7 @@ final class SMCClient: @unchecked Sendable {
 
         // Step 2: read value
         var readReq = SMCParamStruct()
-        readReq.key            = fourCC(key)
+        readReq.key            = Self.fourCC(key)
         readReq.data8          = 5  // kSMCReadKey
         readReq.keyInfoDataSize = info.keyInfoDataSize
         guard let result = callSMC(readReq), result.result == 0 else { return nil }
@@ -171,7 +167,7 @@ final class SMCClient: @unchecked Sendable {
         return ret == kIOReturnSuccess ? output : nil
     }
 
-    private func fourCC(_ key: String) -> UInt32 {
+    static func fourCC(_ key: String) -> UInt32 {
         var code: UInt32 = 0
         for (i, byte) in key.utf8.prefix(4).enumerated() {
             code |= UInt32(byte) << UInt32((3 - i) * 8)

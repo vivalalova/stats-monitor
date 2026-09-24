@@ -12,6 +12,7 @@ enum DashboardGridSizing {
 final class AppSettings {
     typealias LaunchAtLoginStateProvider = @MainActor () -> Bool
     typealias LaunchAtLoginHandler = @MainActor (Bool) throws -> Void
+    typealias LaunchAtLoginApprovalProvider = @MainActor () -> Bool
 
     static let defaultPollInterval: TimeInterval = 2.0
     static let defaultHistoryCapacity = 120
@@ -30,6 +31,7 @@ final class AppSettings {
     private let defaults: UserDefaults
     private let launchAtLoginStateProvider: LaunchAtLoginStateProvider
     private let launchAtLoginHandler: LaunchAtLoginHandler
+    private let launchAtLoginApprovalProvider: LaunchAtLoginApprovalProvider
     private var isHydrating = false
 
     var pollInterval:     Double = defaultPollInterval { didSet { persist("pollInterval",     pollInterval) } }
@@ -56,17 +58,27 @@ final class AppSettings {
         }
     }
 
+    /// Registered but blocked until the user approves it in System Settings › Login Items.
+    private(set) var launchAtLoginRequiresApproval = false
+
     init(
         defaults: UserDefaults = .standard,
-        launchAtLoginStateProvider: @escaping LaunchAtLoginStateProvider = { SMAppService.mainApp.status == .enabled },
+        launchAtLoginStateProvider: @escaping LaunchAtLoginStateProvider = {
+            // Registered-but-awaiting-approval stays "on" so the toggle matches the approval hint.
+            [.enabled, .requiresApproval].contains(SMAppService.mainApp.status)
+        },
         launchAtLoginHandler: @escaping LaunchAtLoginHandler = { enabled in
             if enabled { try SMAppService.mainApp.register() }
             else       { try SMAppService.mainApp.unregister() }
+        },
+        launchAtLoginApprovalProvider: @escaping LaunchAtLoginApprovalProvider = {
+            SMAppService.mainApp.status == .requiresApproval
         }
     ) {
         self.defaults = defaults
         self.launchAtLoginStateProvider = launchAtLoginStateProvider
         self.launchAtLoginHandler = launchAtLoginHandler
+        self.launchAtLoginApprovalProvider = launchAtLoginApprovalProvider
 
         isHydrating = true
         let ud = defaults
@@ -92,7 +104,18 @@ final class AppSettings {
         showPower   = ud.bool(forKey: "showPower")
         showFans    = ud.bool(forKey: "showFans")
         launchAtLogin = launchAtLoginStateProvider()
+        launchAtLoginRequiresApproval = launchAtLoginApprovalProvider()
         isHydrating = false
+    }
+
+    /// Re-reads login item state, which the user can change in System Settings while the app runs.
+    func refreshLaunchAtLoginState() {
+        replaceLaunchAtLoginWithoutApplyingHandler(launchAtLoginStateProvider())
+        launchAtLoginRequiresApproval = launchAtLoginApprovalProvider()
+    }
+
+    func openLoginItemsSettings() {
+        SMAppService.openSystemSettingsLoginItems()
     }
 
     private func persist(_ key: String, _ value: Any) {
@@ -106,6 +129,7 @@ final class AppSettings {
         } catch {
             replaceLaunchAtLoginWithoutApplyingHandler(launchAtLoginStateProvider())
         }
+        launchAtLoginRequiresApproval = launchAtLoginApprovalProvider()
     }
 
     private func replaceLaunchAtLoginWithoutApplyingHandler(_ value: Bool) {

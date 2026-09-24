@@ -63,7 +63,7 @@ extension SystemMonitor {
         appendMenuBarItem(to: &items, isVisible: settings.showNetwork, panel: .network, symbol: "network", text: networkMenuText)
         appendMenuBarItem(
             to: &items,
-            isVisible: settings.showPowerPanel && hasPower,
+            isVisible: settings.showPowerPanel && hasPowerTelemetry,
             panel: .power,
             symbol: powerMenuSymbol,
             text: powerMenuText,
@@ -80,6 +80,8 @@ extension SystemMonitor {
             symbolPaletteColors: thermalMenuSymbolPaletteColors
         )
         appendMenuBarItem(to: &items, isVisible: settings.showFans && hasFans, panel: .fans, symbol: "wind", text: fansMenuText)
+        // LSUIElement app has no Dock icon: the status item is the only entry point, so it can never be empty.
+        appendMenuBarItem(to: &items, isVisible: items.isEmpty, panel: .cpu, symbol: "cpu", text: cpuMenuText)
         return items
     }
 

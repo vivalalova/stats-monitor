@@ -103,7 +103,6 @@ final class StatusBarController: NSObject {
         guard let button = statusButton else { return }
         refreshButtonPresentation(for: button)
         Self.configureClickBehavior(for: button)
-        button.setAccessibilityLabel("StatsMonitor")
         button.target = self
         button.action = #selector(handleClick(_:))
     }
@@ -146,6 +145,12 @@ final class StatusBarController: NSObject {
         guard let button = button ?? statusButton else { return }
         let presentationState = StatusBarButtonPresentation.state(monitor: monitor, settings: settings)
         StatusBarButtonPresentation.apply(presentationState, to: statusItem, button: button)
+        button.setAccessibilityLabel(Self.accessibilityLabel(for: currentSegments))
+    }
+
+    static func accessibilityLabel(for segments: [MenuBarItem]) -> String {
+        let summary = segments.map { "\($0.panel.accessibilityName) \($0.text)" }.joined(separator: ", ")
+        return "StatsMonitor: \(summary)"
     }
 
     /// 觀察所有影響 label 寬度的值（指標數值 + show 設定），任一改變就重算 length
@@ -211,6 +216,7 @@ final class StatusBarController: NSObject {
     private func closePanel() {
         removeDismissMonitors()
         detailPanel.orderOut(nil)
+        hostingController.rootView = AnyView(EmptyView())
         currentPanel = nil
     }
 

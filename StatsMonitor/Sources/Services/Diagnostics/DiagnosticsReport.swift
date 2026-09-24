@@ -418,11 +418,16 @@ enum CrashReportReader {
     }
 
     private static func parseMetadata(data: Data) -> (exception: String, signal: String, termination: String) {
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+        if let json = jsonObject(from: data) {
             return parseJSONMetadata(json)
         }
+        // Real .ips files are a one-line header JSON, a newline, then the body JSON.
+        if let newline = data.firstIndex(of: UInt8(ascii: "\n")),
+           let body = jsonObject(from: data[data.index(after: newline)...]) {
+            return parseJSONMetadata(body)
+        }
 
-        let text = String(data: Data(data.prefix(64 * 1024)), encoding: .utf8) ?? ""
+        let text = String(decoding: data.prefix(64 * 1024), as: UTF8.self)
         return (
             firstRegexCapture(#""type"\s*:\s*"([^"]+)""#, in: text) ?? "N/A",
             firstRegexCapture(#""signal"\s*:\s*"([^"]+)""#, in: text) ?? "N/A",
@@ -430,16 +435,22 @@ enum CrashReportReader {
         )
     }
 
+    private static func jsonObject(from data: Data) -> [String: Any]? {
+        (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    }
+
     private static func parseJSONMetadata(_ json: [String: Any]) -> (exception: String, signal: String, termination: String) {
         let exception = json["exception"] as? [String: Any]
         let termination = json["termination"] as? [String: Any]
         let namespace = termination?["namespace"] as? String
         let code = termination?["code"].map { "\($0)" }
+        let indicator = (termination?["indicator"] as? String).map { "(\($0))" }
+        let terminationText = [namespace, code, indicator].compactMap(\.self).joined(separator: " ")
 
         return (
             exception?["type"] as? String ?? "N/A",
             exception?["signal"] as? String ?? "N/A",
-            [namespace, code].compactMap(\.self).joined(separator: " ")
+            terminationText.isEmpty ? "N/A" : terminationText
         )
     }
 

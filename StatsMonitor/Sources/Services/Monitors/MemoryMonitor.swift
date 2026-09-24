@@ -15,7 +15,7 @@ struct MemoryMonitor: Sendable {
 
         let kr = withUnsafeMutablePointer(to: &stats) {
             $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
+                host_statistics64(MachHost.port, HOST_VM_INFO64, $0, &count)
             }
         }
 
@@ -82,7 +82,8 @@ struct MemoryMonitor: Sendable {
                     ProcInfo(
                         name: entry.name,
                         cpuPercent: 0,
-                        memoryBytes: entry.memoryBytes
+                        memoryBytes: entry.memoryBytes,
+                        pid: entry.pid
                     )
                 }
                 .sorted { $0.memoryBytes > $1.memoryBytes }

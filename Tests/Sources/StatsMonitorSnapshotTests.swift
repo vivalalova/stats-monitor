@@ -16,18 +16,18 @@ struct StatsMonitorSnapshotTests {
             idle: 50.4,
             perCore: [78, 64, 22, 18, 44, 39],
             coreFrequencies: [
-                CPUCoreFrequency(currentHz: 3_400_000_000, maxHz: 3_500_000_000),
-                CPUCoreFrequency(currentHz: 3_300_000_000, maxHz: 3_500_000_000),
-                CPUCoreFrequency(currentHz: 2_400_000_000, maxHz: 2_420_000_000),
-                CPUCoreFrequency(currentHz: 2_300_000_000, maxHz: 2_420_000_000),
-                CPUCoreFrequency(currentHz: 2_100_000_000, maxHz: 2_420_000_000),
-                CPUCoreFrequency(currentHz: 2_000_000_000, maxHz: 2_420_000_000),
+                CPUCoreFrequency(currentHz: 3_400_000_000, maxHz: 3_500_000_000, isPerformanceCore: true),
+                CPUCoreFrequency(currentHz: 3_300_000_000, maxHz: 3_500_000_000, isPerformanceCore: true),
+                CPUCoreFrequency(currentHz: 2_400_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
+                CPUCoreFrequency(currentHz: 2_300_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
+                CPUCoreFrequency(currentHz: 2_100_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
+                CPUCoreFrequency(currentHz: 2_000_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
             ]
         ))
         monitor.topCPUProcesses = [
-            ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_610_612_736),
-            ProcInfo(name: "StatsMonitor", cpuPercent: 12.7, memoryBytes: 92_274_688),
-            ProcInfo(name: "WindowServer", cpuPercent: 7.4, memoryBytes: 421_527_552),
+            ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_610_612_736, pid: 201),
+            ProcInfo(name: "StatsMonitor", cpuPercent: 12.7, memoryBytes: 92_274_688, pid: 202),
+            ProcInfo(name: "WindowServer", cpuPercent: 7.4, memoryBytes: 421_527_552, pid: 203),
         ]
 
         let view = detailPopoverSnapshotView(
@@ -208,6 +208,36 @@ struct StatsMonitorSnapshotTests {
             of: view,
             as: toleratedImageSnapshot(size: view.frame.size),
             named: "main-window-general",
+            record: snapshotRecordMode
+        )
+    }
+
+    @Test("General main window tab shows a launch-approval hint when login item needs approval")
+    func generalMainWindowLaunchApprovalScreenshot() {
+        let settings = makeTestSettings(launchAtLoginRequiresApproval: true)
+        seedSettingsValues(into: settings)
+        let monitor = SystemMonitor(settings: settings)
+        seedMonitorSnapshotData(into: monitor)
+
+        let view = appWindowSnapshotView(
+            title: "Settings",
+            contentSize: CGSize(
+                width: SettingsWindowLayout.defaultWidth,
+                height: SettingsWindowLayout.defaultHeight
+            )
+        ) {
+            MainWindowView(
+                settings: settings,
+                monitor: monitor,
+                selection: .general,
+                aboutData: .snapshot
+            )
+        }
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.frame.size),
+            named: "main-window-general-launch-approval",
             record: snapshotRecordMode
         )
     }
@@ -897,12 +927,12 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         idle: 50.4,
         perCore: [78, 64, 22, 18, 44, 39],
         coreFrequencies: [
-            CPUCoreFrequency(currentHz: 3_400_000_000, maxHz: 3_500_000_000),
-            CPUCoreFrequency(currentHz: 3_300_000_000, maxHz: 3_500_000_000),
-            CPUCoreFrequency(currentHz: 2_400_000_000, maxHz: 2_420_000_000),
-            CPUCoreFrequency(currentHz: 2_300_000_000, maxHz: 2_420_000_000),
-            CPUCoreFrequency(currentHz: 2_100_000_000, maxHz: 2_420_000_000),
-            CPUCoreFrequency(currentHz: 2_000_000_000, maxHz: 2_420_000_000),
+            CPUCoreFrequency(currentHz: 3_400_000_000, maxHz: 3_500_000_000, isPerformanceCore: true),
+            CPUCoreFrequency(currentHz: 3_300_000_000, maxHz: 3_500_000_000, isPerformanceCore: true),
+            CPUCoreFrequency(currentHz: 2_400_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
+            CPUCoreFrequency(currentHz: 2_300_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
+            CPUCoreFrequency(currentHz: 2_100_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
+            CPUCoreFrequency(currentHz: 2_000_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
         ]
     ))
     monitor.record(gpu: GPUUsage(
@@ -987,28 +1017,28 @@ private func seedMonitorSnapshotData(into monitor: SystemMonitor) {
         refreshRateHz: 120
     ))
     monitor.topCPUProcesses = [
-        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000),
-        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000),
+        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, pid: 301),
+        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000, pid: 302),
+        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, pid: 303),
     ]
     monitor.topMemoryProcesses = monitor.topCPUProcesses
     monitor.topGPUProcesses = [
-        GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 23.5, commandQueueCount: 4),
-        GPUProcessInfo(pid: 1235, name: "Safari", utilizationPercent: 9.8, commandQueueCount: 2),
+        GPUProcessInfo(pid: 302, name: "WindowServer", utilizationPercent: 23.5, commandQueueCount: 4),
+        GPUProcessInfo(pid: 305, name: "Safari", utilizationPercent: 9.8, commandQueueCount: 2),
         GPUProcessInfo(pid: 1232, name: "Fork", utilizationPercent: 4.1, commandQueueCount: 1),
     ]
     monitor.topDiskProcesses = [
-        ProcInfo(name: "mdworker", cpuPercent: 1.2, memoryBytes: 120_000_000, diskReadBPS: 4_194_304, diskWriteBPS: 524_288),
-        ProcInfo(name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000, diskReadBPS: 2_097_152, diskWriteBPS: 1_048_576),
+        ProcInfo(name: "mdworker", cpuPercent: 1.2, memoryBytes: 120_000_000, diskReadBPS: 4_194_304, diskWriteBPS: 524_288, pid: 304),
+        ProcInfo(name: "Xcode", cpuPercent: 42.8, memoryBytes: 1_824_000_000, diskReadBPS: 2_097_152, diskWriteBPS: 1_048_576, pid: 301),
     ]
     monitor.topNetworkProcesses = [
-        ProcInfo(name: "Safari", cpuPercent: 3.1, memoryBytes: 640_000_000, networkInBPS: 1_572_864, networkOutBPS: 196_608),
-        ProcInfo(name: "curl", cpuPercent: 0.4, memoryBytes: 18_000_000, networkInBPS: 262_144, networkOutBPS: 131_072),
+        ProcInfo(name: "Safari", cpuPercent: 3.1, memoryBytes: 640_000_000, networkInBPS: 1_572_864, networkOutBPS: 196_608, pid: 305),
+        ProcInfo(name: "curl", cpuPercent: 0.4, memoryBytes: 18_000_000, networkInBPS: 262_144, networkOutBPS: 131_072, pid: 306),
     ]
     monitor.topPowerProcesses = [
-        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000, powerImpact: 45.1),
-        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, powerImpact: 14.1),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, powerImpact: 12.7),
+        ProcInfo(name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000, powerImpact: 45.1, pid: 302),
+        ProcInfo(name: "Xcode", cpuPercent: 48.2, memoryBytes: 1_824_000_000, powerImpact: 14.1, pid: 301),
+        ProcInfo(name: "StatsMonitor", cpuPercent: 8.3, memoryBytes: 92_000_000, powerImpact: 12.7, pid: 303),
     ]
 }
 
@@ -1020,10 +1050,10 @@ private func seedGPUHeavyMonitorSnapshotData(into monitor: SystemMonitor) {
         idle: 73,
         perCore: [30, 22, 10, 8],
         coreFrequencies: [
-            CPUCoreFrequency(currentHz: 3_000_000_000, maxHz: 3_500_000_000),
-            CPUCoreFrequency(currentHz: 2_800_000_000, maxHz: 3_500_000_000),
-            CPUCoreFrequency(currentHz: 2_000_000_000, maxHz: 2_420_000_000),
-            CPUCoreFrequency(currentHz: 1_900_000_000, maxHz: 2_420_000_000),
+            CPUCoreFrequency(currentHz: 3_000_000_000, maxHz: 3_500_000_000, isPerformanceCore: true),
+            CPUCoreFrequency(currentHz: 2_800_000_000, maxHz: 3_500_000_000, isPerformanceCore: true),
+            CPUCoreFrequency(currentHz: 2_000_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
+            CPUCoreFrequency(currentHz: 1_900_000_000, maxHz: 2_420_000_000, isPerformanceCore: false),
         ]
     ))
     monitor.record(gpu: GPUUsage(
@@ -1047,9 +1077,9 @@ private func seedGPUHeavyMonitorSnapshotData(into monitor: SystemMonitor) {
     monitor.record(disk: DiskUsage(used: 400_000_000_000, total: 1_000_000_000_000, readBPS: 0, writeBPS: 0))
     monitor.record(network: NetworkUsage(bytesInPerSec: 0, bytesOutPerSec: 0, interfaces: []))
     monitor.topCPUProcesses = [
-        ProcInfo(name: "Xcode", cpuPercent: 42.1, memoryBytes: 1_600_000_000),
-        ProcInfo(name: "clang", cpuPercent: 18.4, memoryBytes: 320_000_000),
-        ProcInfo(name: "StatsMonitor", cpuPercent: 6.7, memoryBytes: 90_000_000),
+        ProcInfo(name: "Xcode", cpuPercent: 42.1, memoryBytes: 1_600_000_000, pid: 401),
+        ProcInfo(name: "clang", cpuPercent: 18.4, memoryBytes: 320_000_000, pid: 402),
+        ProcInfo(name: "StatsMonitor", cpuPercent: 6.7, memoryBytes: 90_000_000, pid: 403),
     ]
     monitor.topMemoryProcesses = monitor.topCPUProcesses
     monitor.topGPUProcesses = [

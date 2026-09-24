@@ -15,14 +15,15 @@ struct CPUMonitor: Sendable {
     // Intel fallback: static max Hz per core, built once
     private var cachedIntelMaxHz: [UInt64] = []
 
-    mutating func sample() -> CPUUsage {
+    /// Returns nil when the host query fails or no ticks elapsed.
+    mutating func sample() -> CPUUsage? {
         var cpuCount: natural_t = 0
         var infoArray: processor_info_array_t?
         var infoCount: mach_msg_type_number_t = 0
 
-        let kr = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &cpuCount, &infoArray, &infoCount)
+        let kr = host_processor_info(MachHost.port, PROCESSOR_CPU_LOAD_INFO, &cpuCount, &infoArray, &infoCount)
         guard kr == KERN_SUCCESS, let info = infoArray else {
-            return .zero
+            return nil
         }
 
         defer {
@@ -70,7 +71,7 @@ struct CPUMonitor: Sendable {
         previousTicks = ticks
 
         let total = totalUser + totalSystem + totalIdle + totalNice
-        guard total > 0 else { return .zero }
+        guard total > 0 else { return nil }
 
         return CPUUsage(
             user:             Double(totalUser + totalNice) / Double(total) * 100,
@@ -108,22 +109,35 @@ struct CPUMonitor: Sendable {
         nanosecondsPerTick: Double = machNanosecondsPerTick
     ) -> [ProcInfo] {
         let processes = snapshot.entries.compactMap { entry -> ProcInfo? in
-            guard let previous = previousSnapshots[entry.pid] else { return nil }
-            let elapsed = snapshot.date.timeIntervalSince(previous.date)
-            guard elapsed > 0 else { return nil }
-
-            let deltaTicks = entry.cpuTicks >= previous.ticks ? Double(entry.cpuTicks - previous.ticks) : 0
-            guard deltaTicks > 0 else { return nil }
-
-            let deltaNanoseconds = deltaTicks * nanosecondsPerTick
+            guard let cpuPercent = cpuPercent(
+                of: entry,
+                at: snapshot.date,
+                previous: previousSnapshots[entry.pid],
+                nanosecondsPerTick: nanosecondsPerTick
+            ), cpuPercent > 0 else { return nil }
             return ProcInfo(
                 name: entry.name,
-                cpuPercent: (deltaNanoseconds / 1_000_000_000.0) / elapsed * 100,
-                memoryBytes: entry.memoryBytes
+                cpuPercent: cpuPercent,
+                memoryBytes: entry.memoryBytes,
+                pid: entry.pid
             )
         }
 
         return Array(processes.sorted { $0.cpuPercent > $1.cpuPercent }.prefix(processCount))
+    }
+
+    private static func cpuPercent(
+        of entry: ProcessCountersSnapshot.Entry,
+        at date: Date,
+        previous: ProcessSnapshot?,
+        nanosecondsPerTick: Double
+    ) -> Double? {
+        guard let ticks = entry.cpuTicks else { return entry.topCPUPercent }
+        guard let previous else { return nil }
+        let elapsed = date.timeIntervalSince(previous.date)
+        guard elapsed > 0, ticks >= previous.ticks else { return nil }
+        let deltaNanoseconds = Double(ticks - previous.ticks) * nanosecondsPerTick
+        return (deltaNanoseconds / 1_000_000_000.0) / elapsed * 100
     }
 
     // MARK: - Frequency
@@ -161,8 +175,8 @@ private final class CPUProcessSampler: @unchecked Sendable {
             processCount: processCount
         )
         previousSnapshots = Dictionary(
-            uniqueKeysWithValues: snapshot.entries.map { entry in
-                (entry.pid, CPUMonitor.ProcessSnapshot(ticks: entry.cpuTicks, date: snapshot.date))
+            uniqueKeysWithValues: snapshot.entries.compactMap { entry in
+                entry.cpuTicks.map { (entry.pid, CPUMonitor.ProcessSnapshot(ticks: $0, date: snapshot.date)) }
             }
         )
         return processes
@@ -180,6 +194,9 @@ private final class CoreFrequencySampler: @unchecked Sendable {
     // Per-cluster DVFS frequency tables (Hz), read from device tree.
     private var ecpuFreqTable: [UInt64] = []
     private var pcpuFreqTable: [UInt64] = []
+
+    /// Cluster type per logical CPU number (device tree `cluster-type`); empty when unavailable.
+    private let logicalCoreIsPerformance: [Bool] = CoreFrequencySampler.readLogicalCoreTopology()
 
     private let lib: UnsafeMutableRawPointer?
 
@@ -233,7 +250,7 @@ private final class CoreFrequencySampler: @unchecked Sendable {
         if let lib { dlclose(lib) }
     }
 
-    /// Returns per-core frequencies in perflevel order (P-cores first, then E-cores).
+    /// Returns per-core frequencies in logical CPU order, matching `host_processor_info` per-core usage.
     /// First call returns empty (needs two samples for delta). Returns empty on failure.
     func sample() -> [CPUCoreFrequency] {
         guard let subscription,
@@ -306,9 +323,43 @@ private final class CoreFrequencySampler: @unchecked Sendable {
 
         performanceCoreResults.sort { $0.index < $1.index }
         efficiencyCoreResults.sort { $0.index < $1.index }
+        let efficiencyCores = efficiencyCoreResults.map { Self.makeCoreFrequency(from: $0, isPerformanceCore: false) }
+        let performanceCores = performanceCoreResults.map { Self.makeCoreFrequency(from: $0, isPerformanceCore: true) }
 
-        return performanceCoreResults.map(Self.makeCoreFrequency)
-            + efficiencyCoreResults.map(Self.makeCoreFrequency)
+        guard logicalCoreIsPerformance.count == efficiencyCores.count + performanceCores.count else {
+            return efficiencyCores + performanceCores
+        }
+        var nextEfficiency = efficiencyCores.makeIterator()
+        var nextPerformance = performanceCores.makeIterator()
+        return logicalCoreIsPerformance.compactMap { isPerformance in
+            isPerformance ? nextPerformance.next() : nextEfficiency.next()
+        }
+    }
+
+    private static func readLogicalCoreTopology() -> [Bool] {
+        let cpus = IORegistryEntryFromPath(kIOMainPortDefault, "IODeviceTree:/cpus")
+        guard cpus != 0 else { return [] }
+        defer { IOObjectRelease(cpus) }
+
+        var iterator: io_iterator_t = 0
+        guard IORegistryEntryGetChildIterator(cpus, kIODeviceTreePlane, &iterator) == KERN_SUCCESS else { return [] }
+        defer { IOObjectRelease(iterator) }
+
+        var clusterByLogicalID: [Int: Bool] = [:]
+        while case let cpu = IOIteratorNext(iterator), cpu != IO_OBJECT_NULL {
+            defer { IOObjectRelease(cpu) }
+            guard let logicalID = IORegistryEntryCreateCFProperty(cpu, "logical-cpu-id" as CFString, kCFAllocatorDefault, 0)?
+                    .takeRetainedValue() as? Int,
+                  let clusterData = IORegistryEntryCreateCFProperty(cpu, "cluster-type" as CFString, kCFAllocatorDefault, 0)?
+                    .takeRetainedValue() as? Data,
+                  let clusterType = clusterData.first
+            else { continue }
+            clusterByLogicalID[logicalID] = clusterType == UInt8(ascii: "P")
+        }
+
+        let ids = clusterByLogicalID.keys.sorted()
+        guard ids == Array(0..<ids.count) else { return [] }
+        return ids.compactMap { clusterByLogicalID[$0] }
     }
 
     private func setupSubscription() {
@@ -423,8 +474,11 @@ private final class CoreFrequencySampler: @unchecked Sendable {
         return Int(numericPortion) ?? 0
     }
 
-    private static func makeCoreFrequency(from result: (index: Int, current: UInt64, max: UInt64)) -> CPUCoreFrequency {
-        CPUCoreFrequency(currentHz: result.current, maxHz: result.max)
+    private static func makeCoreFrequency(
+        from result: (index: Int, current: UInt64, max: UInt64),
+        isPerformanceCore: Bool
+    ) -> CPUCoreFrequency {
+        CPUCoreFrequency(currentHz: result.current, maxHz: result.max, isPerformanceCore: isPerformanceCore)
     }
 
     private static func loadFn<T>(_ library: UnsafeMutableRawPointer, _ name: String) -> T? {

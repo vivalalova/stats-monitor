@@ -33,16 +33,15 @@ struct StatsMonitorTests {
         #expect(freq.displayText.contains("3.2G"))
     }
 
-    @Test("CPUCoreFrequency arrays treat leading higher-max cores as performance cores")
-    func coreFreqArrayInfersLeadingPerformanceCluster() {
-        let frequencies = [
-            CPUCoreFrequency(currentHz: 3_400_000_000, maxHz: 3_500_000_000),
-            CPUCoreFrequency(currentHz: 3_300_000_000, maxHz: 3_500_000_000),
-            CPUCoreFrequency(currentHz: 2_400_000_000, maxHz: 2_420_000_000),
-            CPUCoreFrequency(currentHz: 2_300_000_000, maxHz: 2_420_000_000),
-        ]
+    @Test("CPUCoreFrequency isPerformanceCore stores per-core P/E cluster membership")
+    func coreFreqStoresPerformanceCoreFlag() {
+        let eCore = CPUCoreFrequency(currentHz: 2_400_000_000, maxHz: 2_420_000_000, isPerformanceCore: false)
+        let pCore = CPUCoreFrequency(currentHz: 3_400_000_000, maxHz: 3_500_000_000, isPerformanceCore: true)
+        let unknownCluster = CPUCoreFrequency(currentHz: 2_100_000_000, maxHz: 3_228_000_000)
 
-        #expect(frequencies.pCoreCount == 2)
+        #expect(eCore.isPerformanceCore == false)
+        #expect(pCore.isPerformanceCore == true)
+        #expect(unknownCluster.isPerformanceCore == nil)
     }
 
     // MARK: - Memory
@@ -100,7 +99,7 @@ struct StatsMonitorTests {
 
     @Test("ProcessInfo stores name and metrics")
     func processInfoFields() {
-        let p = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 8.4, gpuPercent: 42.5)
+        let p = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 8.4, gpuPercent: 42.5, pid: 101)
         #expect(p.name == "Xcode")
         #expect(p.cpuPercent == 12.5)
         #expect(p.memoryBytes == 500_000_000)
@@ -1307,7 +1306,7 @@ struct SystemMonitorPresentationTests {
     func formatProcessPower() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        let process = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 14.16)
+        let process = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 14.16, pid: 102)
         #expect(monitor.formatProcessPower(process) == "14.2 impact")
     }
 }
@@ -2593,8 +2592,8 @@ struct StatusBarTests {
         #expect(button.subviews.contains { $0 is StatusBarLabelView })
     }
 
-    @Test("empty menu bar presentation collapses the status item and ignores clicks")
-    func emptyMenuBarPresentationCollapsesStatusItemAndIgnoresClicks() {
+    @Test("all-off menu bar presentation falls back to a CPU item so the status item stays clickable")
+    func allOffMenuBarPresentationFallsBackToCPUItem() {
         let settings = makeTestSettings()
         settings.showCPU = false
         settings.showGPU = false
@@ -2606,6 +2605,7 @@ struct StatusBarTests {
         settings.showPower = false
         settings.showFans = false
         let monitor = SystemMonitor(settings: settings)
+        let items = monitor.menuBarItems(settings: settings)
         let state = StatusBarButtonPresentation.state(monitor: monitor, settings: settings)
         let statusItem = NSStatusBar.system.statusItem(withLength: 120)
         defer { NSStatusBar.system.removeStatusItem(statusItem) }
@@ -2613,8 +2613,14 @@ struct StatusBarTests {
 
         StatusBarButtonPresentation.apply(state, to: statusItem, button: button)
 
-        #expect(state.itemLength == 0)
-        #expect(statusItem.length == 0)
+        #expect(items.map(\.panel) == [.cpu])
+        #expect(state.itemLength > 0)
+        #expect(statusItem.length > 0)
+        #expect(StatusBarController.resolvedPanel(
+            at: CGPoint(x: 10, y: 10),
+            in: items,
+            bounds: CGRect(x: 0, y: 0, width: 120, height: MenuBarTextLayout.statusItemHeight)
+        ) == .cpu)
         #expect(StatusBarController.resolvedPanel(
             at: CGPoint(x: 10, y: 10),
             in: [],
@@ -3028,5 +3034,103 @@ struct SystemMonitorPresentationAdditionsTests {
         monitor.record(displayInfo: DisplayInfo(widthPixels: 3456, heightPixels: 2234, refreshRateHz: 120))
         #expect(monitor.displayInfoText == "3456 × 2234 @ 120 Hz")
         #expect(monitor.hasDisplayInfo)
+    }
+}
+
+@Suite("SystemMonitor Power Telemetry")
+@MainActor
+struct SystemMonitorPowerTelemetryTests {
+    private func makeMonitor() -> SystemMonitor {
+        SystemMonitor(settings: makeTestSettings())
+    }
+
+    private func samplePower() -> PowerUsage {
+        PowerUsage(
+            cpuMilliWatts: 12_000,
+            gpuMilliWatts: 4_000,
+            totalMilliWatts: 18_000
+        )
+    }
+
+    @Test("hasPowerTelemetry stays false until a non-nil power sample is recorded")
+    func hasPowerTelemetryFalseBeforeFirstSample() {
+        let monitor = makeMonitor()
+        #expect(!monitor.hasPowerTelemetry)
+
+        monitor.record(power: nil)
+        #expect(!monitor.hasPowerTelemetry)
+    }
+
+    @Test("hasPowerTelemetry latches true after first non-nil power sample")
+    func hasPowerTelemetryLatchesTrueOnFirstSample() {
+        let monitor = makeMonitor()
+        monitor.record(power: samplePower())
+        #expect(monitor.hasPowerTelemetry)
+    }
+
+    @Test("hasPowerTelemetry stays true after a later nil power sample")
+    func hasPowerTelemetryStaysTrueAfterLaterNilSample() {
+        let monitor = makeMonitor()
+        monitor.record(power: samplePower())
+        monitor.record(power: nil)
+        #expect(monitor.hasPowerTelemetry)
+    }
+
+    @Test("hasPowerTelemetry stays true after resetHistories recreates buffers")
+    func hasPowerTelemetryStaysTrueAfterResetHistories() {
+        let settings = makeTestSettings()
+        settings.historyCapacity = 60
+        let monitor = SystemMonitor(settings: settings)
+        monitor.record(power: samplePower())
+
+        settings.historyCapacity = 300
+        monitor.resetHistories()
+
+        #expect(monitor.hasPowerTelemetry)
+        #expect(monitor.powerSamples.capacity == 300)
+    }
+}
+
+@Suite("AppDelegate system-initiated quit detection")
+@MainActor
+struct AppDelegateSystemInitiatedQuitTests {
+    private func makeQuitEvent(reason: OSType?) -> NSAppleEventDescriptor {
+        let event = NSAppleEventDescriptor(
+            eventClass: AEEventClass(kCoreEventClass),
+            eventID: AEEventID(kAEQuitApplication),
+            targetDescriptor: nil,
+            returnID: AEReturnID(kAutoGenerateReturnID),
+            transactionID: AETransactionID(kAnyTransactionID)
+        )
+        if let reason {
+            event.setParam(NSAppleEventDescriptor(enumCode: reason), forKeyword: AEKeyword(kAEQuitReason))
+        }
+        return event
+    }
+
+    @Test("nil event is not a system-initiated quit")
+    func nilEventIsNotSystemInitiated() {
+        #expect(!AppDelegate.isSystemInitiatedQuit(nil))
+    }
+
+    @Test("quit event without a reason is not system-initiated")
+    func missingReasonIsNotSystemInitiated() {
+        #expect(!AppDelegate.isSystemInitiatedQuit(makeQuitEvent(reason: nil)))
+    }
+
+    @Test("quit event with an unknown reason is not system-initiated")
+    func unknownReasonIsNotSystemInitiated() {
+        // Not one of kAEQuitAll/kAELogOut/kAEReallyLogOut/kAEShowRestartDialog/kAERestart/kAEShowShutdownDialog/kAEShutDown.
+        let unknownReason = OSType(999)
+        #expect(!AppDelegate.isSystemInitiatedQuit(makeQuitEvent(reason: unknownReason)))
+    }
+
+    @Test("logout/restart/shutdown reasons are system-initiated", arguments: [
+        OSType(kAEReallyLogOut),
+        OSType(kAEShutDown),
+        OSType(kAERestart),
+    ])
+    func systemReasonsAreSystemInitiated(reason: OSType) {
+        #expect(AppDelegate.isSystemInitiatedQuit(makeQuitEvent(reason: reason)))
     }
 }

@@ -12,21 +12,20 @@ struct DiskMonitor: Sendable {
     private var previousWrite: UInt64 = 0
     private var previousDate:  Date   = .now
     private let processSampler = DiskProcessSampler()
+    private var cachedCapacity: (used: UInt64, total: UInt64, date: Date)?
+
+    /// Querying important-usage capacity triggers cache_delete accounting (heavy system logging), so refresh it slowly.
+    private static let capacityRefreshInterval: TimeInterval = 60
 
     mutating func sample() -> DiskUsage {
-        // Disk space — use volumeAvailableCapacityForImportantUsage to include
-        // APFS purgeable space, matching what macOS Storage reports.
-        let url = URL(fileURLWithPath: "/")
-        let res = try? url.resourceValues(forKeys: [
-            .volumeTotalCapacityKey,
-            .volumeAvailableCapacityForImportantUsageKey
-        ])
-        let total = UInt64(res?.volumeTotalCapacity ?? 0)
-        let free  = UInt64(res?.volumeAvailableCapacityForImportantUsage ?? 0)
+        let now = Date.now
+        if cachedCapacity.map({ now.timeIntervalSince($0.date) >= Self.capacityRefreshInterval }) ?? true,
+           let capacity = Self.readCapacity() {
+            cachedCapacity = (capacity.used, capacity.total, now)
+        }
 
         // Disk I/O via IOKit IOBlockStorageDriver
         let (curRead, curWrite) = ioBytes()
-        let now = Date.now
         let elapsed = now.timeIntervalSince(previousDate)
 
         var readBPS  = 0.0
@@ -41,10 +40,24 @@ struct DiskMonitor: Sendable {
         previousWrite = curWrite
         previousDate  = now
 
-        return DiskUsage(used: total > free ? total - free : 0,
-                         total: total,
+        return DiskUsage(used: cachedCapacity?.used ?? 0,
+                         total: cachedCapacity?.total ?? 0,
                          readBPS: readBPS,
                          writeBPS: writeBPS)
+    }
+
+    /// Uses volumeAvailableCapacityForImportantUsage to include APFS purgeable space, matching macOS Storage.
+    private static func readCapacity() -> (used: UInt64, total: UInt64)? {
+        guard let values = try? URL(fileURLWithPath: "/").resourceValues(forKeys: [
+            .volumeTotalCapacityKey,
+            .volumeAvailableCapacityForImportantUsageKey
+        ]),
+              let total = values.volumeTotalCapacity,
+              let free = values.volumeAvailableCapacityForImportantUsage
+        else { return nil }
+        let totalBytes = UInt64(max(total, 0))
+        let freeBytes = UInt64(max(free, 0))
+        return (totalBytes > freeBytes ? totalBytes - freeBytes : 0, totalBytes)
     }
 
     func sampleTopProcesses(from snapshot: ProcessCountersSnapshot, processCount: Int = 10) -> [ProcInfo] {
@@ -57,12 +70,14 @@ struct DiskMonitor: Sendable {
         processCount: Int
     ) -> [ProcInfo] {
         let processes = snapshot.entries.compactMap { entry -> ProcInfo? in
-            guard let previous = previousSnapshots[entry.pid] else { return nil }
+            guard let previous = previousSnapshots[entry.pid],
+                  let readBytes = entry.diskReadBytes,
+                  let writeBytes = entry.diskWriteBytes else { return nil }
             let elapsed = snapshot.date.timeIntervalSince(previous.date)
             guard elapsed > 0 else { return nil }
 
-            let readDelta = entry.diskReadBytes >= previous.readBytes ? entry.diskReadBytes - previous.readBytes : 0
-            let writeDelta = entry.diskWriteBytes >= previous.writeBytes ? entry.diskWriteBytes - previous.writeBytes : 0
+            let readDelta = readBytes >= previous.readBytes ? readBytes - previous.readBytes : 0
+            let writeDelta = writeBytes >= previous.writeBytes ? writeBytes - previous.writeBytes : 0
             guard readDelta > 0 || writeDelta > 0 else { return nil }
 
             return ProcInfo(
@@ -70,7 +85,8 @@ struct DiskMonitor: Sendable {
                 cpuPercent: 0,
                 memoryBytes: entry.memoryBytes,
                 diskReadBPS: Double(readDelta) / elapsed,
-                diskWriteBPS: Double(writeDelta) / elapsed
+                diskWriteBPS: Double(writeDelta) / elapsed,
+                pid: entry.pid
             )
         }
 
@@ -114,15 +130,13 @@ private final class DiskProcessSampler: @unchecked Sendable {
             previousSnapshots: previousSnapshots,
             processCount: processCount
         )
+        // Other users' processes carry no disk counters (no unprivileged source), so they never enter this table.
         previousSnapshots = Dictionary(
-            uniqueKeysWithValues: snapshot.entries.map { entry in
-                (
+            uniqueKeysWithValues: snapshot.entries.compactMap { entry in
+                guard let readBytes = entry.diskReadBytes, let writeBytes = entry.diskWriteBytes else { return nil }
+                return (
                     entry.pid,
-                    DiskMonitor.ProcessSnapshot(
-                        readBytes: entry.diskReadBytes,
-                        writeBytes: entry.diskWriteBytes,
-                        date: snapshot.date
-                    )
+                    DiskMonitor.ProcessSnapshot(readBytes: readBytes, writeBytes: writeBytes, date: snapshot.date)
                 )
             }
         )
