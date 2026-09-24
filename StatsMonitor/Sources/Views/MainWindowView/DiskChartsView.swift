@@ -12,28 +12,25 @@ struct DiskChartsView: View {
             MetricChartCard(
                 title: "Capacity",
                 value: monitor.diskPercent,
-                statusColor: progressColor(monitor.diskFraction),
+                status: MetricStatus(fraction: monitor.diskFraction),
                 lines: [ChartSeries(history: monitor.paddedDiskHistory, color: .indigo)],
                 maxValue: 100
             )
             MetricChartCard(
                 title: "Read",
                 value: monitor.diskReadText,
-                statusColor: .teal,
                 lines: [ChartSeries(history: monitor.paddedDiskReadHistory, color: .teal)],
                 maxValue: throughputChartMax
             )
             MetricChartCard(
                 title: "Write",
                 value: monitor.diskWriteText,
-                statusColor: .orange,
                 lines: [ChartSeries(history: monitor.paddedDiskWriteHistory, color: .orange)],
                 maxValue: throughputChartMax
             )
             MetricChartCard(
                 title: "Total I/O",
                 value: monitor.diskActivityText,
-                statusColor: .blue,
                 lines: [ChartSeries(history: monitor.paddedDiskActivityHistory, color: .blue)],
                 maxValue: throughputChartMax
             )

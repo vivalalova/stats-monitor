@@ -81,16 +81,15 @@ struct DiskMonitor: Sendable {
             guard readDelta > 0 || writeDelta > 0 else { return nil }
 
             return ProcInfo(
+                pid: Int(entry.pid),
                 name: entry.name,
-                cpuPercent: 0,
                 memoryBytes: entry.memoryBytes,
                 diskReadBPS: Double(readDelta) / elapsed,
-                diskWriteBPS: Double(writeDelta) / elapsed,
-                pid: entry.pid
+                diskWriteBPS: Double(writeDelta) / elapsed
             )
         }
 
-        return Array(processes.sorted { $0.diskTotalBPS > $1.diskTotalBPS }.prefix(processCount))
+        return Array(processes.sorted { ($0.diskTotalBPS ?? 0) > ($1.diskTotalBPS ?? 0) }.prefix(processCount))
     }
 
     private func ioBytes() -> (read: UInt64, write: UInt64) {

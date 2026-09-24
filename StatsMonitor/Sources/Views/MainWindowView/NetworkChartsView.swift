@@ -12,25 +12,20 @@ struct NetworkChartsView: View {
             MetricChartCard(
                 title: "In",
                 value: monitor.networkInText,
-                statusColor: .green,
-                lines: [ChartSeries(history: monitor.paddedNetworkInHistory, color: .green)],
+                lines: [networkInChartLine(monitor: monitor)],
                 maxValue: throughputChartMax
             )
             MetricChartCard(
                 title: "Out",
                 value: monitor.networkOutText,
-                statusColor: .red,
-                lines: [ChartSeries(history: monitor.paddedNetworkOutHistory, color: .red)],
+                lines: [networkOutChartLine(monitor: monitor)],
                 maxValue: throughputChartMax
             )
             MetricChartCard(
                 title: "Total",
                 value: monitor.networkTotalText,
-                statusColor: .blue,
-                lines: [
-                    ChartSeries(history: monitor.paddedNetworkInHistory, color: .green),
-                    ChartSeries(history: monitor.paddedNetworkOutHistory, color: .red),
-                ],
+                lines: networkChartLines(monitor: monitor),
+                legendLabels: NetworkChartLegend.labels,
                 maxValue: throughputChartMax
             )
         } footer: {

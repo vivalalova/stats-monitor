@@ -2,32 +2,19 @@ import AppKit
 
 enum QuitConfirmationCopy {
     static func title(locale: Locale = .current) -> String {
-        localized("Quit StatsMonitor?", locale: locale)
+        LocalizedCopy.string("Quit StatsMonitor?", locale: locale)
     }
 
     static func message(locale: Locale = .current) -> String {
-        localized("StatsMonitor will stop monitoring and close.", locale: locale)
+        LocalizedCopy.string("StatsMonitor will stop monitoring and close.", locale: locale)
     }
 
     static func confirm(locale: Locale = .current) -> String {
-        localized("Quit", locale: locale)
+        LocalizedCopy.string("Quit", locale: locale)
     }
 
     static func cancel(locale: Locale = .current) -> String {
-        localized("Cancel", locale: locale)
-    }
-
-    private static func localized(_ key: String, locale: Locale) -> String {
-        let localization = Bundle.preferredLocalizations(
-            from: Bundle.main.localizations,
-            forPreferences: [locale.identifier]
-        ).first
-
-        let bundle = localization
-            .flatMap { Bundle.main.path(forResource: $0, ofType: "lproj") }
-            .flatMap(Bundle.init(path:)) ?? .main
-
-        return bundle.localizedString(forKey: key, value: nil, table: nil)
+        LocalizedCopy.string("Cancel", locale: locale)
     }
 }
 

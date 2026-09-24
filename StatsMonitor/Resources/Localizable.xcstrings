@@ -202,6 +202,17 @@
         }
       }
     },
+    "Card Size" : {
+      "comment" : "Dashboard toolbar slider label",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片大小"
+          }
+        }
+      }
+    },
     "Channel" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -671,6 +682,18 @@
         }
       }
     },
+    "Elevated" : {
+      "comment" : "Metric card status capsule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "偏高"
+          }
+        }
+      }
+    },
     "Engines" : {
       "comment" : "GPU detail",
       "extractionState" : "stale",
@@ -774,6 +797,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "硬體"
+          }
+        }
+      }
+    },
+    "High" : {
+      "comment" : "Metric card status capsule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "過高"
           }
         }
       }
@@ -975,6 +1010,18 @@
         }
       }
     },
+    "Normal" : {
+      "comment" : "Metric card status capsule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正常"
+          }
+        }
+      }
+    },
     "Out" : {
       "comment" : "Network chart card — outbound",
       "extractionState" : "stale",
@@ -1070,7 +1117,7 @@
       }
     },
     "Cancel" : {
-      "comment" : "Quit confirmation alert button",
+      "comment" : "Quit confirmation alert button / force quit confirmation alert button",
       "extractionState" : "manual",
       "localizations" : {
         "zh-Hant" : {
@@ -1767,6 +1814,138 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "全部項目關閉時，選單列仍會保留 CPU，以免無法開啟應用程式。"
+          }
+        }
+      }
+    },
+    "Force Quit" : {
+      "comment" : "Force quit confirmation alert button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "強制結束"
+          }
+        }
+      }
+    },
+    "Force Quit %@" : {
+      "comment" : "Process context menu item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "強制結束 %@"
+          }
+        }
+      }
+    },
+    "Force Quit %@?" : {
+      "comment" : "Force quit confirmation alert title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "強制結束 %@？"
+          }
+        }
+      }
+    },
+    "Force quitting ends the process immediately. Unsaved changes will be lost." : {
+      "comment" : "Force quit confirmation alert message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "強制結束會立即終止此行程，未儲存的變更將會遺失。"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "comment" : "Process termination failure alert button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "好"
+          }
+        }
+      }
+    },
+    "Quit %@" : {
+      "comment" : "Process context menu item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "結束 %@"
+          }
+        }
+      }
+    },
+    "StatsMonitor does not have permission to quit this process." : {
+      "comment" : "Process termination failure alert message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StatsMonitor 沒有結束此行程的權限。"
+          }
+        }
+      }
+    },
+    "The process could not be quit." : {
+      "comment" : "Process termination failure alert message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法結束此行程。"
+          }
+        }
+      }
+    },
+    "The process is no longer running." : {
+      "comment" : "Process termination failure alert message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此行程已不在執行中。"
+          }
+        }
+      }
+    },
+    "This process does not report a valid process ID." : {
+      "comment" : "Process termination failure alert message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此行程沒有有效的行程 ID。"
+          }
+        }
+      }
+    },
+    "Unable to quit %@" : {
+      "comment" : "Process termination failure alert title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法結束 %@"
           }
         }
       }

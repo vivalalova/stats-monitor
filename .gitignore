@@ -24,3 +24,6 @@ xcuserdata/
 # fastlane
 fastlane/report.xml
 fastlane/test_output
+
+# Claude 工作暫存
+.claude/tmp/

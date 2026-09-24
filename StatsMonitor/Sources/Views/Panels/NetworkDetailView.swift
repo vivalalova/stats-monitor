@@ -7,7 +7,7 @@ struct NetworkDetailView: View {
 
     var body: some View {
         DetailPanelContent(title: Self.panelTitle) {
-            DetailChart(lines: networkChartLines, maxValue: networkChartMax)
+            DetailChart(lines: networkChartLines(monitor: monitor), maxValue: networkChartMax)
             DetailMetricSection(rows: [
                 ("↓ In", monitor.networkInText),
                 ("↑ Out", monitor.networkOutText),
@@ -45,13 +45,6 @@ struct NetworkDetailView: View {
                 )
             }
         }
-    }
-
-    private var networkChartLines: [ChartSeries] {
-        [
-            ChartSeries(history: monitor.paddedNetworkInHistory, color: .green),
-            ChartSeries(history: monitor.paddedNetworkOutHistory, color: .red),
-        ]
     }
 
     private var networkChartMax: Double {

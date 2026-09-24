@@ -80,13 +80,12 @@ struct MemoryMonitor: Sendable {
             snapshot.entries
                 .map { entry in
                     ProcInfo(
+                        pid: Int(entry.pid),
                         name: entry.name,
-                        cpuPercent: 0,
-                        memoryBytes: entry.memoryBytes,
-                        pid: entry.pid
+                        memoryBytes: entry.memoryBytes
                     )
                 }
-                .sorted { $0.memoryBytes > $1.memoryBytes }
+                .sorted { ($0.memoryBytes ?? 0) > ($1.memoryBytes ?? 0) }
                 .prefix(processCount)
         )
     }

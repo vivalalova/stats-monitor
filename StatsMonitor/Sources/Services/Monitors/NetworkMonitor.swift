@@ -144,22 +144,20 @@ struct NetworkMonitor: Sendable {
 
             let inPerSec = bytesPerSecond(current: current.bytesIn, previous: previous.bytesIn, elapsed: elapsed)
             let outPerSec = bytesPerSecond(current: current.bytesOut, previous: previous.bytesOut, elapsed: elapsed)
-            guard inPerSec > 0 || outPerSec > 0,
-                  let pid = processID(from: key) else { return nil }
+            guard inPerSec > 0 || outPerSec > 0 else { return nil }
 
             return ProcInfo(
+                pid: processPID(from: key),
                 name: processName(from: key),
-                cpuPercent: 0,
-                memoryBytes: 0,
+                memoryBytes: nil,
                 networkInBPS: inPerSec,
-                networkOutBPS: outPerSec,
-                pid: pid
+                networkOutBPS: outPerSec
             )
         }
 
         return Array(
             processes
-                .sorted { $0.networkTotalBPS > $1.networkTotalBPS }
+                .sorted { ($0.networkTotalBPS ?? 0) > ($1.networkTotalBPS ?? 0) }
                 .prefix(processCount)
         )
     }
@@ -185,14 +183,17 @@ struct NetworkMonitor: Sendable {
     }
 
     /// nettop keys are `name.pid`.
-    private static func processID(from key: String) -> Int32? {
-        guard let lastDot = key.lastIndex(of: ".") else { return nil }
-        return Int32(key[key.index(after: lastDot)...])
-    }
-
     private static func processName(from key: String) -> String {
         guard let lastDot = key.lastIndex(of: ".") else { return key }
         return String(key[..<lastDot])
+    }
+
+    /// nettop key 是 `名稱.pid`；尾段不是數字（key 格式異常）時回 0 ＝ pid 未知。
+    private static func processPID(from key: String) -> Int {
+        guard let lastDot = key.lastIndex(of: "."),
+              let pid = Int(key[key.index(after: lastDot)...])
+        else { return 0 }
+        return pid
     }
 
     static func readConnectionCounts() -> (tcp: Int, udp: Int)? {

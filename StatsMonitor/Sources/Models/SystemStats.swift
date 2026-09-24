@@ -123,21 +123,62 @@ struct GPUProcessInfo: Sendable {
     var commandQueueCount: Int = 0
 }
 
-struct ProcInfo: Sendable, Identifiable {
+struct ProcInfo: Sendable {
+    /// kernel pid；0 ＝來源取不到 pid（如 nettop key 無法解析）。
+    var pid: Int = 0
     var name: String
-    var cpuPercent: Double
-    var memoryBytes: UInt64
-    var diskReadBPS: Double = 0
-    var diskWriteBPS: Double = 0
-    var networkInBPS: Double = 0
-    var networkOutBPS: Double = 0
+    /// 各數值欄的 `nil` ＝這份 top list 量不到這個指標（不是量到 0）。
+    var cpuPercent: Double? = nil
+    var memoryBytes: UInt64? = nil
+    var diskReadBPS: Double? = nil
+    var diskWriteBPS: Double? = nil
+    var networkInBPS: Double? = nil
+    var networkOutBPS: Double? = nil
     var powerImpact: Double = 0
-    var gpuPercent: Double = 0
-    var pid: Int32
+    var gpuPercent: Double? = nil
+    /// icon 來源路徑（`.app` bundle 或執行檔），由背景解析後帶上來；nil ＝顯示通用執行檔 icon。
+    var iconPath: String? = nil
 
-    var id: Int32 { pid }
-    var diskTotalBPS: Double { diskReadBPS + diskWriteBPS }
-    var networkTotalBPS: Double { networkInBPS + networkOutBPS }
+    var diskTotalBPS: Double? { Self.sum(diskReadBPS, diskWriteBPS) }
+    var networkTotalBPS: Double? { Self.sum(networkInBPS, networkOutBPS) }
+
+    /// 合併與列表識別的鍵：pid 是權威來源；取不到 pid 才退回名稱。
+    var mergeKey: String { pid > 0 ? "pid:\(pid)" : "name:\(name)" }
+
+    /// 同一行程來自不同 top list 的兩筆紀錄合併：各欄取有資料者的最大值，兩邊都沒資料才留 nil。
+    func merged(with other: ProcInfo) -> ProcInfo {
+        ProcInfo(
+            pid:           Swift.max(pid, other.pid),
+            name:          Self.preferredName(name, other.name),
+            cpuPercent:    Self.larger(cpuPercent,     other.cpuPercent),
+            memoryBytes:   Self.larger(memoryBytes,   other.memoryBytes),
+            diskReadBPS:   Self.larger(diskReadBPS,   other.diskReadBPS),
+            diskWriteBPS:  Self.larger(diskWriteBPS,  other.diskWriteBPS),
+            networkInBPS:  Self.larger(networkInBPS,  other.networkInBPS),
+            networkOutBPS: Self.larger(networkOutBPS, other.networkOutBPS),
+            powerImpact:   Swift.max(powerImpact, other.powerImpact),
+            gpuPercent:    Self.larger(gpuPercent,    other.gpuPercent),
+            iconPath:      iconPath ?? other.iconPath
+        )
+    }
+
+    private static func sum(_ lhs: Double?, _ rhs: Double?) -> Double? {
+        guard lhs != nil || rhs != nil else { return nil }
+        return (lhs ?? 0) + (rhs ?? 0)
+    }
+
+    private static func larger<Value: Comparable>(_ lhs: Value?, _ rhs: Value?) -> Value? {
+        guard let lhs else { return rhs }
+        guard let rhs else { return lhs }
+        return Swift.max(lhs, rhs)
+    }
+
+    /// 同一 pid 在各 list 的名稱可能不同（p_comm 16 字元硬截 vs nettop key vs bundle 名）：
+    /// 取較長者（資訊較多），等長時取字典序小者，確保合併結果與 list 順序無關。
+    private static func preferredName(_ lhs: String, _ rhs: String) -> String {
+        if lhs.count != rhs.count { return lhs.count > rhs.count ? lhs : rhs }
+        return lhs <= rhs ? lhs : rhs
+    }
 }
 
 struct BatteryUsage: Sendable {
@@ -189,7 +230,7 @@ struct DisplayInfo: Sendable, Equatable {
     static let zero = DisplayInfo(widthPixels: 0, heightPixels: 0, refreshRateHz: 0)
 
     var text: String {
-        guard widthPixels > 0, heightPixels > 0 else { return "—" }
+        guard widthPixels > 0, heightPixels > 0 else { return noDataText }
         let refreshText: String
         if refreshRateHz > 0 {
             refreshText = " @ \(Int(refreshRateHz.rounded())) Hz"

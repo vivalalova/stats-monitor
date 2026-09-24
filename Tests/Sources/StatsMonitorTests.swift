@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import SwiftUI
 @testable import StatsMonitor
@@ -99,7 +100,7 @@ struct StatsMonitorTests {
 
     @Test("ProcessInfo stores name and metrics")
     func processInfoFields() {
-        let p = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 8.4, gpuPercent: 42.5, pid: 101)
+        let p = ProcInfo(pid: 101, name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 8.4, gpuPercent: 42.5)
         #expect(p.name == "Xcode")
         #expect(p.cpuPercent == 12.5)
         #expect(p.memoryBytes == 500_000_000)
@@ -454,14 +455,93 @@ struct CPUMonitorTests {
 
         #expect(processes.count == 2)
         #expect(processes[0].name == "FullCore")
-        #expect(abs(processes[0].cpuPercent - 100.0) < 0.01)
+        #expect(abs((processes[0].cpuPercent ?? 0) - 100.0) < 0.01)
         #expect(processes[1].name == "HalfCore")
-        #expect(abs(processes[1].cpuPercent - 50.0) < 0.01)
+        #expect(abs((processes[1].cpuPercent ?? 0) - 50.0) < 0.01)
     }
 
     @Test("CPU tick deltas handle 32-bit counter wrap")
     func cpuTickDeltaHandlesCounterWrap() {
         #expect(CPUMonitor.cpuTickDelta(current: 4, previous: UInt32.max - 2) == 7)
+    }
+
+    /// 高耗能行程表借 CPU% 時要看該輪 CPU 全表，而不是只看 top N：
+    /// 進 power 榜卻沒進 CPU 前 N 名的行程，CPU% 在同一份 snapshot 裡算得出來，
+    /// 顯示成「量不到」是假的。全表版負責不截斷，top 版只是它的 prefix。
+    @Test("全表版不截斷：每個有 delta 的行程都在，且依 CPU% 遞減")
+    func computesAllProcessesWithoutTruncation() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let entryCount = 12
+        let snapshot = ProcessCountersSnapshot(
+            entries: (0..<entryCount).map { index in
+                .init(
+                    pid: Int32(1_000 + index),
+                    name: "proc\(index)",
+                    cpuTicks: UInt64((entryCount - index) * 100_000_000),
+                    memoryBytes: 0,
+                    diskReadBytes: 0,
+                    diskWriteBytes: 0,
+                    powerImpact: 0
+                )
+            },
+            date: now
+        )
+        let previous = Dictionary(uniqueKeysWithValues: (0..<entryCount).map { index in
+            (Int32(1_000 + index), CPUMonitor.ProcessSnapshot(ticks: 0, date: now.addingTimeInterval(-2)))
+        })
+
+        let all = CPUMonitor.computeAllProcesses(
+            snapshot: snapshot,
+            previousSnapshots: previous,
+            nanosecondsPerTick: 1.0
+        )
+
+        #expect(all.count == entryCount)
+        #expect(all.map(\.name) == (0..<entryCount).map { "proc\($0)" })
+
+        // top 版 = 全表 prefix，兩者不得各自為政。
+        let top = CPUMonitor.computeTopProcesses(
+            snapshot: snapshot,
+            previousSnapshots: previous,
+            processCount: 3,
+            nanosecondsPerTick: 1.0
+        )
+        #expect(top.map(\.name) == Array(all.prefix(3)).map(\.name))
+        #expect(top.count == 3)
+    }
+
+    /// `CPUProcessSampler` 的 previousSnapshots 有副作用，一輪只能取樣一次 ——
+    /// 所以那一次必須拿到全表，top N 由呼叫端自己 prefix。
+    @Test("sampleAllProcesses：首輪無前值回空，次輪回全表不截斷")
+    func sampleAllProcessesReturnsFullTable() {
+        let monitor = CPUMonitor()
+        let start = Date(timeIntervalSince1970: 1_000)
+        let entryCount = 12
+        func makeSnapshot(ticks: UInt64, date: Date) -> ProcessCountersSnapshot {
+            ProcessCountersSnapshot(
+                entries: (0..<entryCount).map { index in
+                    .init(
+                        pid: Int32(1_000 + index),
+                        name: "proc\(index)",
+                        cpuTicks: ticks * UInt64(entryCount - index),
+                        memoryBytes: 0,
+                        diskReadBytes: 0,
+                        diskWriteBytes: 0,
+                        powerImpact: 0
+                    )
+                },
+                date: date
+            )
+        }
+
+        let first = monitor.sampleAllProcesses(from: makeSnapshot(ticks: 0, date: start))
+        #expect(first.isEmpty)
+
+        let second = monitor.sampleAllProcesses(
+            from: makeSnapshot(ticks: 100_000_000, date: start.addingTimeInterval(2))
+        )
+        #expect(second.count == entryCount)
+        #expect(second.allSatisfy { ($0.cpuPercent ?? 0) > 0 })
     }
 }
 
@@ -985,14 +1065,14 @@ struct SystemMonitorPresentationTests {
             allocatedMemoryBytes: 10_747_871_232
         ))
         monitor.topGPUProcesses = [
-            GPUProcessInfo(pid: 601, name: "WindowServer", utilizationPercent: 23.5, commandQueueCount: 4)
+            ProcInfo(pid: 601, name: "WindowServer", gpuPercent: 23.5)
         ]
 
         #expect(monitor.gpuTilerPercent == "17.0%")
         #expect(monitor.gpuVramUsedText == "653 MB")
         #expect(monitor.gpuDriverMemoryText == "50 MB")
         #expect(monitor.gpuAllocatedMemoryText == "10.0 GB")
-        #expect(monitor.formatProcessGPU(monitor.topGPUProcesses[0]) == "23.5%")
+        #expect(monitor.formatProcessGPU(monitor.topGPUProcesses[0].gpuPercent) == "23.5%")
         #expect(monitor.formatProcessGPU(42.5) == "42.5%")
         #expect(monitor.formatProcessGPU(0) == "0.0%")
     }
@@ -1306,7 +1386,7 @@ struct SystemMonitorPresentationTests {
     func formatProcessPower() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
-        let process = ProcInfo(name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 14.16, pid: 102)
+        let process = ProcInfo(pid: 102, name: "Xcode", cpuPercent: 12.5, memoryBytes: 500_000_000, powerImpact: 14.16)
         #expect(monitor.formatProcessPower(process) == "14.2 impact")
     }
 }
@@ -2939,9 +3019,9 @@ struct WiFiMonitorTests {
         #expect(WiFiMonitor.bandLabel(for: .band6GHz) == "6 GHz")
     }
 
-    @Test("unknown band becomes em-dash")
+    @Test("unknown band has no label")
     func unknownBand() {
-        #expect(WiFiMonitor.bandLabel(for: .bandUnknown) == "—")
+        #expect(WiFiMonitor.bandLabel(for: .bandUnknown) == nil)
     }
 }
 
@@ -3132,5 +3212,904 @@ struct AppDelegateSystemInitiatedQuitTests {
     ])
     func systemReasonsAreSystemInitiated(reason: OSType) {
         #expect(AppDelegate.isSystemInitiatedQuit(makeQuitEvent(reason: reason)))
+    }
+}
+
+// MARK: - Network Chart Palette (#4)
+
+@Suite("Network Chart Palette")
+@MainActor
+struct NetworkChartPaletteTests {
+
+    @Test("網路上下行配色為單一來源常數，沿用 Dashboard 藍（in）／綠（out）")
+    func paletteIsSingleSource() {
+        #expect(NetworkChartPalette.inbound == Color.blue)
+        #expect(NetworkChartPalette.outbound == Color.green)
+        #expect(NetworkChartPalette.inbound != NetworkChartPalette.outbound)
+    }
+
+    @Test("共用 networkChartLines 依序回傳 in／out 兩線並取用同一組常數")
+    func sharedNetworkChartLinesUsePalette() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        monitor.record(network: NetworkUsage(
+            bytesInPerSec: 2_048, bytesOutPerSec: 1_024,
+            tcpConnectionCount: 0, udpConnectionCount: 0
+        ))
+
+        let lines = networkChartLines(monitor: monitor)
+
+        #expect(lines.count == 2)
+        #expect(lines.map(\.color) == [NetworkChartPalette.inbound, NetworkChartPalette.outbound])
+        #expect(lines[0].history == monitor.paddedNetworkInHistory)
+        #expect(lines[1].history == monitor.paddedNetworkOutHistory)
+    }
+
+    @Test("單向卡片的線色同樣來自共用常數")
+    func singleDirectionLinesUsePalette() {
+        let monitor = SystemMonitor(settings: AppSettings())
+        monitor.record(network: NetworkUsage(
+            bytesInPerSec: 2_048, bytesOutPerSec: 1_024,
+            tcpConnectionCount: 0, udpConnectionCount: 0
+        ))
+
+        #expect(networkInChartLine(monitor: monitor).color == NetworkChartPalette.inbound)
+        #expect(networkOutChartLine(monitor: monitor).color == NetworkChartPalette.outbound)
+    }
+}
+
+// MARK: - Dashboard Visual Refresh (#1)
+
+@Suite("Dashboard Visual Refresh")
+@MainActor
+struct DashboardVisualRefreshTests {
+
+    @Test("Dashboard 預設欄數為 3")
+    func defaultDashboardColumnsIsThree() {
+        #expect(DashboardGridSizing.defaultColumnCount == 3)
+        #expect(AppSettings.defaultDashboardColumns == 3)
+        #expect(AppSettings.dashboardColumnRange == 3...6)
+    }
+
+    @Test("metric 卡片高度：chart 區縮到原本七成（72→~51pt），legend 卡補回 legend 高度，無 chart 維持 72")
+    func metricCardHeightIsCompact() {
+        let line = ChartSeries(history: [0.5], color: .blue)
+        #expect(dashboardCardHeight(lines: [line], hasLegend: false) == 112)
+        #expect(dashboardCardHeight(lines: [line], hasLegend: true) == 128)
+        #expect(dashboardCardHeight(lines: [], hasLegend: false) == 72)
+    }
+
+    @Test("使用率門檻分級，含 0.6／0.8 邊界")
+    func metricStatusFractionThresholds() {
+        #expect(MetricStatus(fraction: 0.1) == .normal)
+        #expect(MetricStatus(fraction: 0.599) == .normal)
+        #expect(MetricStatus(fraction: 0.6) == .elevated)
+        #expect(MetricStatus(fraction: 0.799) == .elevated)
+        #expect(MetricStatus(fraction: 0.8) == .high)
+        #expect(MetricStatus(fraction: 0.95) == .high)
+    }
+
+    @Test("功耗門檻分級，含 10 W／30 W 邊界")
+    func metricStatusWattThresholds() {
+        #expect(MetricStatus(watts: 5) == .normal)
+        #expect(MetricStatus(watts: 10) == .elevated)
+        #expect(MetricStatus(watts: 20) == .elevated)
+        #expect(MetricStatus(watts: 30) == .high)
+        #expect(MetricStatus(watts: 50) == .high)
+    }
+
+    @Test("狀態 capsule 文案與配色對映三級")
+    func metricStatusCaptionAndColor() {
+        #expect(MetricStatus.normal.caption == LocalizedStringKey("Normal"))
+        #expect(MetricStatus.elevated.caption == LocalizedStringKey("Elevated"))
+        #expect(MetricStatus.high.caption == LocalizedStringKey("High"))
+        #expect(MetricStatus.normal.color == .green)
+        #expect(MetricStatus.elevated.color == .orange)
+        #expect(MetricStatus.high.color == .red)
+    }
+
+    @Test("progressColor 與 MetricStatus 共用同一組門檻")
+    func progressColorDelegatesToMetricStatus() {
+        for fraction in [0.0, 0.3, 0.599, 0.6, 0.75, 0.8, 1.2] {
+            #expect(progressColor(fraction) == MetricStatus(fraction: fraction).color)
+        }
+    }
+
+    @Test("未指定狀態的卡片不顯示 capsule（裝飾色卡片一律走這條）")
+    func metricChartCardHasNoStatusByDefault() {
+        let card = MetricChartCard(
+            title: "Read",
+            value: "1.0 MB/s",
+            lines: [ChartSeries(history: [1, 2, 3], color: .teal)],
+            maxValue: 3
+        )
+        #expect(card.status == nil)
+    }
+
+    @Test("狀態 capsule 新 key 在 xcstrings 皆有 zh-Hant 譯文")
+    func statusCaptionKeysHaveTraditionalChinese() throws {
+        let catalog = try loadLocalizableStringCatalog()
+        let expected = [
+            "Normal": "正常",
+            "Elevated": "偏高",
+            "High": "過高",
+        ]
+
+        for (key, translation) in expected {
+            let unit = try #require(
+                catalog[key]?["localizations"]
+                    .flatMap { $0 as? [String: Any] }?["zh-Hant"]
+                    .flatMap { $0 as? [String: Any] }?["stringUnit"]
+                    .flatMap { $0 as? [String: Any] },
+                "缺少 \(key) 的 zh-Hant 譯文"
+            )
+            #expect(unit["state"] as? String == "translated")
+            #expect(unit["value"] as? String == translation)
+        }
+    }
+}
+
+/// 直接讀取專案的 String Catalog，才驗得到 `state: translated` 這個檔案層事實。
+private func loadLocalizableStringCatalog(file: StaticString = #filePath) throws -> [String: [String: Any]] {
+    let testsFile = URL(fileURLWithPath: "\(file)")
+    let repoRoot = testsFile
+        .deletingLastPathComponent()   // Tests/Sources
+        .deletingLastPathComponent()   // Tests
+        .deletingLastPathComponent()   // repo root
+    let catalogURL = repoRoot
+        .appendingPathComponent("StatsMonitor/Resources/Localizable.xcstrings")
+    let data = try Data(contentsOf: catalogURL)
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    return try #require(json?["strings"] as? [String: [String: Any]], "無法解析 Localizable.xcstrings")
+}
+
+// MARK: - #2 熱門行程表空值 formatter
+
+@Suite("Top Processes Value Formatting")
+@MainActor
+struct TopProcessesValueFormattingTests {
+
+    private func makeMonitor() -> SystemMonitor {
+        SystemMonitor(settings: makeTestSettings())
+    }
+
+    @Test("CPU 欄：nil 顯示破折號、0 與正值顯示數值")
+    func formatsProcessCPUEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessCPU(nil as Double?) == "—")
+        #expect(monitor.formatProcessCPU(0 as Double?) == "0.0%")
+        #expect(monitor.formatProcessCPU(48.2 as Double?) == "48.2%")
+    }
+
+    @Test("GPU 欄：nil 顯示破折號、0 與正值顯示數值")
+    func formatsProcessGPUEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessGPU(nil as Double?) == "—")
+        #expect(monitor.formatProcessGPU(0 as Double?) == "0.0%")
+        #expect(monitor.formatProcessGPU(23.5 as Double?) == "23.5%")
+    }
+
+    @Test("記憶體欄：nil 顯示破折號、0 顯示 0 B")
+    func formatsProcessMemoryEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessMemory(nil as UInt64?) == "—")
+        #expect(monitor.formatProcessMemory(0 as UInt64?) == "0 B")
+        #expect(monitor.formatProcessMemory(1_073_741_824 as UInt64?) == "1.0 GB")
+    }
+
+    @Test("磁碟欄：nil 顯示破折號、0 顯示 0 KB/s")
+    func formatsProcessDiskEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessDisk(nil as Double?) == "—")
+        #expect(monitor.formatProcessDisk(0 as Double?) == "0 KB/s")
+        #expect(monitor.formatProcessDisk(1_048_576 as Double?) == "1.0 MB/s")
+    }
+
+    @Test("網路欄：nil 顯示破折號、0 顯示 0 KB/s")
+    func formatsProcessNetworkEmptyState() {
+        let monitor = makeMonitor()
+        #expect(monitor.formatProcessNetwork(nil as Double?) == "—")
+        #expect(monitor.formatProcessNetwork(0 as Double?) == "0 KB/s")
+        #expect(monitor.formatProcessNetwork(262_144 as Double?) == "256 KB/s")
+    }
+}
+
+// MARK: - #3 ProcInfo 帶 pid 與名稱解析
+
+@Suite("Top Processes Merge By PID")
+@MainActor
+struct TopProcessesMergeTests {
+
+    @Test("同名不同 pid 不合併")
+    func keepsSameNameDifferentPIDSeparate() {
+        let merged = SystemMonitor.mergeTopProcesses(
+            cpu: [
+                ProcInfo(pid: 101, name: "Google Chrome Helper", cpuPercent: 12, memoryBytes: 100),
+                ProcInfo(pid: 102, name: "Google Chrome Helper", cpuPercent: 4, memoryBytes: 200),
+            ],
+            memory: [],
+            disk: [],
+            network: [],
+            gpu: []
+        )
+        #expect(merged.count == 2)
+        #expect(Set(merged.map(\.pid)) == [101, 102])
+    }
+
+    @Test("同 pid 跨清單合併並取各欄最大值")
+    func mergesSamePIDAcrossLists() {
+        let merged = SystemMonitor.mergeTopProcesses(
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 100)],
+            memory: [ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 734_000_000)],
+            disk: [ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 0, diskReadBPS: 4_194_304)],
+            network: [ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 0, networkInBPS: 262_144)],
+            gpu: [ProcInfo(pid: 601, name: "WindowServer", gpuPercent: 23.5)]
+        )
+        #expect(merged.count == 1)
+        guard let proc = merged.first else { return }
+        #expect(proc.pid == 601)
+        #expect(proc.cpuPercent == 16.2)
+        #expect(proc.memoryBytes == 734_000_000)
+        #expect(proc.diskReadBPS == 4_194_304)
+        #expect(proc.networkInBPS == 262_144)
+        #expect(proc.gpuPercent == 23.5)
+    }
+
+    @Test("只出現在非 CPU 清單的行程，CPU 欄維持無資料而非 0")
+    func keepsCPUNilForProcessMissingFromCPUList() {
+        let merged = SystemMonitor.mergeTopProcesses(
+            cpu: [],
+            memory: [],
+            disk: [],
+            network: [ProcInfo(pid: 777, name: "netdaemon", networkInBPS: 262_144)],
+            gpu: [ProcInfo(pid: 888, name: "WindowServer", gpuPercent: 12.5)]
+        )
+        #expect(merged.count == 2)
+        #expect(merged.allSatisfy { $0.cpuPercent == nil })
+
+        let monitor = SystemMonitor(settings: makeTestSettings())
+        #expect(monitor.formatProcessCPU(merged[0].cpuPercent) == "—")
+    }
+}
+
+// MARK: - 高耗能行程表的 CPU% 欄：以 pid 併 CPU list
+
+/// `PowerMonitor` 產出的列本來就沒有 CPU%，CPU% 欄要靠 pid 對上 CPU top list 才有值。
+/// 與 `mergeTopProcesses` 的規則不同：這裡 power list 是主，CPU list 只借出 `cpuPercent` 一欄，
+/// 不取最大值、不補列、不改名，所以另立契約而非重用 `ProcInfo.merged(with:)`。
+@Suite("Power Processes CPU Merge")
+@MainActor
+struct PowerProcessesCPUMergeTests {
+
+    @Test("同 pid：CPU% 取 CPU list 的值")
+    func takesCPUPercentFromCPUListForMatchingPID() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [ProcInfo(pid: 601, name: "WindowServer", memoryBytes: 734_000_000, powerImpact: 45.1)],
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000)]
+        )
+        #expect(merged.count == 1)
+        #expect(merged.first?.cpuPercent == 16.2)
+    }
+
+    @Test("同 pid：CPU list 的值較小也照用，不取兩邊最大值")
+    func overwritesStalePowerRowCPUPercentWithSmallerCPUListValue() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 99.9, memoryBytes: 734_000_000, powerImpact: 45.1)],
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000)]
+        )
+        #expect(merged.first?.cpuPercent == 16.2)
+    }
+
+    @Test("pid 不在 CPU list：CPU% 為無資料，power 列身上的舊值不留")
+    func clearsCPUPercentForPIDMissingFromCPUList() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [ProcInfo(pid: 2002, name: "backupd", cpuPercent: 5.5, memoryBytes: 62_000_000, powerImpact: 9.4)],
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, memoryBytes: 734_000_000)]
+        )
+        #expect(merged.count == 1)
+        #expect(merged.first?.cpuPercent == nil)
+
+        let monitor = SystemMonitor(settings: makeTestSettings())
+        #expect(monitor.formatProcessCPU(merged.first?.cpuPercent) == "—")
+    }
+
+    @Test("CPU list 為空：所有列的 CPU% 都是無資料")
+    func clearsCPUPercentWhenCPUListIsEmpty() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [
+                ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2, powerImpact: 45.1),
+                ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 48.2, powerImpact: 14.1),
+            ],
+            cpu: []
+        )
+        #expect(merged.count == 2)
+        #expect(merged.allSatisfy { $0.cpuPercent == nil })
+    }
+
+    @Test("以 pid 對應而非名稱：同名不同 pid 不借值")
+    func matchesByPIDNotByName() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [ProcInfo(pid: 101, name: "Google Chrome Helper", powerImpact: 21.0)],
+            cpu: [ProcInfo(pid: 102, name: "Google Chrome Helper", cpuPercent: 33.3)]
+        )
+        #expect(merged.first?.cpuPercent == nil)
+    }
+
+    @Test("除 CPU% 外各欄維持 power 列的值")
+    func keepsPowerRowValuesForEveryOtherColumn() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [
+                ProcInfo(
+                    pid: 1001,
+                    name: "Xcode",
+                    memoryBytes: 1_824_000_000,
+                    powerImpact: 14.1,
+                    iconPath: "/Applications/Xcode.app"
+                )
+            ],
+            // CPU list 同 pid 但名稱更長、記憶體更大、powerImpact 更高、無 icon 路徑：
+            // 取最大值或取較長名稱的實作都會在這裡露餡。
+            cpu: [
+                ProcInfo(
+                    pid: 1001,
+                    name: "Xcode Beta Build Service",
+                    cpuPercent: 48.2,
+                    memoryBytes: 9_000_000_000,
+                    powerImpact: 99.9
+                )
+            ]
+        )
+        #expect(merged.count == 1)
+        guard let proc = merged.first else { return }
+        #expect(proc.pid == 1001)
+        #expect(proc.name == "Xcode")
+        #expect(proc.memoryBytes == 1_824_000_000)
+        #expect(proc.powerImpact == 14.1)
+        #expect(proc.iconPath == "/Applications/Xcode.app")
+        #expect(proc.cpuPercent == 48.2)
+    }
+
+    @Test("順序與列數比照 power list：不重排、不補進只在 CPU list 的行程")
+    func preservesPowerListOrderAndDoesNotAppendCPUOnlyProcesses() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [
+                ProcInfo(pid: 601, name: "WindowServer", powerImpact: 45.1),
+                ProcInfo(pid: 2002, name: "backupd", powerImpact: 9.4),
+                ProcInfo(pid: 1001, name: "Xcode", powerImpact: 14.1),
+            ],
+            cpu: [
+                ProcInfo(pid: 1001, name: "Xcode", cpuPercent: 48.2),
+                ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2),
+                ProcInfo(pid: 1002, name: "StatsMonitor", cpuPercent: 8.3),
+            ]
+        )
+        #expect(merged.map(\.pid) == [601, 2002, 1001])
+        #expect(merged.map(\.cpuPercent) == [16.2, nil, 48.2])
+    }
+
+    @Test("power list 為空：結果為空")
+    func returnsEmptyForEmptyPowerList() {
+        let merged = SystemMonitor.mergePowerProcesses(
+            power: [],
+            cpu: [ProcInfo(pid: 601, name: "WindowServer", cpuPercent: 16.2)]
+        )
+        #expect(merged.isEmpty)
+    }
+}
+
+@Suite("Process Name Resolution")
+struct ProcessNameResolverTests {
+
+    @Test("能定位 bundle 時顯示 bundle display name")
+    func prefersBundleDisplayName() {
+        #expect(ProcessNameResolver.displayName(
+            bundleDisplayName: "Google Chrome",
+            executableFileName: "Google Chrome Helper",
+            commName: "Google Chrome He"
+        ) == "Google Chrome")
+    }
+
+    @Test("無 bundle 時 fallback 執行檔檔名")
+    func fallsBackToExecutableFileName() {
+        #expect(ProcessNameResolver.displayName(
+            bundleDisplayName: nil,
+            executableFileName: "com.apple.WebKit.WebContent",
+            commName: "com.apple.WebKi"
+        ) == "com.apple.WebKit.WebContent")
+    }
+
+    @Test("bundle 與執行檔路徑都取不到才 fallback p_comm")
+    func fallsBackToCommName() {
+        #expect(ProcessNameResolver.displayName(
+            bundleDisplayName: nil,
+            executableFileName: nil,
+            commName: "2.1.241"
+        ) == "2.1.241")
+    }
+
+    @Test("執行檔路徑往上找到最近的 .app bundle")
+    func findsNearestAppBundleAncestor() {
+        let path = "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper"
+        #expect(ProcessNameResolver.appBundlePath(forExecutablePath: path)
+            == "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/Google Chrome Helper.app")
+    }
+
+    @Test("非 app 執行檔沒有 bundle 路徑")
+    func returnsNilForNonAppExecutable() {
+        #expect(ProcessNameResolver.appBundlePath(forExecutablePath: "/usr/bin/zsh") == nil)
+    }
+}
+
+// MARK: - #4 行程表右鍵結束 process
+
+/// `kill(2)` 替身：記錄實際收到的 (pid, signal)，並在回傳 -1 時把 `errno` 設成指定值，
+/// 逼 `ProcessTerminator` 走真實的 errno 判讀路徑（而不是靠回傳值猜錯誤種類）。
+private final class KillSpy {
+    private(set) var calls: [(pid: Int32, signal: Int32)] = []
+    private let result: Int32
+    private let errorNumber: Int32
+
+    init(result: Int32, errorNumber: Int32 = 0) {
+        self.result = result
+        self.errorNumber = errorNumber
+    }
+
+    func kill(_ pid: Int32, _ signal: Int32) -> Int32 {
+        calls.append((pid: pid, signal: signal))
+        if result == -1 { errno = errorNumber }
+        return result
+    }
+}
+
+private func strerrorText(_ code: Int32) -> String {
+    String(cString: strerror(code))
+}
+
+/// 讀專案原始碼本文，才驗得到「兩張表共用同一實作」這種檔案層事實。
+private func loadProjectSource(_ relativePath: String, file: StaticString = #filePath) throws -> String {
+    let repoRoot = URL(fileURLWithPath: "\(file)")
+        .deletingLastPathComponent()   // Tests/Sources
+        .deletingLastPathComponent()   // Tests
+        .deletingLastPathComponent()   // repo root
+    return try String(contentsOf: repoRoot.appendingPathComponent(relativePath), encoding: .utf8)
+}
+
+@Suite("Process Termination")
+struct ProcessTerminationTests {
+
+    /// 回傳 terminate 丟出的錯誤；沒丟錯回 nil，讓「該丟沒丟」也算失敗。
+    private func captureError(_ body: () throws -> Void) -> ProcessTerminationError? {
+        do {
+            try body()
+            return nil
+        } catch let error as ProcessTerminationError {
+            return error
+        } catch {
+            Issue.record("預期 ProcessTerminationError，實得 \(error)")
+            return nil
+        }
+    }
+
+    // MARK: signal 對映
+
+    @Test("signal 對映 SIGTERM / SIGKILL")
+    func signalNumbersMatchPOSIX() {
+        #expect(ProcessTerminationSignal.terminate.signalNumber == SIGTERM)
+        #expect(ProcessTerminationSignal.forceKill.signalNumber == SIGKILL)
+        // 兩個常數互換仍會通過上面兩行，所以連原始數值一起釘死。
+        #expect(ProcessTerminationSignal.terminate.signalNumber == 15)
+        #expect(ProcessTerminationSignal.forceKill.signalNumber == 9)
+    }
+
+    // MARK: 無效 pid
+
+    @Test("pid 0 直接拒絕且完全不呼叫 kill（kill(0, SIGKILL) 會殺掉整個 process group）")
+    func rejectsZeroPIDWithoutCallingKill() {
+        let spy = KillSpy(result: 0)
+
+        let error = captureError {
+            try ProcessTerminator.terminate(pid: 0, signal: .forceKill, kill: spy.kill)
+        }
+
+        #expect(error == .invalidPID(0))
+        #expect(spy.calls.isEmpty)
+    }
+
+    @Test("負 pid 直接拒絕且不呼叫 kill（kill(-1, …) 會掃掉整個使用者的行程）")
+    func rejectsNegativePIDWithoutCallingKill() {
+        let spy = KillSpy(result: 0)
+
+        let error = captureError {
+            try ProcessTerminator.terminate(pid: -1, signal: .terminate, kill: spy.kill)
+        }
+
+        #expect(error == .invalidPID(-1))
+        #expect(spy.calls.isEmpty)
+    }
+
+    @Test("超出 pid_t 範圍的 pid 直接拒絕，不做會 trap 的 Int32 轉型")
+    func rejectsOutOfRangePID() {
+        let spy = KillSpy(result: 0)
+        let outOfRange = Int(Int32.max) + 1
+
+        let error = captureError {
+            try ProcessTerminator.terminate(pid: outOfRange, signal: .terminate, kill: spy.kill)
+        }
+
+        #expect(error == .invalidPID(outOfRange))
+        #expect(spy.calls.isEmpty)
+    }
+
+    @Test("canTerminate 判斷選單項是否可點：只有落在 pid_t 正數範圍內才可結束")
+    func canTerminateMatchesPIDValidity() {
+        #expect(ProcessTerminator.canTerminate(pid: 0) == false)
+        #expect(ProcessTerminator.canTerminate(pid: -1) == false)
+        #expect(ProcessTerminator.canTerminate(pid: Int(Int32.max) + 1) == false)
+        // currentPID 明確指定，避免測試 runner 自己的 pid 恰好撞上底下的正數樣本。
+        #expect(ProcessTerminator.canTerminate(pid: 1, currentPID: 99999) == true)
+        #expect(ProcessTerminator.canTerminate(pid: 4321, currentPID: 99999) == true)
+        #expect(ProcessTerminator.canTerminate(pid: Int(Int32.max), currentPID: 99999) == true)
+    }
+
+    @Test("canTerminate 排除自己：選單不能提供結束 StatsMonitor 本身的入口")
+    func canTerminateExcludesOwnPID() {
+        #expect(ProcessTerminator.canTerminate(pid: 4321, currentPID: 4321) == false)
+        // 同一個 pid 換成別人的行程仍可結束，證明排除的是「自身」而非這個數值。
+        #expect(ProcessTerminator.canTerminate(pid: 4321, currentPID: 4322) == true)
+        // 預設值必須是本行程 pid，否則 UI 端拿不到這層保護。
+        let ownPID = Int(ProcessInfo.processInfo.processIdentifier)
+        #expect(ProcessTerminator.canTerminate(pid: ownPID) == false)
+    }
+
+    @Test("右鍵選單 Quit 走 app terminate 路由、Force Quit 才直接送 signal")
+    func contextMenuRoutesQuitThroughAppTermination() throws {
+        let source = try loadProjectSource("StatsMonitor/Sources/Views/Shared/ProcessTerminationContextMenu.swift")
+
+        #expect(source.contains("ProcessTerminator.quit("), "Quit 應走 ProcessTerminator.quit，而非直接送 SIGTERM")
+        #expect(
+            source.contains(".forceKill"),
+            "Force Quit 應維持走 terminate(signal: .forceKill)"
+        )
+        #expect(
+            !source.contains("terminate(signal: .terminate)"),
+            "Quit 不該再直送 SIGTERM，Cocoa app 收 SIGTERM 會直接死、來不及存檔"
+        )
+    }
+
+    // MARK: 成功路徑
+
+    @Test("SIGTERM 成功：pid 與 signal 原封不動送進 kill，且不丟錯")
+    func sendsTerminateSignalOnSuccess() throws {
+        let spy = KillSpy(result: 0)
+
+        try ProcessTerminator.terminate(pid: 4321, signal: .terminate, kill: spy.kill)
+
+        #expect(spy.calls.count == 1)
+        #expect(spy.calls.first?.pid == 4321)
+        #expect(spy.calls.first?.signal == SIGTERM)
+    }
+
+    @Test("SIGKILL 成功：送出 signal 9")
+    func sendsForceKillSignalOnSuccess() throws {
+        let spy = KillSpy(result: 0)
+
+        try ProcessTerminator.terminate(pid: 99, signal: .forceKill, kill: spy.kill)
+
+        #expect(spy.calls.count == 1)
+        #expect(spy.calls.first?.pid == 99)
+        #expect(spy.calls.first?.signal == SIGKILL)
+    }
+
+    // MARK: 失敗路徑（不吞錯）
+
+    @Test("kill 回 -1 且 errno 為 EPERM → permissionDenied")
+    func mapsEPERMToPermissionDenied() {
+        let spy = KillSpy(result: -1, errorNumber: EPERM)
+
+        let error = captureError {
+            try ProcessTerminator.terminate(pid: 1, signal: .terminate, kill: spy.kill)
+        }
+
+        #expect(error == .permissionDenied)
+        #expect(spy.calls.count == 1)
+    }
+
+    @Test("kill 回 -1 且 errno 為 ESRCH → noSuchProcess")
+    func mapsESRCHToNoSuchProcess() {
+        let spy = KillSpy(result: -1, errorNumber: ESRCH)
+
+        let error = captureError {
+            try ProcessTerminator.terminate(pid: 4321, signal: .forceKill, kill: spy.kill)
+        }
+
+        #expect(error == .noSuchProcess)
+    }
+
+    @Test("kill 回 -1 且 errno 是其他值 → other 帶原始 errno")
+    func mapsUnknownErrnoToOther() {
+        let spy = KillSpy(result: -1, errorNumber: EINVAL)
+
+        let error = captureError {
+            try ProcessTerminator.terminate(pid: 4321, signal: .terminate, kill: spy.kill)
+        }
+
+        #expect(error == .other(errorNumber: EINVAL))
+    }
+
+    @Test("kill 預設參數就是真正的 Darwin.kill：對不存在的 pid 回報 noSuchProcess")
+    func defaultKillCallsRealSyscall() {
+        // macOS pid 上限遠小於 Int32.max，此 pid 必不存在；signal 不會落到任何行程上。
+        let error = captureError {
+            try ProcessTerminator.terminate(pid: Int(Int32.max), signal: .terminate)
+        }
+
+        #expect(error == .noSuchProcess)
+    }
+
+    // MARK: 文案
+
+    @Test("alert 文案可釘死英文")
+    func copyCanBePinnedToEnglish() {
+        let locale = Locale(identifier: "en")
+
+        #expect(ProcessTerminationCopy.forceQuitTitle(processName: "Xcode", locale: locale)
+            == "Force Quit Xcode?")
+        #expect(ProcessTerminationCopy.forceQuitMessage(locale: locale)
+            == "Force quitting ends the process immediately. Unsaved changes will be lost.")
+        #expect(ProcessTerminationCopy.forceQuitConfirm(locale: locale) == "Force Quit")
+        #expect(ProcessTerminationCopy.cancel(locale: locale) == "Cancel")
+        #expect(ProcessTerminationCopy.dismiss(locale: locale) == "OK")
+        #expect(ProcessTerminationCopy.failureTitle(processName: "Xcode", locale: locale)
+            == "Unable to quit Xcode")
+    }
+
+    @Test("失敗訊息＝人話句子＋errno 描述，四種錯誤各有自己的說法")
+    func failureMessageCombinesHumanSentenceAndErrno() {
+        let locale = Locale(identifier: "en")
+
+        #expect(ProcessTerminationCopy.failureMessage(error: .permissionDenied, locale: locale)
+            == "StatsMonitor does not have permission to quit this process. (\(strerrorText(EPERM)))")
+        #expect(ProcessTerminationCopy.failureMessage(error: .noSuchProcess, locale: locale)
+            == "The process is no longer running. (\(strerrorText(ESRCH)))")
+        #expect(ProcessTerminationCopy.failureMessage(error: .other(errorNumber: EINVAL), locale: locale)
+            == "The process could not be quit. (\(strerrorText(EINVAL)))")
+        // invalidPID 不是 errno 失敗，不能硬掛一個 strerror 上去。
+        #expect(ProcessTerminationCopy.failureMessage(error: .invalidPID(0), locale: locale)
+            == "This process does not report a valid process ID.")
+    }
+
+    @Test("alert 文案有 zh-Hant 譯文")
+    func copyHasTraditionalChineseLocalization() {
+        let locale = Locale(identifier: "zh-Hant")
+
+        #expect(ProcessTerminationCopy.forceQuitTitle(processName: "Xcode", locale: locale)
+            == "強制結束 Xcode？")
+        #expect(ProcessTerminationCopy.forceQuitMessage(locale: locale)
+            == "強制結束會立即終止此行程，未儲存的變更將會遺失。")
+        #expect(ProcessTerminationCopy.forceQuitConfirm(locale: locale) == "強制結束")
+        #expect(ProcessTerminationCopy.cancel(locale: locale) == "取消")
+        #expect(ProcessTerminationCopy.dismiss(locale: locale) == "好")
+        #expect(ProcessTerminationCopy.failureTitle(processName: "Xcode", locale: locale)
+            == "無法結束 Xcode")
+        #expect(ProcessTerminationCopy.failureMessage(error: .permissionDenied, locale: locale)
+            == "StatsMonitor 沒有結束此行程的權限。 (\(strerrorText(EPERM)))")
+        #expect(ProcessTerminationCopy.failureMessage(error: .noSuchProcess, locale: locale)
+            == "此行程已不在執行中。 (\(strerrorText(ESRCH)))")
+        #expect(ProcessTerminationCopy.failureMessage(error: .invalidPID(0), locale: locale)
+            == "此行程沒有有效的行程 ID。")
+    }
+
+    @Test("右鍵選單新增的 key 在 xcstrings 皆有 zh-Hant 譯文")
+    func terminationKeysHaveTraditionalChinese() throws {
+        let catalog = try loadLocalizableStringCatalog()
+        let expected = [
+            "Force Quit": "強制結束",
+            "Force Quit %@?": "強制結束 %@？",
+            "Force quitting ends the process immediately. Unsaved changes will be lost.":
+                "強制結束會立即終止此行程，未儲存的變更將會遺失。",
+            "Unable to quit %@": "無法結束 %@",
+            "StatsMonitor does not have permission to quit this process.":
+                "StatsMonitor 沒有結束此行程的權限。",
+            "The process is no longer running.": "此行程已不在執行中。",
+            "The process could not be quit.": "無法結束此行程。",
+            "This process does not report a valid process ID.": "此行程沒有有效的行程 ID。",
+            "OK": "好",
+        ]
+
+        for (key, translation) in expected {
+            let unit = try #require(
+                catalog[key]?["localizations"]
+                    .flatMap { $0 as? [String: Any] }?["zh-Hant"]
+                    .flatMap { $0 as? [String: Any] }?["stringUnit"]
+                    .flatMap { $0 as? [String: Any] },
+                "缺少 \(key) 的 zh-Hant 譯文"
+            )
+            #expect(unit["state"] as? String == "translated")
+            #expect(unit["value"] as? String == translation)
+        }
+    }
+
+    // MARK: 兩張表共用同一實作
+
+    @Test("兩張行程表都套用共用的右鍵選單 modifier，不各自實作 kill / alert")
+    func bothProcessTablesShareTerminationContextMenu() throws {
+        let tableSources = [
+            "StatsMonitor/Sources/Views/Shared/TopProcessesTable.swift",
+            "StatsMonitor/Sources/Views/MainWindowView/PowerChartsView.swift",
+        ]
+
+        for path in tableSources {
+            let source = try loadProjectSource(path)
+            #expect(source.contains("processTerminationContextMenu("), "\(path) 沒有套用共用的右鍵選單 modifier")
+            #expect(!source.contains("func processTerminationContextMenu"), "\(path) 自己定義 modifier，共用實作應放 Views/Shared")
+            #expect(!source.contains("NSAlert"), "\(path) 不該自己組 alert")
+            #expect(!source.contains("kill("), "\(path) 不該自己呼叫 kill，要走 ProcessTerminator")
+        }
+    }
+}
+
+/// 記錄「請 app 自己結束」的請求，並照腳本回覆：
+/// `nil` ＝這個 pid 不是 GUI app，`true` ＝請求已送出，`false` ＝請求沒送出去。
+private final class AppTerminationSpy {
+    private(set) var calls: [Int32] = []
+    private let result: Bool?
+
+    init(result: Bool?) {
+        self.result = result
+    }
+
+    func requestTermination(_ pid: Int32) -> Bool? {
+        calls.append(pid)
+        return result
+    }
+}
+
+/// Quit 的契約：GUI app 要收到 Apple Event quit（走 applicationShouldTerminate、可存檔），
+/// 不能像舊實作那樣直接 SIGTERM——Cocoa app 收 SIGTERM 會直接死，與「Quit 溫和」的文案不符。
+@Suite("Process Quit Routing")
+@MainActor
+struct ProcessQuitRoutingTests {
+
+    private func captureError(_ body: () throws -> Void) -> ProcessTerminationError? {
+        do {
+            try body()
+            return nil
+        } catch let error as ProcessTerminationError {
+            return error
+        } catch {
+            Issue.record("預期 ProcessTerminationError，實得 \(error)")
+            return nil
+        }
+    }
+
+    @Test("pid 對得到 app：只送 app terminate 請求，完全不呼叫 kill")
+    func quitAsksAppToTerminateWithoutKilling() throws {
+        let app = AppTerminationSpy(result: true)
+        let kill = KillSpy(result: 0)
+
+        try ProcessTerminator.quit(pid: 4321, requestAppTermination: app.requestTermination, kill: kill.kill)
+
+        #expect(app.calls == [4321])
+        #expect(kill.calls.isEmpty, "app 已收到 quit 請求，再補 SIGTERM 會讓它來不及存檔就死")
+    }
+
+    @Test("pid 對不到 app（非 GUI 行程）：fallback 送 SIGTERM")
+    func quitFallsBackToSignalForNonAppProcess() throws {
+        let app = AppTerminationSpy(result: nil)
+        let kill = KillSpy(result: 0)
+
+        try ProcessTerminator.quit(pid: 777, requestAppTermination: app.requestTermination, kill: kill.kill)
+
+        #expect(app.calls == [777])
+        #expect(kill.calls.count == 1)
+        #expect(kill.calls.first?.pid == 777)
+        #expect(kill.calls.first?.signal == SIGTERM)
+    }
+
+    @Test("terminate 請求送不出去（回 false，例如行程已不在）：fallback 送 SIGTERM")
+    func quitFallsBackToSignalWhenRequestNotSent() throws {
+        let app = AppTerminationSpy(result: false)
+        let kill = KillSpy(result: 0)
+
+        try ProcessTerminator.quit(pid: 555, requestAppTermination: app.requestTermination, kill: kill.kill)
+
+        #expect(app.calls == [555])
+        #expect(kill.calls.count == 1)
+        #expect(kill.calls.first?.pid == 555)
+        #expect(kill.calls.first?.signal == SIGTERM)
+    }
+
+    @Test("kill 失敗時 quit 不吞錯：errno 照樣分類拋出")
+    func quitPropagatesKillFailure() {
+        let app = AppTerminationSpy(result: nil)
+        let kill = KillSpy(result: -1, errorNumber: EPERM)
+
+        let error = captureError {
+            try ProcessTerminator.quit(pid: 555, requestAppTermination: app.requestTermination, kill: kill.kill)
+        }
+
+        #expect(error == .permissionDenied)
+    }
+
+    @Test("quit 也擋無效 pid：兩個注入點都不該被呼叫")
+    func quitRejectsInvalidPIDWithoutTouchingAnything() {
+        for invalid in [0, -1, Int(Int32.max) + 1] {
+            let app = AppTerminationSpy(result: true)
+            let kill = KillSpy(result: 0)
+
+            let error = captureError {
+                try ProcessTerminator.quit(pid: invalid, requestAppTermination: app.requestTermination, kill: kill.kill)
+            }
+
+            #expect(error == .invalidPID(invalid))
+            #expect(app.calls.isEmpty)
+            #expect(kill.calls.isEmpty)
+        }
+    }
+
+    @Test("Force Quit 不走 app 請求：一律直送 SIGKILL")
+    func forceQuitBypassesAppTermination() throws {
+        let kill = KillSpy(result: 0)
+
+        try ProcessTerminator.terminate(pid: 4321, signal: .forceKill, kill: kill.kill)
+
+        #expect(kill.calls.count == 1)
+        #expect(kill.calls.first?.signal == SIGKILL)
+    }
+}
+
+@Suite("Process Termination Alerts")
+@MainActor
+struct ProcessTerminationAlertTests {
+
+    @Test("強制結束確認 alert 用共用文案與按鈕順序")
+    func forceQuitConfirmationMatchesCopy() {
+        let alert = ProcessTerminationAlertFactory.makeForceQuitConfirmation(processName: "Xcode")
+
+        #expect(alert.messageText == ProcessTerminationCopy.forceQuitTitle(processName: "Xcode"))
+        #expect(alert.messageText.contains("Xcode"))
+        #expect(alert.informativeText == ProcessTerminationCopy.forceQuitMessage())
+        #expect(alert.alertStyle == .warning)
+        #expect(alert.buttons.map(\.title)
+            == [ProcessTerminationCopy.forceQuitConfirm(), ProcessTerminationCopy.cancel()])
+    }
+
+    @Test("失敗 alert 顯示行程名、人話說明與 errno 描述，只有一顆關閉鍵")
+    func failureAlertMatchesCopy() {
+        let alert = ProcessTerminationAlertFactory.makeFailureAlert(
+            processName: "Xcode",
+            error: .permissionDenied
+        )
+
+        #expect(alert.messageText == ProcessTerminationCopy.failureTitle(processName: "Xcode"))
+        #expect(alert.messageText.contains("Xcode"))
+        #expect(alert.informativeText == ProcessTerminationCopy.failureMessage(error: .permissionDenied))
+        #expect(alert.informativeText.contains(strerrorText(EPERM)))
+        #expect(alert.alertStyle == .warning)
+        #expect(alert.buttons.map(\.title) == [ProcessTerminationCopy.dismiss()])
+    }
+
+    @Test("失敗 alert 的錯誤內容隨 error 改變，不是寫死一句")
+    func failureAlertReflectsError() {
+        let permission = ProcessTerminationAlertFactory.makeFailureAlert(
+            processName: "Xcode",
+            error: .permissionDenied
+        )
+        let missing = ProcessTerminationAlertFactory.makeFailureAlert(
+            processName: "Xcode",
+            error: .noSuchProcess
+        )
+
+        #expect(permission.informativeText != missing.informativeText)
+        #expect(missing.informativeText.contains(strerrorText(ESRCH)))
+    }
+
+    @Test("共用右鍵選單 modifier 可套在任一列上並算得出版面")
+    func terminationContextMenuModifierRenders() {
+        let process = ProcInfo(pid: 4321, name: "Xcode", cpuPercent: 12.5)
+        let host = NSHostingView(
+            rootView: Text(verbatim: process.name).processTerminationContextMenu(for: process)
+        )
+
+        #expect(host.fittingSize.width > 0)
     }
 }
