@@ -28,14 +28,21 @@ struct MetricChartCard: View {
                     showsBackground: false
                 )
                 .frame(maxHeight: .infinity)
-                legend
+                // legend 疊在 chart 左下角，chart 吃滿剩餘高度
+                .overlay(alignment: .bottomLeading) { legend }
             }
         }
         .padding(8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
-        .frame(height: height ?? dashboardCardHeight(lines: lines, hasLegend: !legendItems.isEmpty))
+        .frame(height: height ?? dashboardCardHeight)
     }
+
+    private static let legendOutlineOffsets: [CGSize] = [
+        CGSize(width: -1, height: -1), CGSize(width: 0, height: -1), CGSize(width: 1, height: -1),
+        CGSize(width: -1, height: 0), CGSize(width: 1, height: 0),
+        CGSize(width: -1, height: 1), CGSize(width: 0, height: 1), CGSize(width: 1, height: 1),
+    ]
 
     private var hasChart: Bool {
         dashboardCardHasChart(lines: lines)
@@ -89,9 +96,19 @@ struct MetricChartCard: View {
         if !legendItems.isEmpty {
             HStack(spacing: 8) {
                 ForEach(Array(legendItems.enumerated()), id: \.offset) { item in
+                    // 疊字描邊：同字底色版往 8 方向各偏 1pt 墊在後面，壓在線圖上仍清楚；
+                    // 模糊陰影會糊字、底色膠囊會蓋線、單向偏移擋不住穿字的線，都不用
                     Text(item.element.label)
                         .font(.caption2)
                         .foregroundStyle(item.element.color)
+                        .background {
+                            ForEach(Array(Self.legendOutlineOffsets.enumerated()), id: \.offset) { offset in
+                                Text(item.element.label)
+                                    .font(.caption2)
+                                    .foregroundStyle(.background)
+                                    .offset(offset.element)
+                            }
+                        }
                 }
             }
         }

@@ -2001,16 +2001,17 @@ struct DashboardToolbarTests {
 
         let binding = DashboardColumnsSlider.binding(for: settings)
 
-        #expect(binding.wrappedValue == Double(AppSettings.dashboardColumnRange.lowerBound))
+        // 滑桿最右（值最大）＝卡片最大＝欄數最少
+        #expect(binding.wrappedValue == Double(AppSettings.dashboardColumnRange.upperBound))
 
         binding.wrappedValue = 4.6
-        #expect(settings.dashboardColumns == 5)
+        #expect(settings.dashboardColumns == 4)
 
         binding.wrappedValue = 1.2
-        #expect(settings.dashboardColumns == AppSettings.dashboardColumnRange.lowerBound)
+        #expect(settings.dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
 
         binding.wrappedValue = 7.2
-        #expect(settings.dashboardColumns == AppSettings.dashboardColumnRange.upperBound)
+        #expect(settings.dashboardColumns == AppSettings.dashboardColumnRange.lowerBound)
     }
 
     @Test("chart tabs derive grid item width from the shared dashboard slider")
@@ -3284,12 +3285,9 @@ struct DashboardVisualRefreshTests {
         #expect(AppSettings.dashboardColumnRange == 3...6)
     }
 
-    @Test("metric 卡片高度：chart 區縮到原本七成（72→~51pt），legend 卡補回 legend 高度，無 chart 維持 72")
-    func metricCardHeightIsCompact() {
-        let line = ChartSeries(history: [0.5], color: .blue)
-        #expect(dashboardCardHeight(lines: [line], hasLegend: false) == 112)
-        #expect(dashboardCardHeight(lines: [line], hasLegend: true) == 128)
-        #expect(dashboardCardHeight(lines: [], hasLegend: false) == 72)
+    @Test("metric 卡片不論有無 legend／chart 都同高，同列對齊")
+    func metricCardHeightIsFixed() {
+        #expect(dashboardCardHeight == 112)
     }
 
     @Test("使用率門檻分級，含 0.6／0.8 邊界")

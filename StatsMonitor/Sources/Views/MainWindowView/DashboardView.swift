@@ -87,20 +87,22 @@ struct DashboardColumnsSlider: View {
     let settings: AppSettings
     private static let valueRange = Double(AppSettings.dashboardColumnRange.lowerBound)...Double(AppSettings.dashboardColumnRange.upperBound)
 
+    /// 滑桿往右＝卡片變大＝欄數變少，故滑桿值與欄數反向對映。
     static func binding(for settings: AppSettings) -> Binding<Double> {
-        Binding(
-            get: { Double(settings.dashboardColumns) },
+        let mirrorSum = valueRange.lowerBound + valueRange.upperBound
+        return Binding(
+            get: { mirrorSum - Double(settings.dashboardColumns) },
             set: { newValue in
                 let clampedValue = min(max(newValue, valueRange.lowerBound), valueRange.upperBound)
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    settings.dashboardColumns = Int(clampedValue.rounded())
+                    settings.dashboardColumns = Int((mirrorSum - clampedValue).rounded())
                 }
             }
         )
     }
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             // toolbar 的 .automatic label style 會收成 icon-only，明寫 titleAndIcon 才保得住標籤。
             Label("Card Size", systemImage: "square.grid.2x2")
                 .labelStyle(.titleAndIcon)
@@ -109,6 +111,7 @@ struct DashboardColumnsSlider: View {
             Slider(value: Self.binding(for: settings), in: Self.valueRange, step: 1)
                 .frame(width: 110)
         }
+        .padding(.horizontal, 8)
     }
 }
 
@@ -162,13 +165,9 @@ func dashboardCardHasChart(lines: [ChartSeries]) -> Bool {
     !lines.isEmpty
 }
 
-// 卡片高度 = 固定開銷（padding、caption 標題、.title2 數值、spacing ≈ 64pt）+ chart 區；
-// chart 區取原本 72pt 的七成（≈ 48pt）讓多卡頁少捲動，legend 卡另補 legend 自身高度（≈ 16pt），
-// 兩種卡的 chart 區才一樣高。改字級或 legend 樣式要一起重算。
-func dashboardCardHeight(lines: [ChartSeries], hasLegend: Bool) -> CGFloat {
-    guard dashboardCardHasChart(lines: lines) else { return 72 }
-    return hasLegend ? 128 : 112
-}
+// 所有卡片同高，同列才對齊：固定開銷（padding、caption 標題、.title2 數值、spacing ≈ 64pt）
+// + chart 區 ≈ 48pt；legend 疊在 chart 左下角，不另佔高度。改字級要一起重算。
+let dashboardCardHeight: CGFloat = 112
 
 // MARK: - Preview
 
