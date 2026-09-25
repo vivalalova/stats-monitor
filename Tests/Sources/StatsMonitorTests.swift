@@ -2741,6 +2741,20 @@ struct StatusBarTests {
         #expect(shouldDismiss(nil))
     }
 
+    @Test("global dismiss monitor ignores left clicks on the system-hosted status item")
+    func globalDismissMonitorIgnoresStatusItemClicks() {
+        let statusItemFrame = CGRect(x: 1951, y: 1410, width: 140, height: 30)
+
+        func shouldDismiss(_ point: CGPoint, eventType: NSEvent.EventType = .leftMouseDown, frame: CGRect? = statusItemFrame) -> Bool {
+            StatusBarController.shouldDismissPanel(forGlobalClickAt: point, eventType: eventType, statusItemFrame: frame)
+        }
+
+        #expect(!shouldDismiss(CGPoint(x: 1984, y: 1437)))
+        #expect(shouldDismiss(CGPoint(x: 1984, y: 1437), eventType: .rightMouseDown))
+        #expect(shouldDismiss(CGPoint(x: 800, y: 600)))
+        #expect(shouldDismiss(CGPoint(x: 1984, y: 1437), frame: nil))
+    }
+
     @Test("status bar panel is borderless, transparent, and floats above other windows")
     func statusBarPanelUsesLiquidGlassChrome() {
         let panel = NSPanel()

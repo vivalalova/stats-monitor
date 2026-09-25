@@ -139,6 +139,15 @@ final class StatusBarController: NSObject {
         return true
     }
 
+    static func shouldDismissPanel(
+        forGlobalClickAt screenPoint: CGPoint,
+        eventType: NSEvent.EventType,
+        statusItemFrame: CGRect?
+    ) -> Bool {
+        guard eventType == .leftMouseDown, let statusItemFrame else { return true }
+        return !statusItemFrame.contains(screenPoint)
+    }
+
     // MARK: - Length
 
     private func refreshButtonPresentation(for button: NSStatusBarButton? = nil) {
@@ -168,9 +177,10 @@ final class StatusBarController: NSObject {
     // MARK: - Click handling
 
     @objc private func handleClick(_ sender: NSStatusBarButton) {
-        guard let event = NSApp.currentEvent else { return }
+        guard let window = sender.window else { return }
+        // 系統代管選單列時，轉送來的點擊事件座標固定在 item 中心，改讀滑鼠實際的螢幕位置
         let point = Self.normalizeClickPoint(
-            sender.convert(event.locationInWindow, from: nil),
+            sender.convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil),
             in: sender.bounds,
             isFlipped: sender.isFlipped
         )
@@ -256,8 +266,20 @@ final class StatusBarController: NSObject {
 
         let globalMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown]
-        ) { [weak self] _ in
-            Task { @MainActor in self?.closePanel() }
+        ) { [weak self] event in
+            // 點自己的 status item 在系統代管選單列時也會觸發全域監聽，交給 handleClick 切換，不在此關閉
+            let screenPoint = NSEvent.mouseLocation
+            let eventType = event.type
+            Task { @MainActor in
+                guard let self else { return }
+                if Self.shouldDismissPanel(
+                    forGlobalClickAt: screenPoint,
+                    eventType: eventType,
+                    statusItemFrame: self.statusButton?.window?.frame
+                ) {
+                    self.closePanel()
+                }
+            }
         }
         let localMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown]
