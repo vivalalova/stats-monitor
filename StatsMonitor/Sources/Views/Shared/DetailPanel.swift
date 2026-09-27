@@ -31,7 +31,7 @@ struct PanelView<Content: View>: View {
             }
             .padding(16)
             .frame(width: 280)
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+            .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 12))
         }
     }
 }
