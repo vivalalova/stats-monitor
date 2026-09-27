@@ -60,17 +60,22 @@ private struct EngineGridView: View {
             ForEach(sorted, id: \.key) { item in
                 VStack(spacing: 1) {
                     BarView(width: barWidth, color: .purple, value: item.value)
-                    Text(abbreviate(item.key))
-                        .foregroundStyle(.secondary)
+                    ViewThatFits(in: .horizontal) {
+                        Text(LocalizedStringKey(item.key))
+                        Text(verbatim: abbreviate(item.key))
+                    }
+                    .foregroundStyle(.secondary)
                     Text("\(Int(item.value))%")
                 }
                 .font(.system(size: 7))
                 .monospacedDigit()
+                .lineLimit(1)
+                .frame(width: barWidth)
             }
         }
     }
 
-    // Single-word → first 4 chars. Multi-word → uppercased initials.
+    // Fallback when the full name doesn't fit: single-word → first 4 chars, multi-word → uppercased initials.
     private func abbreviate(_ name: String) -> String {
         let words = name.split(separator: " ")
         if words.count == 1 { return String(words[0].prefix(4)) }
