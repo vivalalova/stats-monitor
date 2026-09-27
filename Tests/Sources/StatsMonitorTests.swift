@@ -2784,6 +2784,18 @@ struct StatusBarTests {
         #expect(panel.level == .statusBar)
         #expect(panel.animationBehavior == .none)
     }
+
+    @Test("detail panel can become key so Liquid Glass renders its active (transparent) appearance")
+    func detailPanelCanBecomeKey() {
+        let panel = DetailPanelWindow(
+            contentRect: .zero,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: true
+        )
+
+        #expect(panel.canBecomeKey)
+    }
 }
 
 @Suite("Quit Confirmation")

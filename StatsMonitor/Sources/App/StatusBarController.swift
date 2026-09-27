@@ -62,7 +62,7 @@ final class StatusBarController: NSObject {
     private let statusItem: NSStatusItem
     private let settings: AppSettings
     private let monitor: SystemMonitor
-    private let detailPanel: NSPanel
+    private let detailPanel: DetailPanelWindow
     private let hostingController: NSHostingController<AnyView>
     private var currentPanel: PanelID?
     private var dismissMonitors: [Any] = []
@@ -76,7 +76,7 @@ final class StatusBarController: NSObject {
         self.monitor = monitor
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         hostingController = NSHostingController(rootView: AnyView(EmptyView()))
-        detailPanel = NSPanel(
+        detailPanel = DetailPanelWindow(
             contentRect: CGRect(x: 0, y: 0, width: 280, height: 100),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -86,7 +86,6 @@ final class StatusBarController: NSObject {
         Self.configureDetailPanel(detailPanel)
         detailPanel.contentViewController = hostingController
         detailPanel.contentView?.wantsLayer = true
-        detailPanel.delegate = self
         setupButton()
         observeForLength()
     }
@@ -217,9 +216,9 @@ final class StatusBarController: NSObject {
         updatePanelContent(for: panel)
         sizePanelToFitContent()
         positionPanel(relativeTo: button)
-        detailPanel.orderFrontRegardless()
-        installDismissMonitors()
         NSApp.activate(ignoringOtherApps: true)
+        detailPanel.makeKeyAndOrderFront(nil)
+        installDismissMonitors()
         currentPanel = panel
     }
 
@@ -311,11 +310,9 @@ final class StatusBarController: NSObject {
     }
 }
 
-// MARK: - NSWindowDelegate
+// MARK: - Detail panel window
 
-extension StatusBarController: NSWindowDelegate {
-    func windowDidResignKey(_ notification: Notification) {
-        guard notification.object as? NSWindow === detailPanel else { return }
-        closePanel()
-    }
+/// Liquid Glass draws its frosted inactive appearance in non-key windows; borderless panels can't become key by default.
+final class DetailPanelWindow: NSPanel {
+    override var canBecomeKey: Bool { true }
 }
