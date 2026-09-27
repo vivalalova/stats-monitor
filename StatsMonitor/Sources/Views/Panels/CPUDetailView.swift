@@ -47,47 +47,74 @@ private struct CoreGridView: View {
     var cores: [Double]
     var frequencies: [CPUCoreFrequency] = []
 
-    // ≤10 cores → fill the full row; >10 → always use 10-column width
-    private var effectiveColumns: Int { min(cores.count, 10) }
-
-    private var barWidth: CGFloat {
-        (BarMetrics.contentWidth - BarMetrics.spacing * CGFloat(effectiveColumns - 1)) / CGFloat(effectiveColumns)
+    private struct Core {
+        var index: Int
+        var usage: Double
+        var frequency: CPUCoreFrequency
     }
 
-    private var rows: [[(index: Int, value: Double)]] {
-        let items = cores.enumerated().map { (index: $0.offset, value: $0.element) }
-        return stride(from: 0, to: items.count, by: effectiveColumns).map {
-            Array(items[$0 ..< min($0 + effectiveColumns, items.count)])
-        }
+    private struct CoreGroup {
+        var title: LocalizedStringKey?
+        var color: Color?
+        var cores: [Core]
     }
 
-    private func barColor(for index: Int) -> Color {
-        switch frequencies.indices.contains(index) ? frequencies[index].isPerformanceCore : nil {
-        case true?: .blue
-        case false?: .green
-        case nil: progressColor(cores[index] / 100)
+    private static let barWidth: CGFloat = 36
+    private static let columns = Int((BarMetrics.contentWidth + BarMetrics.spacing) / (barWidth + BarMetrics.spacing))
+
+    private var groups: [CoreGroup] {
+        let all = cores.indices.map { index in
+            Core(
+                index: index,
+                usage: cores[index],
+                frequency: frequencies.indices.contains(index) ? frequencies[index] : .zero
+            )
         }
+        guard frequencies.count == cores.count, frequencies.allSatisfy({ $0.isPerformanceCore != nil }) else {
+            return [CoreGroup(title: nil, color: nil, cores: all)]
+        }
+        return [
+            CoreGroup(title: "Performance Cores", color: .blue, cores: all.filter { $0.frequency.isPerformanceCore == true }),
+            CoreGroup(title: "Efficiency Cores", color: .green, cores: all.filter { $0.frequency.isPerformanceCore == false }),
+        ].filter { !$0.cores.isEmpty }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                HStack(alignment: .bottom, spacing: BarMetrics.spacing) {
-                    ForEach(row, id: \.index) { item in
-                        let freq = item.index < frequencies.count ? frequencies[item.index] : .zero
-                        VStack(spacing: 1) {
-                            BarView(width: barWidth, color: barColor(for: item.index), value: item.value)
-                            if freq.currentHz > 0 {
-                                Text(ghzString(freq.currentHz))
-                            }
-                            Text("\(Int(item.value))%")
+            ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+                if let title = group.title {
+                    Text(title)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(Array(rows(of: group.cores).enumerated()), id: \.offset) { _, row in
+                    HStack(alignment: .bottom, spacing: BarMetrics.spacing) {
+                        ForEach(row, id: \.index) { core in
+                            coreColumn(core, color: group.color ?? progressColor(core.usage / 100))
                         }
-                        .font(.system(size: 9))
-                        .monospacedDigit()
                     }
                 }
             }
         }
     }
 
+    private func rows(of cores: [Core]) -> [[Core]] {
+        stride(from: 0, to: cores.count, by: Self.columns).map {
+            Array(cores[$0 ..< min($0 + Self.columns, cores.count)])
+        }
+    }
+
+    private func coreColumn(_ core: Core, color: Color) -> some View {
+        VStack(spacing: 1) {
+            BarView(width: Self.barWidth, color: color, value: core.usage)
+            if core.frequency.currentHz > 0 {
+                Text(ghzString(core.frequency.currentHz))
+            }
+            Text("\(Int(core.usage))%")
+        }
+        .font(.system(size: 9))
+        .monospacedDigit()
+        .lineLimit(1)
+        .frame(width: Self.barWidth)
+    }
 }

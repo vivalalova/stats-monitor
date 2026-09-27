@@ -45,6 +45,34 @@ struct StatsMonitorSnapshotTests {
         )
     }
 
+    @Test("CPU detail panel lists performance and efficiency cores on separate rows")
+    func cpuDetailPanelSplitCoresScreenshot() {
+        let snapshotContext = makeSnapshotContext()
+        let monitor = snapshotContext.monitor
+        let efficiency = CPUCoreFrequency(currentHz: 2_964_000_000, maxHz: 3_048_000_000, isPerformanceCore: false)
+        let performance = CPUCoreFrequency(currentHz: 4_464_000_000, maxHz: 4_464_000_000, isPerformanceCore: true)
+        monitor.record(cpu: CPUUsage(
+            user: 80,
+            system: 12,
+            idle: 8,
+            perCore: [100, 100, 100, 100, 100, 100, 100, 19, 100, 0],
+            coreFrequencies: Array(repeating: efficiency, count: 6) + Array(repeating: performance, count: 4)
+        ))
+
+        let view = detailPopoverSnapshotView(
+            panel: .cpu,
+            settings: snapshotContext.settings,
+            monitor: monitor
+        )
+
+        assertSnapshot(
+            of: view,
+            as: toleratedImageSnapshot(size: view.fittingSize),
+            named: "cpu-detail-panel-split-cores",
+            record: snapshotRecordMode
+        )
+    }
+
     @Test("GPU detail panel renders a stable screenshot")
     func gpuDetailPanelScreenshot() {
         let snapshotContext = makeSeededSnapshotContext()

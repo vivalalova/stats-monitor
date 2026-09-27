@@ -451,6 +451,17 @@
         }
       }
     },
+    "Efficiency Cores" : {
+      "comment" : "CPU detail",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "節能核心"
+          }
+        }
+      }
+    },
     "Export Diagnostics" : {
       "comment" : "Diagnostics export button",
       "localizations" : {
@@ -579,6 +590,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "找不到最近的 StatsMonitor crash report"
+          }
+        }
+      }
+    },
+    "Performance Cores" : {
+      "comment" : "CPU detail",
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "效能核心"
           }
         }
       }
