@@ -161,6 +161,12 @@ struct CPUMonitor: Sendable {
 
     // MARK: - Frequency
 
+    /// M4 and later store DVFS tables in kHz; earlier chips use Hz. No CPU DVFS state sits below 100 MHz.
+    static func dvfsFrequenciesInHz(_ table: [UInt64]) -> [UInt64] {
+        guard let peak = table.max(), peak < 100_000_000 else { return table }
+        return table.map { $0 * 1_000 }
+    }
+
     private mutating func buildCoreFrequencies(coreCount: Int) -> [CPUCoreFrequency] {
         // Apple Silicon: dynamic per-core frequency via IOReport DVFS residency
         if frequencySampler.isAvailable {
@@ -460,7 +466,7 @@ private final class CoreFrequencySampler: @unchecked Sendable {
             }
 
             guard let first = frequencies.first, first > 0 else { continue }
-            candidates.append(frequencies)
+            candidates.append(CPUMonitor.dvfsFrequenciesInHz(frequencies))
         }
 
         for frequencies in candidates {

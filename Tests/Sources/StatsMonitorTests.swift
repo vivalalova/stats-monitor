@@ -465,6 +465,19 @@ struct CPUMonitorTests {
         #expect(CPUMonitor.cpuTickDelta(current: 4, previous: UInt32.max - 2) == 7)
     }
 
+    @Test("DVFS frequency tables in kHz (M4 and later) are converted to Hz")
+    func dvfsKilohertzTableConvertsToHertz() {
+        // Real M5 E-core table from IODeviceTree:/arm-io/pmgr voltage-states1-sram
+        let kHzTable: [UInt64] = [972_000, 1_152_000, 1_584_000, 1_992_000, 2_352_000, 2_700_000, 2_964_000, 3_048_000]
+        #expect(CPUMonitor.dvfsFrequenciesInHz(kHzTable) == kHzTable.map { $0 * 1_000 })
+    }
+
+    @Test("DVFS frequency tables already in Hz stay unchanged")
+    func dvfsHertzTableStaysUnchanged() {
+        let hzTable: [UInt64] = [600_000_000, 1_404_000_000, 2_064_000_000]
+        #expect(CPUMonitor.dvfsFrequenciesInHz(hzTable) == hzTable)
+    }
+
     /// 高耗能行程表借 CPU% 時要看該輪 CPU 全表，而不是只看 top N：
     /// 進 power 榜卻沒進 CPU 前 N 名的行程，CPU% 在同一份 snapshot 裡算得出來，
     /// 顯示成「量不到」是假的。全表版負責不截斷，top 版只是它的 prefix。
