@@ -927,8 +927,8 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.batteryPercent == "80%")
     }
 
-    @Test("powerMenuText shows only system power when battery and power are both available")
-    func powerMenuTextShowsOnlySystemPower() {
+    @Test("powerMenuText shows battery percentage when battery and power are both available")
+    func powerMenuTextShowsBatteryPercentage() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
         monitor.record(battery: BatteryUsage(
@@ -942,10 +942,23 @@ struct SystemMonitorPresentationTests {
             totalMilliWatts: 21_300
         ))
 
+        #expect(monitor.powerMenuText == "78%")
+    }
+
+    @Test("powerMenuText falls back to system watts on a Mac without battery")
+    func powerMenuTextWithoutBatteryShowsWatts() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
+        monitor.record(power: PowerUsage(
+            cpuMilliWatts: 12_400,
+            gpuMilliWatts: 4_200,
+            totalMilliWatts: 21_300
+        ))
+
         #expect(monitor.powerMenuText == "21W")
     }
 
-    @Test("powerMenuText is unavailable when power telemetry is unavailable")
+    @Test("powerMenuText shows battery percentage even without power telemetry")
     func powerMenuTextWithoutPowerTelemetry() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
@@ -954,6 +967,14 @@ struct SystemMonitorPresentationTests {
             timeRemaining: nil, cycleCount: 88,
             designCapacity: 5000, maxCapacity: 4700, health: 94
         ))
+
+        #expect(monitor.powerMenuText == "61%")
+    }
+
+    @Test("powerMenuText is unavailable without battery and power telemetry")
+    func powerMenuTextWithoutBatteryAndPower() {
+        let monitor = makeMonitor()
+        defer { monitor.stop() }
 
         #expect(monitor.powerMenuText == "N/A")
     }
@@ -1280,13 +1301,13 @@ struct SystemMonitorPresentationTests {
         #expect(monitor.powerMenuSymbolPaletteColors == nil)
     }
 
-    @Test("power menu styling turns yellow when low power mode is enabled")
+    @Test("power menu styling tints only the icon yellow when low power mode is enabled")
     func powerMenuStylingLowPowerMode() {
         let monitor = makeMonitor()
         defer { monitor.stop() }
         monitor.record(isLowPowerModeEnabled: true)
 
-        #expect(monitor.powerMenuColor == NSColor.systemYellow)
+        #expect(monitor.powerMenuColor == .labelColor)
         #expect(monitor.powerMenuSymbolPaletteColors?.count == 2)
         #expect(monitor.powerMenuSymbolPaletteColors?[0] == NSColor.systemYellow)
         #expect(monitor.powerMenuSymbolPaletteColors?[1] == NSColor.systemOrange)
@@ -2178,7 +2199,7 @@ struct StatusBarTests {
                 panel: .power,
                 symbol: "bolt.fill",
                 text: "21W",
-                color: .systemYellow,
+                color: .labelColor,
                 symbolPaletteColors: [NSColor.systemYellow, NSColor.systemOrange]
             )
         ])
@@ -2213,7 +2234,7 @@ struct StatusBarTests {
             MenuBarItem(
                 panel: .power,
                 symbol: "bolt.fill",
-                text: "21W",
+                text: "15%",
                 color: .systemRed,
                 symbolPaletteColors: [NSColor.systemRed, NSColor.systemOrange]
             )
@@ -2322,7 +2343,7 @@ struct StatusBarTests {
         ))
 
         #expect(StatusBarLabelRenderer.makeSegments(monitor: monitor, settings: settings) == [
-            MenuBarItem(panel: .power, symbol: "bolt.fill", text: "21W", color: .labelColor)
+            MenuBarItem(panel: .power, symbol: "bolt.fill", text: "78%", color: .labelColor)
         ])
     }
 

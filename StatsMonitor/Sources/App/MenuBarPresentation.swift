@@ -104,9 +104,7 @@ extension SystemMonitor {
     }
 
     var powerMenuColor: NSColor {
-        if isLowBatteryForMenu { return .systemRed }
-        if isLowPowerModeEnabled { return .systemYellow }
-        return .labelColor
+        isLowBatteryForMenu ? .systemRed : .labelColor
     }
 
     var powerMenuSymbolPaletteColors: [NSColor]? {

@@ -393,7 +393,9 @@ extension SystemMonitor {
     var lowPowerModeText: String {
         isLowPowerModeEnabled ? "On" : "Off"
     }
+    /// Battery Macs show the charge level; desktops (no battery) fall back to system watts.
     var powerMenuText: String {
+        if let battery { return formatMenuPercent(battery.percentage) }
         guard hasPower else { return "N/A" }
         return formatMenuPower(power?.totalWatts ?? 0)
     }
