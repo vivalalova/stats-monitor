@@ -1,0 +1,17 @@
+# Build outputs
+build/
+DerivedData/
+.deriveddata/
+.derivedData-record/
+
+# Dependencies / Tuist generated
+.build/
+.swiftpm/
+Derived/
+*.xcodeproj
+*.xcworkspace
+
+# IDE / OS / Git
+xcuserdata/
+.DS_Store
+.git/
